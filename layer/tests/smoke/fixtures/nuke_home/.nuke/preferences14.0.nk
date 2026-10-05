@@ -1,0 +1,17 @@
+Preferences {
+ inputs 0
+ name Preferences
+ maxPanels 5
+ SnapToNode false
+ AutoSaveTime 60
+ UndoLevels 50
+ autoHideMaskInputs true
+ UIFontSize 12
+ DAGBackColor 0x3a3a3aff
+ echoAllCommands true
+ label "Written by hand for the layer's tests: {braces} and \"quotes\""
+ multiLineKnob {
+  first line
+  second {nested}
+ }
+}

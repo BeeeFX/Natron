@@ -1,0 +1,81 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Part of this fork's layer (see FORK.md). Not one of Niik-l's workflows.
+#
+# The upstream watch: once a week (and by hand from the Actions tab), look at Niik-l's repository for new commits on
+# RB-2.6 and new release tags, and open or update one issue saying what's new and what to do. It builds nothing and
+# runs no Natron (about a minute on Ubuntu): the smoke test against a new release runs on a PC
+# (layer/tests/smoke/run_smoke.py), later on a farm PC set up as a self-hosted runner. GitHub runs scheduled
+# workflows only from the repository's default branch, so this watch runs once sng/main is the default branch.
+
+name: Upstream watch
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch: {}
+
+concurrency:
+  group: upstream-watch
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Compare Niik-l's RB-2.6 and tags with ours
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          git init -q watch && cd watch
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+          git remote add upstream https://github.com/Niik-l/Natron.git
+          git fetch -q --no-tags --filter=tree:0 origin RB-2.6
+          git fetch -q --no-tags --filter=tree:0 upstream RB-2.6
+          ours=${OURS_FOR_TEST:-$(git rev-parse origin/RB-2.6)}
+          theirs=$(git rev-parse upstream/RB-2.6)
+          ours_tags=$(git ls-remote --tags origin 'natron-*' | sed 's#.*refs/tags/##; s#\^{}##' | sort -u)
+          theirs_tags=$(git ls-remote --tags upstream 'natron-*' | sed 's#.*refs/tags/##; s#\^{}##' | sort -u)
+          new_tags=$(comm -13 <(echo "$ours_tags") <(echo "$theirs_tags") | tr '\n' ' ')
+          if [ "$ours" = "$theirs" ] && [ -z "${new_tags// }" ]; then
+            echo "Nothing new from Niik-l."; exit 0
+          fi
+          {
+            echo "Niik-l published something new on https://github.com/Niik-l/Natron."
+            echo
+            if git merge-base --is-ancestor "$ours" "$theirs"; then
+              echo "**New commits on RB-2.6** (ours can be fast-forwarded):"
+              echo
+              git log --format='- `%h` %ad %s' --date=short "$ours..$theirs" | head -60
+            elif [ "$ours" != "$theirs" ]; then
+              echo "**His RB-2.6 can't be fast-forwarded from ours: his history was rewritten.** Nothing should be"
+              echo "pushed to our RB-2.6 until a person has looked (layer/README.md, Bringing Niik-l's releases in)."
+            fi
+            echo
+            echo "**New release tags:** ${new_tags:-none}"
+            echo
+            echo "**What to do, on a PC with this repository:**"
+            echo
+            echo '1. `python layer/tools/sync_upstream.py --push` (fast-forwards RB-2.6, pushes the tags; never forces).'
+            echo '2. Download the new portable release, merge its tag into sng/main, run'
+            echo '   `python layer/tests/smoke/run_smoke.py --renderer "<release>/bin/NatronRenderer.exe" --gui`.'
+            echo '3. When it passes, update `layer/upstream.toml` and push sng/main; then make and publish the build'
+            echo '   (`layer/tools/package_build.py`).'
+            echo
+            echo "_Opened by the weekly upstream watch (.github/workflows/upstream-watch.yml)._"
+          } > body.md
+          title="Niik-l's Natron moved: $(git log -1 --format=%h upstream/RB-2.6) ${new_tags}"
+          if [ "${DRY_RUN:-}" = 1 ]; then echo "$title"; cat body.md; exit 0; fi
+          existing=$(gh issue list -R "$REPO" --state open --label upstream --json number --jq '.[0].number' || true)
+          if [ -n "$existing" ]; then
+            gh issue edit "$existing" -R "$REPO" --title "$title" --body-file body.md
+          else
+            gh label create upstream -R "$REPO" --color 5319e7 --description "Niik-l published something" 2>/dev/null || true
+            gh issue create -R "$REPO" --title "$title" --body-file body.md --label upstream
+          fi
