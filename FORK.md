@@ -51,6 +51,9 @@ GitHub Actions are off, see below). **No file of Niik-l's is changed.**
   Nuke preferences file.
 - **A smoke test** against Niik-l's portable releases (`layer/tests/smoke/`: 235 checks, pixels compared, the saved
   comps rendered again without the layer), and **an upstream watch** that says when he publishes something new.
+  **Tested on his 2026.09.20 and 2026.10.02 releases** (5 October 2026): every check passes on both, with the same
+  pixel values, and on a build of each; Singerie's own Natron pipeline suite passes on both too. 2026.10.02 adds
+  openfx-arena (Text, SVG and PSD readers, ImageMagick filters), whose Text node renders headless.
 
 **GitHub Actions are switched off on this repository** (since 5 October 2026), Niik-l's workflows and ours alike.
 The upstream watch therefore runs on a PC: `python layer/tools/sync_upstream.py --watch` (it exits with 3 when

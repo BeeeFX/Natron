@@ -300,7 +300,13 @@ namespace (Natron calls a Group PyPlug's `createInstance(app1, app1.<node>)` and
 a deleted node keeps its name for a while and Natron later removes that Python name, so the checks give their nodes
 names never used twice; node colours exist only in the window; Writes store half floats unless told otherwise.
 
-Last results: see `upstream.toml` `[tested]`.
+When the release has openfx-arena (2026.10.02 on), the checks also render its Text node ("SNG 1001" on black) and
+look for the letters.
+
+Last results: see `upstream.toml` `[tested]`. On 5 October 2026: 2026.09.20 and 2026.10.02 both pass every check
+(235, and 236 on a build of each), with identical pixel values; the only difference is Arena's Text, there on
+2026.10.02. Singerie's Natron pipeline suite (`plugins/natron/tests/run_tests.py` in Singerie's repository, 615
+checks) also passes on both, identically but for the last digits of a camera solve.
 
 ## Bringing Niik-l's releases in
 
@@ -334,15 +340,15 @@ Niik-l's own workflows are in his files (`.github/workflows/`): "Build Installer
 ## Making a build
 
 ```
-python layer/tools/package_build.py --release "<Niik-l's portable release>" --tag natron-2.6-2026.09.20 [--number 1]
+python layer/tools/package_build.py --release "<Niik-l's portable release>" --tag natron-2.6-2026.10.02 [--number 1]
 ```
 
 copies the release (only read), adds the layer (`Plugins/PyPlugs/layer`: startup files, aliases, gizmos;
 `Resources/layer`: the rest, the studio ToolSets included), writes `Resources/layer/BUILD.toml` and `SOURCE.txt` (where the
-corresponding source is, as the GPL asks), and zips it: `layer/dist/Natron-2.6.0-2026.09.20.sng1-win64.zip`, one
-folder inside. Its version is **`2.6.0+2026.09.20.sng1`** (`2.6.0+<release date>.sng<n>`): Singerie's software
+corresponding source is, as the GPL asks), and zips it: `layer/dist/Natron-2.6.0-2026.10.02.sng1-win64.zip`, one
+folder inside. Its version is **`2.6.0+2026.10.02.sng1`** (`2.6.0+<release date>.sng<n>`): Singerie's software
 manager reads fork builds as `2.6.0+<build>`, so `2.6.x`, `2.6.0` and the exact build match it, `.sng2` sorts after
-`.sng1`, and both after Niik-l's plain `2.6.0+2026.09.20`. The archive's name has `-` for `+` (Singerie's build list
+`.sng1`, and both after Niik-l's plain `2.6.0+2026.10.02`. The archive's name has `-` for `+` (Singerie's build list
 takes no `+` in file names). Nothing is uploaded.
 
 ## Writing code here

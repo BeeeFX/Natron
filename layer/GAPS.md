@@ -38,20 +38,25 @@ Natron's own code changed: costly at every release, so few (see `patches/README.
 | 17 | 3D: Axis, TransformGeo, WriteGeo, Normals | Missing in the fork | C in the fork's 3D code, offered to Niik-l only | open |
 | 18 | ZDefocus, Bokeh | Community PyPlugs (licences not stated); DeepDefocus | E | **ZDefocus done** (our gizmo: six depth slices, CImg's filters); bladed or disc bokeh would be an OpenFX plug-in, open |
 | 19 | Motion vectors, Kronos | The fork's own **VectorBlur** (from motion vectors); no optical flow | E: offline flow plus PyPlugs, or OpenFX | VectorBlur **in the fork**; optical flow open |
-| 20 | Text, slates, burn-ins | **openfx-arena ships with the 2026.10.02 release** (see below); the 2026.09.20 build tested here lacks it | E: then a slate and burn-in ToolSet or gizmo on Arena's Text | to check on the 2026.10.02 build (its download waits for a yes) |
+| 20 | Text, slates, burn-ins | **Arena's Text is in the 2026.10.02 release and renders headless** (checked, below); 2026.09.20 lacks it | E: a slate and burn-in ToolSet or gizmo on Arena's Text | **Text there** (2026.10.02 on); the slate and burn-in tool planned (item 11) |
 | 21 | Denoise | DenoiseSharpen | E | **done** (Denoise alias) |
 | 22 | Retime | Retime, FrameBlend, FrameHold, TimeOffset | E | **done** for TimeClip (alias) |
 | 23 | BlinkScript | Shadertoy, SeExpr | E | open |
 | 24 | Farm | NatronRenderer, Singerie's farm | E | done in Singerie |
 
-**Item 20, what changed upstream** (read in Niik-l's commits `04dc3195` and `5a04e697` of 1 October 2026 and his
-`DEV_3D_SYSTEM_CHANGELOG.md`; not run here): his Windows and Linux builds now build and ship openfx-arena,
-`Arena.ofx` with its 19 plug-ins (ReadSVG, ReadPSD, ReadKrita, ReadCDR, ReadPDF, **Text**, the ImageMagick filters),
-from his 2026.10.02 release on; he checked headless that ReadSVG renders. He notes that Arena carries its own,
-older copy of openfx-io's colour handling, so its readers may show the old default colourspace under ACES. So
-building Arena ourselves (roadmap item 11's first plan) isn't needed. Still to do, once the 2026.10.02 portable
-build is downloaded: run the smoke test on it (it reports whether Arena's Text node, `net.fxarena.openfx.Text`,
-is there), try Text in a slate and burn-ins, and check the readers' colour.
+**Item 20, what changed upstream** (Niik-l's commits `04dc3195` and `5a04e697` of 1 October 2026 and his
+`DEV_3D_SYSTEM_CHANGELOG.md`): his Windows and Linux builds now build and ship openfx-arena (`Arena.ofx`), from his
+2026.10.02 release on. **Checked on that release's portable build (5 October 2026)**: 24 plug-ins more than
+2026.09.20 and none fewer: Arena's 19 (`net.fxarena.openfx.*`: **Text**, ReadSVG, ReadPSD, Arc, Charcoal, Edges,
+Implode, Modulate, Morphology, Oilpaint, Polar, Polaroid, Reflection, Roll, Sketch, Swirl, Texture, Tile, Wave) and
+five readers that come with it (`fr.inria.openfx.ReadKrita`, `ReadCDR`, `ReadPDF`, `ReadMisc`, `OpenRaster`).
+**Text renders in NatronRenderer** (the smoke test draws "SNG 1001" on black and finds the letters): it finds the
+PC's fonts (its font menu lists the Windows ones; NatronRenderer prints that the release's own fontconfig folder
+is missing, harmless here), with size, colour, alignment, wrapping, stroke, letter spacing and a subtitle file
+input. So building Arena ourselves (roadmap item 11's first plan) isn't needed. Still to do: a slate and burn-in
+tool on it (the frame number by expression, the shot name), a look on a farm PC (fonts there), and Niik-l's own
+caveat: Arena carries an older copy of openfx-io's colour handling, so its readers (SVG, PSD) may show the old
+default colourspace under ACES.
 
 ## Specialist
 
@@ -86,8 +91,8 @@ can only be stored in Natron's settings) and the font (Natron reads it before an
    NatronGitHub).
 9. Tab search favourites and a menu-path column (C).
 10. Cryptomatte OpenFX plug-in.
-11. Text and burn-ins: Arena ships with Niik-l's 2026.10.02 release (above); check it there, then a slate and
-    burn-in ToolSet or gizmo.
+11. Text and burn-ins: Arena's Text ships with Niik-l's 2026.10.02 release and renders headless (checked, above);
+    next, a slate and burn-in ToolSet or gizmo on it.
 12. Centre the node graph on a node (C, small) and a bookmarks panel.
 13. Missing 3D nodes, contributed to Niik-l's fork.
 14. A Keylight-class keyer as an OpenFX plug-in.

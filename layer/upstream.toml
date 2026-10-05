@@ -13,16 +13,19 @@ tag = "natron-2.6-2026.10.02"
 commit = "82d765f04c998b479261f80a40f6eaab00a46245"
 
 [tested]
-# The portable release the smoke test (tests/smoke/run_smoke.py) last passed on. 2026.10.02 isn't tested yet: its
-# portable build (about 400 MB) waits for a yes to the download.
-release = "natron-2.6-2026.09.20"
-commit = "0d9c6221a0a67f772d484a5dd9c18a25db2ee194"
+# The portable release the smoke test (tests/smoke/run_smoke.py) last passed on (Niik-l's portable build, its
+# SHA-256 checked against his release page, read only). Singerie's Natron pipeline suite
+# (plugins/natron/tests/run_tests.py, 615 checks) passed on it the same day.
+release = "natron-2.6-2026.10.02"
+commit = "82d765f04c998b479261f80a40f6eaab00a46245"
 date = "2026-10-05"
 natron = "2.6.0"
 python = "3.14.6"
 qt_binding = "PySide6 6.11 through qtpy 2.4.3 (both bundled with the release)"
 # run_smoke.py --gui: 235 checks with the repository's layer, 236 on a build made by package_build.py.
 checks = 235
+# Earlier releases the same layer passed on, with the same checks.
+also_passed = ["natron-2.6-2026.09.20"]
 
 [patches]
 # Core patches carried on top of Niik-l's code (patches/series). Budget: research, parity-layers.md section 1.2.
@@ -32,4 +35,4 @@ budget_lines = 800
 
 [build]
 # How a packaged build is named (tools/package_build.py): 2.6.0+<release date>.sng<n>.
-version = "2.6.0+2026.09.20.sng1"
+version = "2.6.0+2026.10.02.sng1"

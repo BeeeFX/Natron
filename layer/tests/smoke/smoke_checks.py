@@ -412,14 +412,39 @@ def check_tools(app):
     import tool_checks
 
     tool_checks.run(say, app)
-    say(compat_has_arena() in (True, False), "Arena's Text node (openfx-arena, bundled from Niik-l's 2026.10.02 "
-        "release on): " + ("in this release" if compat_has_arena() else "not in this release"))
+    check_arena_text(app)
 
 
 def compat_has_arena():
     from natron_layer import compat
 
     return compat.has_plugin("net.fxarena.openfx.Text")
+
+
+def check_arena_text(app):
+    """Roadmap item 11: Arena's Text node (openfx-arena, in Niik-l's releases from 2026.10.02 on) renders headless,
+    as a slate or burn-in would on the farm."""
+    from natron_layer import compat
+
+    if not compat_has_arena():
+        say(True, "Arena's Text node (openfx-arena, bundled from Niik-l's 2026.10.02 release on): not in this release")
+        return
+    black = constant(app, (0.0, 0.0, 0.0, 1.0), "ArenaBlack")
+    text = compat.create_node(app, "net.fxarena.openfx.Text")
+    compat.connect(text, 0, black)
+    text.getParam("text").setValue("SNG 1001")
+    text.getParam("size").setValue(48)
+    out = os.path.join(OUT, "renders")
+    os.makedirs(out, exist_ok=True)
+    frame = render(app, text, os.path.join(out, "arena_text.####.exr"))
+    stats = None
+    if frame is not None:
+        import OpenImageIO as oiio
+
+        stats = oiio.ImageBufAlgo.computePixelStats(oiio.ImageBuf(frame))
+    drawn = stats is not None and max(stats.max[:3]) > 0.9 and 0.001 < stats.avg[0] < 0.3
+    say(drawn, "Arena's Text node is in this release and renders headless: white letters drawn on black (average "
+        + (str(round(stats.avg[0], 4)) if stats is not None else "no render") + ")")
 
 
 def main():
