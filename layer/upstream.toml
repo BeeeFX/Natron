@@ -21,6 +21,8 @@ date = "2026-10-05"
 natron = "2.6.0"
 python = "3.14.6"
 qt_binding = "PySide6 6.11 through qtpy 2.4.3 (both bundled with the release)"
+# run_smoke.py --gui: 235 checks with the repository's layer, 236 on a build made by package_build.py.
+checks = 235
 
 [patches]
 # Core patches carried on top of Niik-l's code (patches/series). Budget: research, parity-layers.md section 1.2.
