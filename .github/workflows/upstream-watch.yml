@@ -6,6 +6,9 @@
 # runs no Natron (about a minute on Ubuntu): the smoke test against a new release runs on a PC
 # (layer/tests/smoke/run_smoke.py), later on a farm PC set up as a self-hosted runner. GitHub runs scheduled
 # workflows only from the repository's default branch, so this watch runs once sng/main is the default branch.
+#
+# GitHub Actions are switched off on BeeeFX/Natron since 5 October 2026, so this doesn't run; it's kept for the day
+# they come back. The same watch runs on a PC: python layer/tools/sync_upstream.py --watch (layer/README.md).
 
 name: Upstream watch
 
