@@ -18,7 +18,8 @@ without changing Natron's own code.
 
 That page compares his branch with ours and shows only our changes: the list of our commits at the top, then every
 file we added or changed, line by line (green for what we added). Today every change is a new file: the `layer/`
-folder, this page, and one small workflow (`.github/workflows/upstream-watch.yml`). **No file of Niik-l's is
+folder, this page, a short introduction GitHub shows on the repository's front page when it opens on `sng/main`
+(`.github/README.md`), and one small workflow (`.github/workflows/upstream-watch.yml`). **No file of Niik-l's is
 changed.**
 
 ## What the layer does (all in `layer/`)
