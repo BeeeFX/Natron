@@ -1,0 +1,4 @@
+# Builds made by tools/package_build.py, and Python's caches.
+dist/
+__pycache__/
+*.pyc

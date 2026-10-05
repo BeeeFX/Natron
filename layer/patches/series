@@ -1,0 +1,3 @@
+# The core patches this fork carries on top of Niik-l's code, in the order they apply (quilt's series format: one
+# patch file name per line, from this folder). Empty: the layer changes no file of Natron's. See README.md here for
+# the budget and what each patch's header must say.

@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# This file is part of the layer of this Natron fork (see FORK.md at the repository root).
+#
+# What the layer is built on and tested against. Updated by hand when Niik-l's releases are merged in (see
+# layer/README.md, "Bringing Niik-l's releases in") and when the smoke test passes on a release.
+
+[upstream]
+# Niik-l's fork of Natron, mirrored unchanged on this repository's RB-2.6 branch.
+repository = "https://github.com/Niik-l/Natron"
+branch = "RB-2.6"
+# The newest of his releases merged into sng/main (the source this branch carries).
+tag = "natron-2.6-2026.10.02"
+commit = "82d765f04c998b479261f80a40f6eaab00a46245"
+
+[tested]
+# The portable release the smoke test (tests/smoke/run_smoke.py) last passed on. 2026.10.02 isn't tested yet: its
+# portable build (about 400 MB) waits for a yes to the download.
+release = "natron-2.6-2026.09.20"
+commit = "0d9c6221a0a67f772d484a5dd9c18a25db2ee194"
+date = "2026-10-05"
+natron = "2.6.0"
+python = "3.14.6"
+qt_binding = "PySide6 6.11 through qtpy 2.4.3 (both bundled with the release)"
+
+[patches]
+# Core patches carried on top of Niik-l's code (patches/series). Budget: research, parity-layers.md section 1.2.
+count = 0
+budget_count = 5
+budget_lines = 800
+
+[build]
+# How a packaged build is named (tools/package_build.py): 2.6.0+<release date>.sng<n>.
+version = "2.6.0+2026.09.20.sng1"
