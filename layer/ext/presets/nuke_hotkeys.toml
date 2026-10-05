@@ -1,0 +1,370 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# This file is part of the layer of this Natron fork (see FORK.md at the repository root).
+#
+# Nuke's default keyboard shortcuts next to Natron's, and what this layer does about each.
+#
+# Nuke's keys are facts from Foundry's published keyboard shortcut lists (Nuke User Guide, "Keyboard shortcuts");
+# Natron's are read from the fork's source (Gui/GuiApplicationManager10.cpp, registerKeybind, and
+# Gui/GuiApplicationManager.cpp, the ten plug-ins with a default key). status:
+#   same     Natron already does what Nuke does with this key.
+#   added    the layer adds it (a menu command under Nuke in the menu bar, with this default key; in Natron's
+#            shortcut editor under Global, where the artist can change it). It acts in the node graph only:
+#            pressed anywhere else, the key goes on to Natron as if the layer weren't there.
+#   differs  Natron uses the key for something else; left as Natron has it (see "natron").
+#   missing  no Natron equivalent the layer could add without a core patch.
+
+[[key]]
+keys = "B"
+where = "node graph"
+nuke = "Blur"
+natron = "Blur (CImg)"
+status = "same"
+
+[[key]]
+keys = "C"
+where = "node graph"
+nuke = "ColorCorrect"
+natron = "ColorCorrect"
+status = "same"
+
+[[key]]
+keys = "D"
+where = "node graph"
+nuke = "Disable / enable the selected nodes"
+natron = "Disable / enable the selected nodes"
+status = "same"
+
+[[key]]
+keys = "F"
+where = "node graph"
+nuke = "Fit the selected nodes in the view"
+natron = "Frame the selected nodes"
+status = "same"
+
+[[key]]
+keys = "G"
+where = "node graph"
+nuke = "Grade"
+natron = "Grade"
+status = "same"
+
+[[key]]
+keys = "I"
+where = "node graph"
+nuke = "Node information"
+natron = "nothing"
+status = "added"
+menu = "Nuke/Node info"
+command = "node_info"
+
+[[key]]
+keys = "K"
+where = "node graph"
+nuke = "Copy"
+natron = "nothing in the node graph; K stops playback in the viewer and sets constant interpolation in the curve editor and dope sheet"
+status = "added"
+menu = "Nuke/Insert Copy node"
+command = "copy_node"
+
+[[key]]
+keys = "M"
+where = "node graph"
+nuke = "Merge"
+natron = "Merge (a new Merge takes the selected node in A, as in Nuke: the look keeps Merge connects to A on)"
+status = "same"
+
+[[key]]
+keys = "N"
+where = "node graph"
+nuke = "Rename the selected node"
+natron = "Rename the selected node"
+status = "same"
+
+[[key]]
+keys = "O"
+where = "node graph"
+nuke = "Roto"
+natron = "Roto"
+status = "same"
+
+[[key]]
+keys = "P"
+where = "node graph"
+nuke = "RotoPaint"
+natron = "RotoPaint"
+status = "same"
+
+[[key]]
+keys = "R"
+where = "node graph"
+nuke = "Read"
+natron = "Read"
+status = "same"
+
+[[key]]
+keys = "T"
+where = "node graph"
+nuke = "Transform"
+natron = "Transform"
+status = "same"
+
+[[key]]
+keys = "W"
+where = "node graph"
+nuke = "Write"
+natron = "Write"
+status = "same"
+
+[[key]]
+keys = "."
+where = "node graph"
+nuke = "Dot"
+natron = "Dot"
+status = "same"
+
+[[key]]
+keys = "\\"
+where = "node graph"
+nuke = "Snap all nodes to the grid"
+natron = "nothing"
+status = "added"
+menu = "Nuke/Snap all nodes to grid"
+command = "snap_to_grid"
+
+[[key]]
+keys = "Tab"
+where = "node graph"
+nuke = "Tab search (node creation)"
+natron = "Tab search (node creation); the Nuke names come from the Nuke menu of aliases"
+status = "same"
+
+[[key]]
+keys = "Backspace"
+where = "node graph"
+nuke = "Delete the selected nodes (Delete)"
+natron = "Delete the selected nodes (Backspace; Delete also works)"
+status = "same"
+
+[[key]]
+keys = "Alt+B"
+where = "node graph"
+nuke = "Duplicate and branch the selected nodes"
+natron = "nothing"
+status = "added"
+menu = "Nuke/Duplicate and branch"
+command = "duplicate_and_branch"
+
+[[key]]
+keys = "Alt+C"
+where = "node graph"
+nuke = "Duplicate the selected nodes"
+natron = "Duplicate the selected nodes"
+status = "same"
+
+[[key]]
+keys = "Alt+K"
+where = "node graph"
+nuke = "Clone the selected nodes"
+natron = "Clone the selected nodes"
+status = "same"
+
+[[key]]
+keys = "Alt+Shift+K"
+where = "node graph"
+nuke = "Declone"
+natron = "Declone"
+status = "same"
+
+[[key]]
+keys = "Ctrl+G"
+where = "node graph"
+nuke = "Group the selected nodes"
+natron = "Group the selected nodes"
+status = "same"
+
+[[key]]
+keys = "Ctrl+Alt+G"
+where = "node graph"
+nuke = "Replace a Group by what's inside it"
+natron = "Expand the group"
+status = "same"
+
+[[key]]
+keys = "Ctrl+Shift+X"
+where = "node graph"
+nuke = "Extract the selected nodes"
+natron = "Extract the selected nodes"
+status = "same"
+
+[[key]]
+keys = "Shift+X"
+where = "node graph"
+nuke = "Swap A and B inputs"
+natron = "Switch the inputs"
+status = "same"
+
+[[key]]
+keys = "Shift+Y"
+where = "node graph"
+nuke = "Connect the second selected node to the output of the first"
+natron = "nothing in the node graph; Shift+Y shows the luminance of input A in the viewer"
+status = "added"
+menu = "Nuke/Connect second selected to first"
+command = "connect_to_first"
+
+[[key]]
+keys = "Alt+U"
+where = "node graph"
+nuke = "Splay the first selected node to input A"
+natron = "nothing"
+status = "missing"
+why = "Not built yet: Natron's Python gives no order of selection to splay by (planned, E route)."
+
+[[key]]
+keys = "Ctrl+Enter"
+where = "node graph"
+nuke = "Open the selected Group in its own tab"
+natron = "Return opens the node's panel"
+status = "missing"
+why = "Natron's Python can't open a Group's tab."
+
+[[key]]
+keys = "S"
+where = "node graph"
+nuke = "Project settings"
+natron = "Project settings (anywhere in the window)"
+status = "same"
+
+[[key]]
+keys = "Shift+S"
+where = "anywhere"
+nuke = "Preferences"
+natron = "Preferences"
+status = "same"
+
+[[key]]
+keys = "Alt+S"
+where = "anywhere"
+nuke = "Full screen"
+natron = "Full screen"
+status = "same"
+
+[[key]]
+keys = "Ctrl+I"
+where = "anywhere"
+nuke = "New viewer"
+natron = "New viewer"
+status = "same"
+
+[[key]]
+keys = "Space"
+where = "anywhere"
+nuke = "Maximise the panel under the cursor"
+natron = "Maximise the panel under the cursor"
+status = "same"
+
+[[key]]
+keys = "1 to 0"
+where = "node graph and viewer"
+nuke = "Connect the viewer to the selected node (inputs 1 to 10)"
+natron = "Connect the viewer to the selected node (inputs 1 to 10)"
+status = "same"
+
+[[key]]
+keys = "R, G, B, A"
+where = "viewer"
+nuke = "Show the red, green, blue, alpha channel"
+natron = "Show the red, green, blue, alpha channel"
+status = "same"
+
+[[key]]
+keys = "Y"
+where = "viewer"
+nuke = "Luminance"
+natron = "Luminance"
+status = "same"
+
+[[key]]
+keys = "M"
+where = "viewer"
+nuke = "Matte overlay"
+natron = "Matte overlay"
+status = "same"
+
+[[key]]
+keys = "F"
+where = "viewer"
+nuke = "Fit the image"
+natron = "Fit the image"
+status = "same"
+
+[[key]]
+keys = "H"
+where = "viewer"
+nuke = "Fill the viewer with the image"
+natron = "nothing"
+status = "missing"
+why = "Natron's viewer has no fill mode reachable from Python."
+
+[[key]]
+keys = "J, K, L"
+where = "viewer"
+nuke = "Play backward, stop, play forward"
+natron = "Play backward, stop, play forward"
+status = "same"
+
+[[key]]
+keys = "O"
+where = "viewer"
+nuke = "Show or hide the overlays"
+natron = "Hide the overlays"
+status = "same"
+
+[[key]]
+keys = "P"
+where = "viewer"
+nuke = "Pause the viewer"
+natron = "Pause input A (Shift+P pauses the viewer)"
+status = "differs"
+
+[[key]]
+keys = "U"
+where = "viewer"
+nuke = "Update the viewer"
+natron = "Refresh the viewer"
+status = "same"
+
+[[key]]
+keys = "W"
+where = "viewer"
+nuke = "Wipe (split screen)"
+natron = "Wipe"
+status = "same"
+
+[[key]]
+keys = "Alt+W"
+where = "viewer"
+nuke = "Region of interest: draw a new one"
+natron = "Region of interest: draw a new one"
+status = "same"
+
+[[key]]
+keys = "Shift+W"
+where = "viewer"
+nuke = "Region of interest on or off"
+natron = "Region of interest on or off"
+status = "same"
+
+[[key]]
+keys = "Alt+P"
+where = "viewer / node graph"
+nuke = "The viewer's input process controls"
+natron = "Turn the selected nodes' postage stamps on or off"
+status = "differs"
+
+[[key]]
+keys = "S"
+where = "viewer"
+nuke = "Viewer settings"
+natron = "Project settings"
+status = "differs"

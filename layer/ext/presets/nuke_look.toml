@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# This file is part of the layer of this Natron fork (see FORK.md at the repository root).
+#
+# The Nuke look: the values this build gives Natron's preferences while the artist hasn't chosen their own.
+#
+# Each key is a Natron preference by its script name (Natron's Preferences window shows the label; the names are
+# Natron's own, from Engine/Settings.cpp). Colours are [r, g, b] from 0 to 1. A value starting with "@layer/" is a
+# file inside the layer.
+#
+# How it's applied (natron_layer/look.py): at every start, a preference the artist has stored in Natron's settings
+# (changed in Natron's Preferences window and saved) is left as it is; the others take the value below for the
+# session, without being written anywhere. The colours are approximations of Nuke's default theme by eye (Nuke's
+# exact values aren't published as a list); change them here.
+
+[look]
+name = "Nuke"
+
+[settings]
+# Appearance › Stylesheet: Natron's own stylesheet with Nuke-like tabs, menus and fields (ext/qss/nuke.qss).
+stylesheetFile = "@layer/ext/qss/nuke.qss"
+
+# Appearance › Main Window: the greys and the orange highlight of Nuke's interface.
+sunken = [0.157, 0.157, 0.157]
+base = [0.196, 0.196, 0.196]
+raised = [0.27, 0.27, 0.27]
+selection = [0.97, 0.58, 0.12]
+text = [0.78, 0.78, 0.78]
+
+# Appearance › Curve Editor: dark grey instead of black.
+curveEditorBG = [0.13, 0.13, 0.13]
+
+# Appearance › Node Graph: node colours per class, like Nuke's defaults.
+usePluginIcons = false
+defaultNodeColor = [0.7, 0.7, 0.7]
+backdropColor = [0.557, 0.557, 0.22]
+readerColor = [0.7, 0.7, 0.7]
+writerColor = [0.75, 0.33, 0.33]
+generatorColor = [0.6, 0.6, 0.6]
+colorNodesColor = [0.47, 0.72, 0.45]
+filterNodesColor = [0.8, 0.5, 0.31]
+transformNodesColor = [0.65, 0.48, 0.73]
+timeNodesColor = [0.76, 0.63, 0.49]
+drawNodesColor = [0.44, 0.72, 0.62]
+keyerNodesColor = [0.33, 0.72, 0.42]
+channelNodesColor = [0.58, 0.42, 0.72]
+defaultMergeColor = [0.29, 0.37, 0.78]
+
+# Nodegraph: Nuke's habits. Snap to node, a new Merge takes the selected node in its A input, mask inputs hidden
+# until needed (these three are Natron's defaults too, kept here so the look says what it relies on).
+enableSnapToNode = true
+mergeConnectToA = true
+autoHideInputs = true
+
+# User Interface: at most 10 properties panels open, as Nuke's properties bin; no file browser when a Write is made
+# (Nuke makes the Write and lets you type its file).
+maxPanels = 10
+writeUseDialog = false
+
+# Project Setup: no postage stamps on new nodes (Nuke shows thumbnails on Read nodes only).
+enableAutoPreviewNewProjects = false

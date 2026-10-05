@@ -1,0 +1,3 @@
+This folder holds the startup scripts and the alias nodes of this Natron fork's layer (see FORK.md at the
+repository root). Natron finds it on NATRON_PLUGIN_PATH (from the repository) or in Plugins/PyPlugs/layer (in a build
+made by layer/tools/package_build.py). init.py looks for this file to find the rest of the layer.
