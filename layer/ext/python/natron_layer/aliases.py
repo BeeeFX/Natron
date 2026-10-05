@@ -117,6 +117,13 @@ ALIASES: tuple[Alias, ...] = (
         "net.sf.openfx.FrameRange",
         note="Natron's FrameRange: frames outside the range held, black or looped.",
     ),
+    Alias(
+        "PostageStamp",
+        "Other",
+        "net.sf.openfx.NoOpPlugin",
+        (("enablePreview", True),),
+        note="A NoOp showing its input's picture on the node in the graph (Natron's node preview, on for this one).",
+    ),
 )
 
 BY_NAME = {alias.nuke: alias for alias in ALIASES}

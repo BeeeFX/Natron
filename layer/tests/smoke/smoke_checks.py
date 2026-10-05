@@ -8,7 +8,9 @@ for the session, the artist's own preferences left, the imported ones over the l
 making its Natron node; a small comp of alias nodes rendered and its pixels compared (values worked out by hand, and
 each alias against the same Natron node set up by hand); the hotkeys' table and the commands' work; the Nuke
 preferences import and the first-launch question with the hand-written fixtures; the look's reset into a settings
-file standing in for Natron's. run_smoke.py then compares Natron's settings (the registry) before and after.
+file standing in for Natron's; then the tools of roadmap items 5 to 7 (tool_checks.py: the gizmos and their pixels,
+the workflow scripts, the expression recipes, the ToolSet recipes). run_smoke.py then renders the saved comps
+without the layer (project_checks.py) and compares Natron's settings (the registry) before and after.
 This file stays plain ASCII.
 """
 
@@ -296,7 +298,7 @@ def check_hotkeys(app):
 
     table = hotkeys.table()
     added = hotkeys.added()
-    say(len(table) > 30 and {k.keys for k in added} == {"I", "K", "\\", "Shift+Y", "Alt+B"},
+    say(len(table) > 30 and {k.keys for k in added} == {"I", "K", "\\", "Shift+Y", "Alt+B", "Alt+F"},
         "the hotkey table reads (" + str(len(table)) + " Nuke keys; added: " + ", ".join(k.keys for k in added) + ")")
     say(all(callable(getattr(hotkeys, k.command, None)) and k.menu.startswith("Nuke/") for k in added),
         "every added key has its command and its place in the Nuke menu")
@@ -403,6 +405,23 @@ def check_reset():
     say("RB-2.6...sng/main" in text and "2.6" in text, "About this fork names the base and the compare link")
 
 
+def check_tools(app):
+    here = os.environ.get("NATRON_LAYER_SMOKE_DIR", "")
+    if here and here not in sys.path:
+        sys.path.insert(0, here)
+    import tool_checks
+
+    tool_checks.run(say, app)
+    say(compat_has_arena() in (True, False), "Arena's Text node (openfx-arena, bundled from Niik-l's 2026.10.02 "
+        "release on): " + ("in this release" if compat_has_arena() else "not in this release"))
+
+
+def compat_has_arena():
+    from natron_layer import compat
+
+    return compat.has_plugin("net.fxarena.openfx.Text")
+
+
 def main():
     try:
         sys.stdout.reconfigure(errors="replace")
@@ -416,7 +435,7 @@ def main():
         layer = check_loaded()
         if layer is not None:
             for check in (lambda: check_look(layer), lambda: check_aliases(app), lambda: check_comp(app),
-                          lambda: check_hotkeys(app), check_import, check_reset):
+                          lambda: check_hotkeys(app), check_import, check_reset, lambda: check_tools(app)):
                 try:
                     check()
                 except Exception:

@@ -196,6 +196,16 @@ def connect_to_first() -> bool | None:
     return compat.connect(second, 0, first)
 
 
+def flipbook_selected() -> Any:
+    """Alt+F: Nuke's flipbook of the selected node, rendered by NatronRenderer in the background and played in RV
+    when it's on this PC, else as a movie in the system's player (``workflow.flipbook``)."""
+    if not _node_graph_only("Alt+F"):
+        return None
+    from . import workflow  # noqa: PLC0415
+
+    return workflow.flipbook_selected()
+
+
 def duplicate_and_branch() -> Any:
     """Alt+B: a copy of the selected node, fed by the same input, beside it (a new branch)."""
     if not _node_graph_only("Alt+B"):

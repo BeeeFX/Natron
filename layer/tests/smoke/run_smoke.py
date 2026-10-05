@@ -8,15 +8,21 @@
 
 1. runs the Nuke preferences reader's tests (test_nuke_prefs.py, no Natron needed);
 2. checks the layer's files against the repository: the stylesheet still holds Natron's own mainstyle.qss unchanged,
-   the patch series matches upstream.toml, the startup files are plain ASCII, every alias has its PyPlug;
+   the patch series matches upstream.toml, the startup files are plain ASCII, every alias and gizmo has its PyPlug,
+   every studio ToolSet its file, every expression recipe makes valid Python;
 3. runs smoke_checks.py inside NatronRenderer, with only the layer's plug-in folder on NATRON_PLUGIN_PATH and
-   Natron's disk cache, home folder, TEMP and the layer's config folder in a temporary folder (a clean session);
+   Natron's disk cache, home folder, TEMP and the layer's config folder in a temporary folder (a clean session):
+   the look, the aliases, the keys, the import, then the tools (tool_checks.py: gizmos, workflow scripts, expression
+   recipes, ToolSet recipes, with their pixels);
 4. with --gui, opens Natron's window for about half a minute with a probe (gui_probe/) that checks the menu, the
-   keys, the stylesheet and the first-launch question, takes a picture of the window and closes Natron;
-5. compares Natron's settings (HKCU\\Software\\INRIA in the registry), its folders in %LOCALAPPDATA% and the home
+   keys, the stylesheet and the first-launch question, makes each gizmo by its ID, pastes each studio ToolSet with
+   Natron's own paste, takes a picture of the window and closes Natron;
+5. renders the comps saved by 3 and 4 in a NatronRenderer **without the layer** (project_checks.py): the gizmos as
+   the plain Groups they were saved as, the comp Collect files wrote, the pasted ToolSets;
+6. compares Natron's settings (HKCU\\Software\\INRIA in the registry), its folders in %LOCALAPPDATA% and the home
    folder, and the release folder before and after: unchanged. Natron itself records a few switches for every
-   PyPlug it registers (the layer's aliases, ``layer.nuke.*``); those it added during the test are taken out again,
-   as Singerie's own Natron suite does for its test PyPlug.
+   PyPlug it registers (the layer's aliases and gizmos, ``layer.*``); those it added during the test are taken out
+   again, as Singerie's own Natron suite does for its test PyPlug.
 
 Exits with 1 when something fails. Natron's settings live in the registry and the fork has no option to put them
 elsewhere, so this test never runs two Natrons at once and never writes a setting itself.
@@ -25,6 +31,7 @@ elsewhere, so this test never runs two Natrons at once and never writes a settin
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -36,18 +43,20 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 LAYER = HERE.parents[1]
 REPO = LAYER.parent
-TIMEOUT = 900
-ALIAS_PREFIX = "layer.nuke."
+TIMEOUT = 1500
+LAYER_PREFIX = "layer."  # the layer's PyPlugs: aliases (layer.nuke.*) and gizmos (layer.gizmo.*)
 sys.dont_write_bytecode = True
 
 
 class Say:
     def __init__(self) -> None:
         self.ok = True
+        self.count = 0
 
     def __call__(self, condition: object, what: str) -> bool:
         print(f"  ok  {what}" if condition else f"FAILED  {what}", flush=True)
         self.ok = self.ok and bool(condition)
+        self.count += 1
         return bool(condition)
 
 
@@ -111,14 +120,14 @@ def registry_values() -> list[str]:
     return [line.strip().split("    ")[0] for line in listed.splitlines() if line.startswith("    ")]
 
 
-def forget_alias_switches(before: list[str]) -> list[str]:
-    """Take out the switches Natron recorded during the test for the layer's alias PyPlugs (only those that weren't
-    there before the test)."""
+def forget_layer_switches(before: list[str]) -> list[str]:
+    """Take out the switches Natron recorded during the test for the layer's PyPlugs (only those that weren't there
+    before the test)."""
     if os.name != "nt":
         return []
     taken = []
     for name in registry_values():
-        if name.startswith(ALIAS_PREFIX) and name not in before:
+        if name.startswith(LAYER_PREFIX) and name not in before:
             subprocess.run(["reg", "delete", r"HKCU\Software\INRIA\Natron", "/v", name, "/f"], capture_output=True,
                            check=False)  # fmt: skip
             taken.append(name)
@@ -149,7 +158,9 @@ def run(command: list[str], env: dict[str, str], what: str, timeout: int = TIMEO
         print(f"    it didn't finish within {timeout} s (stopped)")
         return 1, ""
     output = done.stdout + done.stderr
-    quiet = ("OpenFX: loading", "load failed on plugin", "Fontconfig", "Note: -t argument")
+    quiet = ("OpenFX: loading", "load failed on plugin", "Fontconfig", "Note: -t argument", "Write", "Restoring the",
+             "Loading plugin cache", "Loading PyPlugs", "Info: init.py", "OpenImageIO exited", "retrieved via",
+             "ImageOutput::create")
     for line in output.splitlines():
         if line.strip() and not line.startswith(quiet):
             print(line if line.startswith(("  ok", "FAILED")) else f"    {line}", flush=True)
@@ -183,11 +194,14 @@ def repository_checks(say: Say) -> None:
     say(len(series) == upstream["patches"]["count"] <= upstream["patches"]["budget_count"],
         f"the patch series ({len(series)}) matches upstream.toml and the budget")
     plugin = LAYER / "ext" / "plugin"
-    not_ascii = [p.name for p in plugin.rglob("*.py") if not p.read_bytes().isascii()]
-    say(not not_ascii, "Natron's startup files and PyPlugs are plain ASCII" + (f": not {not_ascii}" if not_ascii else ""))
+    run_by_natron = [*plugin.rglob("*.py"), LAYER / "ext" / "python" / "natron_layer" / "flipbook_job.py",
+                     *HERE.glob("*_checks.py"), *(HERE / "gui_probe").glob("*.py")]
+    not_ascii = [p.name for p in run_by_natron if not p.read_bytes().isascii()]
+    say(not not_ascii, "the files Natron runs (startup files, PyPlugs, the flipbook's job, the checks) are plain ASCII"
+        + (f": not {not_ascii}" if not_ascii else ""))
     sys.path.insert(0, str(LAYER / "ext" / "python"))
     sys.path.insert(0, str(LAYER / "compat"))
-    from natron_layer import aliases
+    from natron_layer import aliases, expressions, gizmos, toolset_recipes
 
     files = {p.stem for p in (plugin / "aliases").glob("NukeAlias*.py")}
     say(files == {f"NukeAlias{a.nuke}" for a in aliases.ALIASES}, f"every alias has its PyPlug ({len(files)})")
@@ -195,6 +209,22 @@ def repository_checks(say: Say) -> None:
         text = (plugin / "aliases" / f"NukeAlias{alias.nuke}.py").read_text(encoding="ascii")
         if f'return "{alias.plugin_id}"' not in text or f'return "{alias.grouping}"' not in text:
             say(False, f"NukeAlias{alias.nuke}.py names {alias.plugin_id} in {alias.grouping}")
+    files = {p.stem for p in (plugin / "gizmos").glob("NukeGizmo*.py")}
+    say(files == {f"NukeGizmo{g.name}" for g in gizmos.GIZMOS}, f"every gizmo has its PyPlug ({len(files)})")
+    for gizmo in gizmos.GIZMOS:
+        text = (plugin / "gizmos" / f"NukeGizmo{gizmo.name}.py").read_text(encoding="ascii")
+        if (f'return "{gizmo.plugin_id}"' not in text or f'return "{gizmo.grouping}"' not in text
+                or "getIsToolset" in text or "NatronGui" in text):
+            say(False, f"NukeGizmo{gizmo.name}.py is a Group PyPlug {gizmo.plugin_id} in {gizmo.grouping}, no "
+                "NatronGui")
+    studio = LAYER / "ext" / "toolsets"
+    wanted = sorted(toolset_recipes.file_name(name) for name in toolset_recipes.RECIPES)
+    found = sorted(p.name for p in studio.glob("*.xml"))
+    say(found == wanted and all("<Clipboard" in (studio / n).read_text(encoding="utf-8") for n in found),
+        f"every studio ToolSet has its file of Natron's copied nodes ({', '.join(found) or 'none'}; "
+        "layer/tools/make_toolsets.py makes them)")
+    recipes = expressions.recipes()
+    say(recipes and all(r.text() for r in recipes), f"every expression recipe makes valid Python ({len(recipes)})")
 
 
 def base_environment(tmp: Path) -> dict[str, str]:
@@ -214,6 +244,7 @@ def base_environment(tmp: Path) -> dict[str, str]:
         "NATRON_LAYER_CONFIG_DIR": str(folders["config"]),
         "NATRON_LAYER_SMOKE_OUT": str(folders["out"]),
         "NATRON_LAYER_SMOKE_HOME": str(folders["home"]),
+        "NATRON_LAYER_SMOKE_DIR": str(HERE),
     })  # fmt: skip
     return env
 
@@ -240,19 +271,42 @@ def gui_checks(renderer: str, tmp: Path, say: Say) -> None:
     env = base_environment(tmp / "gui")
     probe = str(HERE / "gui_probe")
     env["NATRON_PLUGIN_PATH"] = probe if packaged(renderer) else f"{LAYER / 'ext' / 'plugin'};{probe}"
-    code, _output = run([str(natron)], env, "Natron's window with the layer and the probe (about 30 s)", timeout=240)
+    env["NATRON_LAYER_SMOKE_REFERENCES"] = str(tmp / "out" / "toolset_references.json")
+    code, _output = run([str(natron)], env, "Natron's window with the layer and the probe (about 40 s)", timeout=300)
     report = tmp / "gui" / "out" / "gui_probe.json"
     if not report.is_file():
         say(False, "the probe in Natron's window wrote its report")
         return
-    import json
-
     found = json.loads(report.read_text(encoding="utf-8"))
     for ok, what in found["results"]:
         say(ok, what)
     for modal in found.get("modal", []):
         print(f"    a dialog came up: {modal['title']!r}: {modal['text'][:120]!r} {modal['buttons']}")
     say(code == 0 and found["passed"], "the window checks passed")
+
+
+def project_checks(renderer: str, tmp: Path, say: Say) -> None:
+    """The comps saved by the checks, rendered by a NatronRenderer without the layer."""
+    jobs = []
+    for path in (tmp / "out" / "project_jobs.json", tmp / "gui" / "out" / "project_jobs_gui.json"):
+        if path.is_file():
+            jobs.extend(json.loads(path.read_text(encoding="utf-8")))
+    if not jobs:
+        say(False, "the checks inside Natron saved comps to render without the layer")
+        return
+    merged = tmp / "out" / "all_project_jobs.json"
+    merged.write_text(json.dumps(jobs, indent=1), encoding="utf-8")
+    env = base_environment(tmp / "plain")
+    env.pop("NATRON_PLUGIN_PATH")
+    env["NATRON_LAYER_SMOKE_JOBS"] = str(merged)
+    env["NATRON_LAYER_SMOKE_OUT"] = str(tmp / "out")
+    what = "without the layer"
+    if packaged(renderer):
+        what = "of the build (it carries the layer; the comps' gizmos still open from the comps)"
+        env["NATRON_LAYER_SMOKE_PACKAGED"] = "1"
+    code, output = run([renderer, "-t", str(HERE / "project_checks.py")], env,
+                       f"NatronRenderer {what} -t project_checks.py ({len(jobs)} saved comps)")
+    say(code == 0 and "PROJECT CHECKS PASSED" in output, "the saved comps render without the layer")
 
 
 def main() -> int:
@@ -277,10 +331,11 @@ def main() -> int:
         natron_checks(renderer, tmp, say)
         if args.gui:
             gui_checks(renderer, tmp, say)
+        project_checks(renderer, tmp, say)
     finally:
-        taken = forget_alias_switches(switches_before)
+        taken = forget_layer_switches(switches_before)
         if taken:
-            print(f"    took out the {len(taken)} switches Natron recorded for the aliases during the test")
+            print(f"    took out the {len(taken)} switches Natron recorded for the layer's PyPlugs during the test")
         if args.keep:
             print(f"Kept {tmp}")
         else:

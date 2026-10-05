@@ -1,0 +1,178 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# This file is part of the layer of this Natron fork (see FORK.md at the repository root).
+#
+# Nuke-style expression recipes, written as Natron's Python expressions (menu bar > Nuke > Expressions).
+#
+# Natron's expressions are Python. In them: frame (the frame being computed), dimension (0 for x or red, 1 for y or
+# green...), thisParam, thisNode, thisGroup, app (app.Transform1 is a node), curve(t, dimension) (the parameter's own
+# keyframes at frame t, as Nuke's curve), random(min, max) (a random value that stays the same on a given frame),
+# Python's math (sin, pi, floor...) and NatronEngine.ExprUtils (noise, smoothstep...).
+#
+# {name} in an expression is a field the artist fills in when applying the recipe; [recipe.fields] holds each
+# field's default. nuke says how the same is written in Nuke.
+
+[[recipe]]
+id = "frame"
+label = "Frame number"
+nuke = "frame"
+expression = "frame"
+help = "The frame being computed."
+
+[[recipe]]
+id = "frame_offset"
+label = "Frame number plus an offset"
+nuke = "frame+10"
+expression = "frame + {offset}"
+help = "The frame plus a number (negative to subtract)."
+[recipe.fields]
+offset = "10"
+
+[[recipe]]
+id = "hold"
+label = "Hold the animation at a frame"
+nuke = "curve(1001)"
+expression = "curve({frame}, dimension)"
+help = "The parameter's own animation as it is on one frame, on every frame."
+[recipe.fields]
+frame = "1001"
+
+[[recipe]]
+id = "time_offset"
+label = "Offset the animation in time"
+nuke = "curve(frame-5)"
+expression = "curve(frame - {offset}, dimension)"
+help = "The parameter's own animation, later by this many frames (negative: earlier)."
+[recipe.fields]
+offset = "5"
+
+[[recipe]]
+id = "loop"
+label = "Loop the animation"
+nuke = "curve((frame-1001)%24+1001)"
+expression = "curve({first} + (frame - {first}) % {length}, dimension)"
+help = "The parameter's animation from the first frame over this many frames, again and again."
+[recipe.fields]
+first = "1001"
+length = "24"
+
+[[recipe]]
+id = "ping_pong"
+label = "Ping-pong the animation"
+nuke = "curve(1001+24-abs((frame-1001)%48-24))"
+expression = "curve({first} + {length} - abs((frame - {first}) % (2 * {length}) - {length}), dimension)"
+help = "The parameter's animation forwards then backwards over this many frames."
+[recipe.fields]
+first = "1001"
+length = "24"
+
+[[recipe]]
+id = "wiggle"
+label = "Wiggle (smooth noise)"
+nuke = "curve+noise(frame*0.2)*5"
+expression = "curve(frame, dimension) + {amplitude} * NatronEngine.ExprUtils.noise((frame + 100.0 * dimension) * {frequency})"
+help = "The parameter's animation with a smooth random wobble, about Amplitude either way (Natron's noise goes from about -1 to 1), Frequency wobbles per frame."
+[recipe.fields]
+amplitude = "5"
+frequency = "0.2"
+
+[[recipe]]
+id = "random"
+label = "Random value per frame"
+nuke = "random(frame)"
+expression = "random({low}, {high})"
+help = "A different random value on each frame, between low and high (always the same on a given frame)."
+[recipe.fields]
+low = "0"
+high = "1"
+
+[[recipe]]
+id = "sine"
+label = "Oscillate (sine)"
+nuke = "sin(frame/24*2*pi)"
+expression = "{offset} + {amplitude} * sin(2 * pi * (frame - {phase}) / {period})"
+help = "A wave around Offset, Amplitude either way, one cycle every Period frames."
+[recipe.fields]
+offset = "0"
+amplitude = "1"
+period = "24"
+phase = "0"
+
+[[recipe]]
+id = "ramp"
+label = "Ramp between two frames"
+nuke = "clamp((frame-1001)/(1024-1001))"
+expression = "{from_value} + ({to_value} - {from_value}) * min(max((frame - {start}) / float({end} - {start}), 0.0), 1.0)"
+help = "From one value at the start frame to another at the end frame, held before and after."
+[recipe.fields]
+start = "1001"
+end = "1024"
+from_value = "0"
+to_value = "1"
+
+[[recipe]]
+id = "on_from"
+label = "On from a frame"
+nuke = "frame>=1010"
+expression = "1.0 if frame >= {frame} else 0.0"
+help = "0 before the frame, 1 from it on (for a disable, a mix, a switch)."
+[recipe.fields]
+frame = "1010"
+
+[[recipe]]
+id = "link"
+label = "Same as another node's parameter"
+nuke = "Transform1.translate"
+expression = "app.{node}.getParam('{param}').getValue(dimension)"
+help = "Follows another node's parameter, dimension by dimension."
+[recipe.fields]
+node = "Transform1"
+param = "translate"
+
+[[recipe]]
+id = "link_opposite"
+label = "Opposite of another node's parameter"
+nuke = "-Transform1.translate"
+expression = "-app.{node}.getParam('{param}').getValue(dimension)"
+help = "Minus another node's parameter (to undo a move, say)."
+[recipe.fields]
+node = "Transform1"
+param = "translate"
+
+[[recipe]]
+id = "link_at_frame"
+label = "Another node's parameter at a frame"
+nuke = "Transform1.translate(1001)"
+expression = "app.{node}.getParam('{param}').getValueAtTime({frame}, dimension)"
+help = "Another node's parameter as it is on one frame."
+[recipe.fields]
+node = "Transform1"
+param = "translate"
+frame = "1001"
+
+[[recipe]]
+id = "input_width"
+label = "Width of the input"
+nuke = "input.width"
+expression = "(lambda f: f.x2 - f.x1)(thisNode.getInput(0).getOutputFormat())"
+help = "The width of the format of the node's first input, in pixels."
+
+[[recipe]]
+id = "input_height"
+label = "Height of the input"
+nuke = "input.height"
+expression = "(lambda f: f.y2 - f.y1)(thisNode.getInput(0).getOutputFormat())"
+help = "The height of the format of the node's first input, in pixels."
+
+[[recipe]]
+id = "first_frame"
+label = "The project's first frame"
+nuke = "root.first_frame"
+expression = "app.getProjectParam('frameRange').getValue(0)"
+help = "The first frame of the project's frame range."
+
+[[recipe]]
+id = "last_frame"
+label = "The project's last frame"
+nuke = "root.last_frame"
+expression = "app.getProjectParam('frameRange').getValue(1)"
+help = "The last frame of the project's frame range."

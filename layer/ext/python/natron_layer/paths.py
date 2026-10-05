@@ -3,10 +3,10 @@
 """Where the layer's files are, in the repository and in a packaged build.
 
 In the repository the layer is ``layer/`` with Natron's startup scripts in ``layer/ext/plugin`` (the folder put on
-NATRON_PLUGIN_PATH). In a build made by ``layer/tools/package_build.py`` the startup scripts and the alias nodes sit
-in ``<release>/Plugins/PyPlugs/layer`` (Natron's bundled PyPlugs folder, read at every start) and the rest in
-``<release>/Resources/layer``: Natron adds every folder under a PyPlugs folder to Python's path, so the layer's own
-modules stay out of it.
+NATRON_PLUGIN_PATH). In a build made by ``layer/tools/package_build.py`` the startup scripts, the alias nodes and the
+gizmos sit in ``<release>/Plugins/PyPlugs/layer`` (Natron's bundled PyPlugs folder, read at every start) and the
+rest in ``<release>/Resources/layer``: Natron adds every folder under a PyPlugs folder to Python's path, so the
+layer's own modules stay out of it.
 """
 
 from __future__ import annotations

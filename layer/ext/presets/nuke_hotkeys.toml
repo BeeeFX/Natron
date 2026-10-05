@@ -213,6 +213,15 @@ menu = "Nuke/Connect second selected to first"
 command = "connect_to_first"
 
 [[key]]
+keys = "Alt+F"
+where = "node graph"
+nuke = "Flipbook the selected node"
+natron = "nothing (Natron's menus have no Alt letters; Natron's F keys are F, Shift+F and Ctrl+F)"
+status = "added"
+menu = "Nuke/Render/Flipbook selected"
+command = "flipbook_selected"
+
+[[key]]
 keys = "Alt+U"
 where = "node graph"
 nuke = "Splay the first selected node to input A"

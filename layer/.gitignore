@@ -2,3 +2,6 @@
 dist/
 __pycache__/
 *.pyc
+# The studio ToolSets are ours to keep, whatever their names: Niik-l's .gitignore leaves out *build_* (which would
+# catch CG_beauty_rebuild_...).
+!ext/toolsets/*.xml

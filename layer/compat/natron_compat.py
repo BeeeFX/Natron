@@ -446,7 +446,16 @@ def select_only(app: Any, node: Any) -> None:
 
 
 def active_app() -> Any:
-    return natron().getActiveInstance()
+    """The project's app: in Natron's window its GuiApp (selection, copy and paste, dialogs), else NatronEngine's
+    App. NatronEngine's getActiveInstance gives the engine's App even in the window, without those."""
+    app = natron().getActiveInstance()
+    gui = gui_natron()
+    if gui is not None and app is not None and hasattr(gui, "getGuiInstance"):
+        with contextlib.suppress(Exception):
+            found = gui.getGuiInstance(app.getAppID())
+            if found is not None:
+                return found
+    return app
 
 
 def add_menu_command(grouping: str, function: str, shortcut: str | None = None) -> bool:
@@ -499,3 +508,259 @@ def refresh_setting(name: str) -> bool:
 def write_to_script_editor(app: Any, message: str) -> None:
     with contextlib.suppress(Exception):
         app.writeToScriptEditor(message)
+
+
+# --- Groups and their parameters (the gizmos) ---
+
+
+def child_by_plugin(group: Any, plugin_id: str) -> Any:
+    """The first node of ``plugin_id`` inside ``group`` (a Group's own Input1 or Output1), or None."""
+    for node in children(group):
+        if node.getPluginID() == plugin_id:
+            return node
+    return None
+
+
+def child_by_name(group: Any, script_name: str) -> Any:
+    for node in children(group):
+        if node.getScriptName() == script_name:
+            return node
+    return None
+
+
+_PARAM_MAKERS = {
+    "page": "createPageParam",
+    "double": "createDoubleParam",
+    "int": "createIntParam",
+    "bool": "createBooleanParam",
+    "choice": "createChoiceParam",
+    "string": "createStringParam",
+    "button": "createButtonParam",
+    "double2d": "createDouble2DParam",
+}
+
+
+def add_user_param(node: Any, kind: str, name: str, label: str, alpha: bool = False) -> Any:
+    """A parameter of the artist's kind on ``node`` (a Group's controls): ``page``, ``double``, ``int``, ``bool``,
+    ``choice``, ``string``, ``button``, ``double2d`` or ``color`` (``alpha`` for a fourth channel)."""
+    if kind == "color":
+        return node.createColorParam(name, label, alpha)
+    return getattr(node, _PARAM_MAKERS[kind])(name, label)
+
+
+def refresh_user_params(node: Any, pages: list[str] | None = None) -> None:
+    with contextlib.suppress(Exception):
+        if pages:
+            node.setPagesOrder(pages)
+        node.refreshUserParamsGUI()
+
+
+def set_expression(param: Any, expression: str, dimension: int = 0, has_return: bool = False) -> bool:
+    """A Python expression on one dimension of ``param`` (Natron's expressions: ``thisGroup``, ``thisNode``,
+    ``frame``…). An empty expression clears it."""
+    return bool(param.setExpression(expression, has_return, dimension))
+
+
+def expression_of(param: Any, dimension: int = 0) -> str:
+    try:
+        found = param.getExpression(dimension)
+    except Exception:  # noqa: BLE001
+        return ""
+    if isinstance(found, (tuple, list)):  # (expression, has_return) on some bindings
+        found = found[0] if found else ""
+    return str(found or "")
+
+
+def make_alias(param: Any, target: Any) -> bool:
+    """``param`` (on a Group) shows and drives ``target`` (a parameter of a node inside it)."""
+    return bool(param.setAsAlias(target))
+
+
+# --- The interface's clipboard and copy-paste of nodes (ToolSets) ---
+
+
+def _board() -> Any:
+    qt = qt_modules()
+    if qt is None or qt.QtGui is None or application() is None:
+        return None
+    return qt.QtGui.QGuiApplication.clipboard()
+
+
+@contextlib.contextmanager
+def kept_clipboard() -> Iterator[None]:
+    """The system clipboard's text, or its picture, is put back afterwards (pasting a ToolSet goes through the
+    clipboard: Natron's paste reads it). Qt's own setText and setImage are used, so the clipboard's data stays Qt's
+    (no QMimeData made in Python whose lifetime PySide6 would have to hand over)."""
+    board = _board()
+    text = image = None
+    if board is not None:
+        data = board.mimeData()
+        if data is not None and data.hasText():
+            text = board.text()
+        elif data is not None and data.hasImage():
+            image = board.image().copy()
+    try:
+        yield
+    finally:
+        if board is not None:
+            if text is not None:
+                set_clipboard_text(text)
+            elif image is not None:
+                board.setImage(image)
+            else:
+                board.clear()
+            flush_clipboard()
+
+
+def flush_clipboard() -> None:
+    """Hand the clipboard's content to Windows for good (OleFlushClipboard), so it stays when Natron ends, even
+    abruptly (Qt does it only at a normal exit)."""
+    if os.name != "nt":
+        return
+    with contextlib.suppress(Exception):
+        import ctypes  # noqa: PLC0415
+
+        ctypes.windll.ole32.OleFlushClipboard()
+
+
+def clipboard_text() -> str:
+    board = _board()
+    if board is None:
+        return ""
+    # Once Windows holds the text (after a flush) it can come back with Windows line ends.
+    return str(board.text()).rstrip("\x00").replace("\r\n", "\n")
+
+
+def set_clipboard_text(text: str, tries: int = 40) -> bool:
+    """Natron's own copy puts its nodes on the clipboard as ``text/plain`` (Gui/NodeGraph40.cpp), its paste reads
+    them from there; Qt's setText offers exactly that. Windows lets one program at a time open the clipboard, and
+    programs watching it (clipboard history…) open it right after each change, so a set can fail: it's tried again
+    until the text reads back. Returns whether it did."""
+    import time  # noqa: PLC0415
+
+    board = _board()
+    if board is None:
+        return False
+    wanted = text.replace("\r\n", "\n")
+    for _ in range(tries):
+        board.setText(text)
+        application().processEvents()
+        if clipboard_text() == wanted:
+            return True
+        time.sleep(0.05)
+    return False
+
+
+def copy_selected_nodes(app: Any) -> bool:
+    """Natron's own Copy of the comp's selected nodes (interface only)."""
+    gui = gui_app(app)
+    if gui is None:
+        return False
+    gui.copySelectedNodes(gui)
+    return True
+
+
+def paste_nodes(app: Any) -> bool:
+    """Natron's own paste, from the clipboard, into the comp's main node graph (interface only, once Natron's window
+    is up: a paste before its node graph exists ended Natron, checked on the fork). The app is passed as the group:
+    without one Natron pastes into the node graph last focused (a Group's, maybe); with the app, the comp's top
+    level, it takes the main node graph."""
+    gui = gui_app(app)
+    if gui is None:
+        return False
+    gui.pasteNodes(gui)
+    return True
+
+
+def select_nodes(app: Any, nodes: list[Any]) -> None:
+    """Exactly ``nodes`` selected in the node graph (GuiApp.selectNode's flag clears the previous selection, so
+    Natron's setSelection is used)."""
+    gui = gui_app(app)
+    if gui is None:
+        return
+    with contextlib.suppress(Exception):
+        gui.clearSelection()
+        if hasattr(gui, "setSelection"):
+            gui.setSelection(list(nodes))
+        else:
+            for node in nodes:
+                gui.selectNode(node, False)
+
+
+# --- The project ---
+
+
+def project_param(app: Any, name: str) -> Any:
+    """A project setting by its script name (``frameRange``, ``projectPaths``, ``projectName``…)."""
+    try:
+        return app.getProjectParam(name)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def project_frame_range(app: Any) -> tuple[int, int]:
+    found = project_param(app, "frameRange")
+    if found is None:
+        return (1, 1)
+    return (int(found.getValue(0)), int(found.getValue(1)))
+
+
+def project_file(app: Any) -> str:
+    """The project's file (folder from its Project path, name from its settings), or "" when it was never saved."""
+    name = project_param(app, "projectName")
+    paths = project_param(app, "projectPaths")
+    name = str(name.get()) if name is not None else ""
+    folder = project_variable(str(paths.get()) if paths is not None else "", "Project")
+    if not name or not folder or name.lower().startswith("untitled"):
+        return ""
+    return os.path.join(folder, name).replace("\\", "/")
+
+
+def project_variable(paths_value: str, variable: str) -> str:
+    """A variable of the project's paths (``<Name>Project</Name><Value>C:/...</Value>...``, Natron's format)."""
+    import re  # noqa: PLC0415
+
+    for name, value in re.findall(r"<Name>(.*?)</Name><Value>(.*?)</Value>", paths_value, flags=re.S):
+        if name == variable:
+            return value
+    return ""
+
+
+def save_temp_project(app: Any, path: str) -> bool:
+    """A copy of the open project at ``path``; the open project, its file and its name are left as they are."""
+    return bool(app.saveTempProject(path.replace("\\", "/")))
+
+
+def renderer_executable() -> str | None:
+    """NatronRenderer next to the running Natron (its bin folder), or None."""
+    folder = app_folder()
+    candidates = []
+    if folder:
+        candidates.append(os.path.join(folder, "bin"))
+    qt = qt_modules()
+    if qt is not None:
+        with contextlib.suppress(Exception):
+            candidates.append(str(qt.QtCore.QCoreApplication.applicationDirPath()))
+    for base in candidates:
+        for name in ("NatronRenderer.exe", "NatronRenderer"):
+            path = os.path.join(base, name)
+            if os.path.isfile(path):
+                return path
+    return None
+
+
+def open_with_system(path: str) -> bool:
+    """Open a file or a folder with the system's own program for it (Explorer, the default video player)."""
+    import subprocess  # noqa: PLC0415
+    import sys  # noqa: PLC0415
+
+    try:
+        if os.name == "nt":
+            os.startfile(path)  # noqa: S606
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", path])  # noqa: S603,S607
+        else:
+            subprocess.Popen(["xdg-open", path])  # noqa: S603,S607
+    except OSError:
+        return False
+    return True

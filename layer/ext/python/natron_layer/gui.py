@@ -198,8 +198,13 @@ def about(done: Tell | None = None) -> str:
 def install() -> dict[str, list[str]]:
     """The menu bar's Nuke menu and keys, the imported shortcuts, and the first-launch question once Natron's
     window is up. Interface only (initGui.py)."""
+    from . import expressions, toolsets, workflow  # noqa: PLC0415  (menu functions: natron_layer.<module>.<function>)
+
     done = {"keys": hotkeys.register()}
     done["imported"] = hotkeys.register_imported(user_config.nuke_import().get("shortcuts", []))
+    done["workflow"] = workflow.install_menu()
+    done["toolsets"] = toolsets.install_menu()
+    done["expressions"] = expressions.install_menu()
     for grouping, function in (
         ("Nuke/Import my Nuke preferences...", "natron_layer.gui.import_nuke_preferences"),
         ("Nuke/Forget my imported Nuke preferences...", "natron_layer.gui.forget_nuke_preferences"),
