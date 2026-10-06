@@ -257,7 +257,10 @@ def _layer_probe():
         compat.select_nodes(natron_app, [render, checker])
         saved = toolsets.save_selection(natron_app, "Smoke test set")
         mine = [t for t in toolsets.all_toolsets() if t.place == "Mine"]
-        say(saved.is_file() and str(saved).startswith(os.environ.get("NATRON_LAYER_CONFIG_DIR", "?"))
+        # Paths compared once normalised, as smoke_checks.py does: started from Git Bash (MSYSTEM set), Natron's
+        # MinGW Python writes "/" where the variable has "\".
+        norm = lambda p: os.path.normcase(os.path.normpath(str(p)))  # noqa: E731
+        say(saved.is_file() and norm(saved).startswith(norm(os.environ.get("NATRON_LAYER_CONFIG_DIR", "?")))
             and [t.name for t in mine] == ["Smoke test set"],
             "Save selection as ToolSet keeps it in the artist's own ToolSets (the test's config folder): " + str(saved))
         before = {n.getScriptName() for n in compat.children(natron_app)}
