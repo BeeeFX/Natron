@@ -579,8 +579,13 @@ private:
 
     void populateMenu();
 
+protected:
+    // The node's colour, with the selection tint when the preference asks for it (Dots use it too).
     void refreshCurrentBrush();
 
+    bool isSelectionTinted() const;
+
+private:
     void initializeInputsForInspector();
 
 

@@ -120,6 +120,28 @@ NATRON_NAMESPACE_ENTER
 
 using std::make_pair;
 
+// The node's size and the colours that show its state, from the preferences (Appearance > Node Graph; the defaults
+// are NODE_WIDTH, NODE_HEIGHT and Natron's light yellow).
+static int nodeTileWidth() { return appPTR->getCurrentSettings()->getNodeTileWidth(); }
+static int nodeTileHeight() { return appPTR->getCurrentSettings()->getNodeTileHeight(); }
+
+static QColor
+settingsColor(void (Settings::*getter)(double*, double*, double*) const)
+{
+    double r, g, b;
+    ( (*appPTR->getCurrentSettings()).*getter )(&r, &g, &b);
+    QColor c;
+    c.setRgbF( Image::clamp(r, 0., 1.), Image::clamp(g, 0., 1.), Image::clamp(b, 0., 1.) );
+    return c;
+}
+
+static QColor
+mixColors(const QColor& a, const QColor& b, double t)
+{
+    return QColor::fromRgbF( a.redF() + (b.redF() - a.redF()) * t, a.greenF() + (b.greenF() - a.greenF()) * t,
+                             a.blueF() + (b.blueF() - a.blueF()) * t, a.alphaF() );
+}
+
 #ifndef M_PI
 #define M_PI        3.14159265358979323846264338327950288   /* pi             */
 #define M_PI_2      1.57079632679489661923132169163975144   /* pi/2           */
@@ -571,7 +593,7 @@ NodeGui::getSizeWithPreview(int *w,
                             int *h) const
 {
     getInitialSize(w, h);
-    *w = *w -  (TO_DPIX(NODE_WIDTH) / 2.) + TO_DPIX(NATRON_PREVIEW_WIDTH);
+    *w = *w -  (TO_DPIX(nodeTileWidth()) / 2.) + TO_DPIX(NATRON_PREVIEW_WIDTH);
     *h = *h + TO_DPIY(NATRON_PREVIEW_HEIGHT) + 10;
 }
 
@@ -581,18 +603,18 @@ NodeGui::getInitialSize(int *w,
 {
     NodePtr internalNode = getNode();
     if (!internalNode) {
-        *w = TO_DPIX(NODE_WIDTH);
-        *h = TO_DPIY(NODE_HEIGHT);
+        *w = TO_DPIX(nodeTileWidth());
+        *h = TO_DPIY(nodeTileHeight());
         return;
     }
     const QString& iconFilePath = internalNode->getPlugin()->getIconFilePath();
 
     if ( !iconFilePath.isEmpty() && QFile::exists(iconFilePath) && appPTR->getCurrentSettings()->isPluginIconActivatedOnNodeGraph() ) {
-        *w = TO_DPIX(NODE_WIDTH) + TO_DPIX(NATRON_PLUGIN_ICON_SIZE) + TO_DPIX(PLUGIN_ICON_OFFSET) * 2;
+        *w = TO_DPIX(nodeTileWidth()) + TO_DPIX(NATRON_PLUGIN_ICON_SIZE) + TO_DPIX(PLUGIN_ICON_OFFSET) * 2;
     } else {
-        *w = TO_DPIX(NODE_WIDTH);
+        *w = TO_DPIX(nodeTileWidth());
     }
-    *h = TO_DPIY(NODE_HEIGHT);
+    *h = TO_DPIY(nodeTileHeight());
 }
 
 void
@@ -605,9 +627,12 @@ NodeGui::createGui()
     if (!node) {
         return; // throw exception instead?
     }
-    int cornerRadiusPx = 5;
+    SettingsPtr settings = appPTR->getCurrentSettings();
+    int cornerRadiusPx = settings->getNodeCornerRadius();
     _boundingBox = new NodeGraphRectItem(this, cornerRadiusPx);
     _boundingBox->setZValue(depth);
+    _boundingBox->setShading( settings->getNodeShading() );
+    _boundingBox->setPen( QPen( settingsColor(&Settings::getNodeOutlineColor), 1 ) );
 
     if ( mustFrameName() ) {
         _nameFrame = new QGraphicsRectItem(this);
@@ -718,10 +743,13 @@ NodeGui::createGui()
         _passThroughIndicator->setActive(false);
     }
 
+    QPen crossPen( settingsColor(&Settings::getDisabledCrossColor), settings->getDisabledCrossWidth() );
     _disabledBtmLeftTopRight = new QGraphicsLineItem(this);
     _disabledBtmLeftTopRight->setZValue(depth + 1);
+    _disabledBtmLeftTopRight->setPen(crossPen);
     _disabledBtmLeftTopRight->hide();
     _disabledTopLeftBtmRight = new QGraphicsLineItem(this);
+    _disabledTopLeftBtmRight->setPen(crossPen);
     _disabledTopLeftBtmRight->hide();
     _disabledTopLeftBtmRight->setZValue(depth + 1);
 } // NodeGui::createGui
@@ -1757,14 +1785,22 @@ NodeGui::applyBrush(const QBrush & brush)
     }
 }
 
+bool
+NodeGui::isSelectionTinted() const
+{
+    // A selected node takes the selection colour instead of a halo when the preference asks (backdrops keep the halo).
+    return !dynamic_cast<const BackdropGui*>(this) && appPTR->getCurrentSettings()->getNodeSelectedTint() > 0.;
+}
+
 void
 NodeGui::refreshCurrentBrush()
 {
-    if (_slaveMasterLink) {
-        applyBrush(_clonedColor);
-    } else {
-        applyBrush(_currentColor);
+    QColor color = _slaveMasterLink ? _clonedColor : _currentColor;
+    if ( isSelectionTinted() && getIsSelected() ) {
+        color = mixColors( color, settingsColor(&Settings::getNodeSelectedColor),
+                           appPTR->getCurrentSettings()->getNodeSelectedTint() );
     }
+    applyBrush(color);
 }
 
 bool
@@ -2324,8 +2360,8 @@ NodeGui::refreshStateIndicator()
         _stateIndicator->setBrush(Qt::yellow);
     } else if (_mergeHintActive) {
         _stateIndicator->setBrush(Qt::green);
-    } else if (isSelected) {
-        _stateIndicator->setBrush( QColor(255, 230, 128, 255) ); // light yellow selection
+    } else if ( isSelected && !isSelectionTinted() ) {
+        _stateIndicator->setBrush( settingsColor(&Settings::getNodeSelectedColor) ); // light yellow selection by default
     } else if ( !message.isEmpty() && ( (type == 1) || (type == 2) ) ) {
         if (type == 1) {
             _stateIndicator->setBrush( QColor(128, 0, 0, 255) ); //< error
@@ -2343,6 +2379,9 @@ NodeGui::refreshStateIndicator()
         if (*it) {
             (*it)->setUseSelected(isSelected);
         }
+    }
+    if ( isSelectionTinted() ) {
+        refreshCurrentBrush();
     }
     if ( showIndicator && !_stateIndicator->isVisible() ) {
         _stateIndicator->show();
@@ -3825,7 +3864,7 @@ NodeGui::setPluginIDAndVersion(const std::list<std::string>& /*grouping*/,
         }
         double w, h;
         getSize(&w, &h);
-        w = TO_DPIX(NODE_WIDTH) + TO_DPIX(NATRON_PLUGIN_ICON_SIZE) + TO_DPIX(PLUGIN_ICON_OFFSET) * 2;
+        w = TO_DPIX(nodeTileWidth()) + TO_DPIX(NATRON_PLUGIN_ICON_SIZE) + TO_DPIX(PLUGIN_ICON_OFFSET) * 2;
         resize(w, h);
 
         double x, y;

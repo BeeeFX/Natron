@@ -205,6 +205,23 @@ public:
 
     int getDisconnectedArrowLength() const;
 
+    // How the node graph draws nodes and links (Appearance > Node Graph). The defaults are Natron's own drawing.
+    int getNodeTileWidth() const;
+    int getNodeTileHeight() const;
+    int getNodeCornerRadius() const;
+    double getNodeShading() const;
+    void getNodeOutlineColor(double *r, double *g, double *b) const;
+    void getNodeSelectedColor(double *r, double *g, double *b) const;
+    double getNodeSelectedTint() const;
+    int getDotDiameter() const;
+    double getLinkWidth() const;
+    void getLinkColor(double *r, double *g, double *b) const;
+    void getLinkSelectedColor(double *r, double *g, double *b) const;
+    double getLinkArrowLength() const;
+    double getLinkArrowAngle() const;
+    void getDisabledCrossColor(double *r, double *g, double *b) const;
+    double getDisabledCrossWidth() const;
+
     void getGeneratorColor(float *r, float *g, float *b) const;
     void getReaderColor(float *r, float *g, float *b) const;
     void getWriterColor(float *r, float *g, float *b) const;
@@ -430,6 +447,7 @@ private:
     void initializeKnobsCurveEditorColors();
     void initializeKnobsDopeSheetColors();
     void initializeKnobsNodeGraphColors();
+    void initializeKnobsNodeGraphDrawing();
     void initializeKnobsScriptEditorColors();
 
 
@@ -669,6 +687,21 @@ private:
 
     // Appearance/Node Graph
     KnobPagePtr _nodegraphColorsTab;
+    KnobIntPtr _nodeTileWidth;
+    KnobIntPtr _nodeTileHeight;
+    KnobIntPtr _nodeCornerRadius;
+    KnobDoublePtr _nodeShading;
+    KnobColorPtr _nodeOutlineColor;
+    KnobColorPtr _nodeSelectedColor;
+    KnobDoublePtr _nodeSelectedTint;
+    KnobIntPtr _dotDiameter;
+    KnobDoublePtr _linkWidth;
+    KnobColorPtr _linkColor;
+    KnobColorPtr _linkSelectedColor;
+    KnobDoublePtr _linkArrowLength;
+    KnobDoublePtr _linkArrowAngle;
+    KnobColorPtr _disabledCrossColor;
+    KnobDoublePtr _disabledCrossWidth;
     KnobColorPtr _defaultNodeColor;
     KnobColorPtr _defaultBackdropColor;
     KnobColorPtr _defaultGeneratorColor;

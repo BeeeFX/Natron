@@ -127,7 +127,7 @@ DotGui::createGui()
     diskShape = new QGraphicsEllipseItem(this);
     diskShape->setZValue(depth);
     QPointF topLeft = mapFromParent( pos() );
-    int diam = TO_DPIX(DOT_GUI_DIAMETER);
+    int diam = TO_DPIX( appPTR->getCurrentSettings()->getDotDiameter() );
     int stateOffset = TO_DPIX(NATRON_STATE_INDICATOR_OFFSET);
 
     diskShape->setRect( QRectF(topLeft.x(), topLeft.y(), diam, diam) );
@@ -145,7 +145,11 @@ DotGui::refreshStateIndicator()
 {
     bool showIndicator = true;
 
-    if ( getIsSelected() ) {
+    if ( isSelectionTinted() ) {
+        // The disk itself takes the selection colour (NodeGui::refreshCurrentBrush).
+        showIndicator = false;
+        refreshCurrentBrush();
+    } else if ( getIsSelected() ) {
         ellipseIndicator->setBrush( QColor(255, 255, 255, 128) );
     } else {
         showIndicator = false;
