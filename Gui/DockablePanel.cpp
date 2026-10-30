@@ -185,6 +185,8 @@ DockablePanel::DockablePanel(Gui* gui,
     if (headerMode != eHeaderModeNoHeader) {
         _imp->_headerWidget = new QFrame(this);
         _imp->_headerWidget->setFrameShape(QFrame::Box);
+        // A name the stylesheet can aim at: the header's buttons, apart from the knobs' own buttons.
+        _imp->_headerWidget->setObjectName( QString::fromUtf8("DockablePanelHeader") );
         _imp->_headerLayout = new QHBoxLayout(_imp->_headerWidget);
         _imp->_headerLayout->setContentsMargins(0, 0, 0, 0);
         _imp->_headerWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
