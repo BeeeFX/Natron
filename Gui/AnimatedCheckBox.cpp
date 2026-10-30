@@ -41,6 +41,7 @@ CLANG_DIAG_ON(deprecated-register)
 // clang-format on
 
 #include "Gui/GuiApplicationManager.h"
+#include "Engine/KnobTypes.h"
 #include "Engine/Settings.h"
 
 NATRON_NAMESPACE_ENTER
@@ -158,6 +159,11 @@ AnimatedCheckBox::paintEvent(QPaintEvent* e)
     } else if (animation == 3) {
         appPTR->getCurrentSettings()->getExprColor(&bgR, &bgG, &bgB);
     }
+    KnobBool* insetPref = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("knobWidgetsShaded").get() );
+    const bool inset = insetPref && insetPref->getValue();
+    if ( inset && (animation == 0) && (bgR == bgG) && (bgG == bgB) ) {
+        bgR = bgG = bgB = bgR * 0.6; // a plain box (not a channel's colour) darker than the panel
+    }
     activeColor.setRgbF(bgR, bgG, bgB);
     pen.setColor(activeColor);
     p.setPen(pen);
@@ -186,8 +192,15 @@ AnimatedCheckBox::paintEvent(QPaintEvent* e)
         pen.setColor(activeColor);
         p.setRenderHint(QPainter::Antialiasing);
         p.setPen(pen);
-        p.drawLine( bRect.topLeft(), bRect.bottomRight() );
-        p.drawLine( bRect.bottomLeft(), bRect.topRight() );
+        const QRectF cross = inset ? bRect.adjusted(bRect.width() * 0.25, bRect.height() * 0.25,
+                                                    -bRect.width() * 0.25, -bRect.height() * 0.25) : bRect;
+        if (inset) {
+            pen.setWidthF(1.6);
+            p.setPen(pen);
+        }
+        p.drawLine( cross.topLeft(), cross.bottomRight() );
+        p.drawLine( cross.bottomLeft(), cross.topRight() );
+        pen.setWidthF(1.);
     }
 
 

@@ -67,6 +67,17 @@ GCC_DIAG_UNUSED_PRIVATE_FIELD_ON
 
 NATRON_NAMESPACE_ENTER
 
+// Preference timelineRulerNuke (off by default): the frame ruler drawn as Nuke's: no axis line, short ticks on every
+// step and taller ones where a number sits, rising from one baseline; the cached frames' line under the ticks; the
+// playback in and out points as upright lines; the numbers in the regular weight. Read by name (Settings.h unchanged).
+static bool
+timelineRulerNuke()
+{
+    KnobBool* k = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("timelineRulerNuke").get() );
+
+    return k && k->getValue();
+}
+
 #define TICK_HEIGHT 7
 #define CURSOR_WIDTH 15
 #define CURSOR_HEIGHT 8
@@ -358,11 +369,13 @@ TimeLineGui::paintGL()
 
     glCheckError();
 
+    const bool nukeRuler = timelineRulerNuke();
     {
         double screenPixelRatio = (_imp->viewerTab && _imp->viewerTab->getViewer()) ? _imp->viewerTab->getViewer()->getScreenPixelRatio() : 1.0;
-        if (screenPixelRatio != _imp->_screenPixelRatio) {
+        const QFont::Weight weight = nukeRuler ? QFont::Normal : QFont::Bold;
+        if ( (screenPixelRatio != _imp->_screenPixelRatio) || !_imp->_textFont || (_imp->_textFont->weight() != weight) ) {
             _imp->_screenPixelRatio = screenPixelRatio;
-            _imp->_textFont.reset(new QFont(appFont, appFontSize * screenPixelRatio, QFont::Bold));
+            _imp->_textFont.reset(new QFont(appFont, appFontSize * screenPixelRatio, weight));
         }
     }
     assert(_imp->_textFont);
@@ -483,9 +496,11 @@ TimeLineGui::paintGL()
 
         QFontMetrics fm(*_imp->_textFont, 0);
         double fmHeight = fm.height() / _imp->_screenPixelRatio;
-        double lineYPosWidget = height() - 1 - fmHeight  - TO_DPIY(TICK_HEIGHT) / 2.;
+        // Nuke's ruler: the ticks' baseline a little above the numbers, the cached frames' line between them.
+        const double nukeGap = nukeRuler ? TO_DPIY(5) : 0.;
+        double lineYPosWidget = nukeRuler ? height() - 1 - fmHeight - nukeGap : height() - 1 - fmHeight  - TO_DPIY(TICK_HEIGHT) / 2.;
         double lineYpos = toTimeLineCoordinates(0, lineYPosWidget).y();
-        double cachedLineYPos = toTimeLineCoordinates(0, lineYPosWidget + 1).y();
+        double cachedLineYPos = toTimeLineCoordinates(0, lineYPosWidget + (nukeRuler ? nukeGap / 2. : 1.)).y();
 
         /*draw the horizontal axis*/
         double txtR, txtG, txtB;
@@ -510,12 +525,14 @@ TimeLineGui::paintGL()
         settings->getDiskCachedColor(&dcR, &dcG, &dcB);
 
 
-        glColor4f(txtR / 2., txtG / 2., txtB / 2., 1.);
-        glLineWidth(1.5 * _imp->_screenPixelRatio);
-        glBegin(GL_LINES);
-        glVertex2f(btmLeft.x(), lineYpos);
-        glVertex2f(topRight.x(), lineYpos);
-        glEnd();
+        if (!nukeRuler) {
+            glColor4f(txtR / 2., txtG / 2., txtB / 2., 1.);
+            glLineWidth(1.5 * _imp->_screenPixelRatio);
+            glBegin(GL_LINES);
+            glVertex2f(btmLeft.x(), lineYpos);
+            glVertex2f(topRight.x(), lineYpos);
+            glEnd();
+        }
         glCheckErrorIgnoreOSXBug();
 
 #if (__GNUC__ == 8 && __GNUC_MINOR__ >= 1 && __GNUC_MINOR__ < 3) && !defined(ENFORCE_GCC8)
@@ -558,11 +575,18 @@ TimeLineGui::paintGL()
             if (isFloating) {
                 continue;
             }
-            glColor4f(txtR, txtG, txtB, alpha);
-            glLineWidth(1.5 * _imp->_screenPixelRatio);
+            glColor4f(txtR, txtG, txtB, nukeRuler ? 0.5 + 0.35 * alpha : alpha); // Nuke: every step's tick visible
+            glLineWidth( (nukeRuler ? 1. : 1.5) * _imp->_screenPixelRatio );
             glBegin(GL_LINES);
-            glVertex2f(value, tickBottom);
-            glVertex2f(value, tickTop);
+            if (nukeRuler) {
+                // Short ticks, taller where a number can sit, all rising from the baseline.
+                const double tall = TO_DPIY(TICK_HEIGHT) * (tickSize > minTickSizeText ? 1.3 : 0.5);
+                glVertex2f(value, lineYpos);
+                glVertex2f( value, toTimeLineCoordinates(0, lineYPosWidget - tall).y() );
+            } else {
+                glVertex2f(value, tickBottom);
+                glVertex2f(value, tickTop);
+            }
             glEnd();
             glCheckErrorIgnoreOSXBug();
 
@@ -732,11 +756,20 @@ TimeLineGui::paintGL()
                                leftBoundStr, boundsColor, *_imp->_textFont, Qt::AlignHCenter);
                 }
                 glColor4f(boundsR, boundsG, boundsB, 1.);
-                glBegin(GL_POLYGON);
-                glVertex2f( leftBoundBtm.x(), leftBoundBtm.y() );
-                glVertex2f( leftBoundBtmRight.x(), leftBoundBtmRight.y() );
-                glVertex2f( leftBoundTop.x(), leftBoundTop.y() );
-                glEnd();
+                if (nukeRuler) {
+                    // An upright line through the whole ruler, as Nuke marks its in and out points.
+                    glLineWidth(2 * _imp->_screenPixelRatio);
+                    glBegin(GL_LINES);
+                    glVertex2f( leftBoundBtm.x(), btmLeft.y() );
+                    glVertex2f( leftBoundBtm.x(), topRight.y() );
+                    glEnd();
+                } else {
+                    glBegin(GL_POLYGON);
+                    glVertex2f( leftBoundBtm.x(), leftBoundBtm.y() );
+                    glVertex2f( leftBoundBtmRight.x(), leftBoundBtmRight.y() );
+                    glVertex2f( leftBoundTop.x(), leftBoundTop.y() );
+                    glEnd();
+                }
                 glCheckErrorIgnoreOSXBug();
             }
 
@@ -750,11 +783,20 @@ TimeLineGui::paintGL()
                 }
                 glColor4f(boundsR, boundsG, boundsB, 1.);
                 glCheckError();
-                glBegin(GL_POLYGON);
-                glVertex2f( rightBoundBtm.x(), rightBoundBtm.y() );
-                glVertex2f( rightBoundBtmLeft.x(), rightBoundBtmLeft.y() );
-                glVertex2f( rightBoundTop.x(), rightBoundTop.y() );
-                glEnd();
+                if (nukeRuler) {
+                    // An upright line through the whole ruler, as Nuke marks its in and out points.
+                    glLineWidth(2 * _imp->_screenPixelRatio);
+                    glBegin(GL_LINES);
+                    glVertex2f( rightBoundBtm.x(), btmLeft.y() );
+                    glVertex2f( rightBoundBtm.x(), topRight.y() );
+                    glEnd();
+                } else {
+                    glBegin(GL_POLYGON);
+                    glVertex2f( rightBoundBtm.x(), rightBoundBtm.y() );
+                    glVertex2f( rightBoundBtmLeft.x(), rightBoundBtmLeft.y() );
+                    glVertex2f( rightBoundTop.x(), rightBoundTop.y() );
+                    glEnd();
+                }
                 glCheckErrorIgnoreOSXBug();
             }
         }

@@ -328,7 +328,19 @@ ComboBox::paintEvent(QPaintEvent* /*e*/)
 
         QRectF roundedRect = bRect.adjusted(fw / 2., fw / 2., -fw, -fw);
         bRect.adjust(fw, fw, -fw, -fw);
-        p.fillRect(bRect, fillColor);
+        // Optionally (preference knobWidgetsShaded, read by name) shaded from light to dark with a dark edge, as Nuke's.
+        KnobBool* shaded = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("knobWidgetsShaded").get() );
+        if ( shaded && shaded->getValue() && !_clicked && !_dirty && (_animation == 0) ) {
+            QLinearGradient gradient( bRect.topLeft(), bRect.bottomLeft() );
+            gradient.setColorAt( 0, fillColor.lighter(119) );
+            gradient.setColorAt( 1, fillColor.darker(103) );
+            p.fillRect(bRect, gradient);
+            if ( !hasFocus() ) {
+                p.setPen( QColor(30, 30, 30) );
+            }
+        } else {
+            p.fillRect(bRect, fillColor);
+        }
         double roundPixels = 3;
         QPainterPath path;
         path.addRoundedRect(roundedRect, roundPixels, roundPixels);
