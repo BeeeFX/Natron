@@ -11,13 +11,15 @@ releases can be taken as it comes. GPL-3.0-or-later (`LICENSE`).
 | `upstream.toml` | Niik-l's release this branch carries, the release the smoke test last passed on, the patch count |
 | `compat/natron_compat.py` | **The adapter**: the one module that calls Natron's Python API and Qt (through qtpy, which the fork bundles). Everything else calls it |
 | `ext/plugin/` | What Natron loads: `init.py` (every session), `initGui.py` (with a window), `aliases/` (the Nuke-named toolsets), `gizmos/` (the gizmo pack's PyPlugs), `layer_plugin.txt` (how init.py finds the rest) |
-| `ext/python/natron_layer/` | The layer's code: `look.py` (the Nuke look), `hotkeys.py` (keys), `aliases.py` (Nuke names), `gizmo_kit.py` and `gizmos.py` (the gizmo pack), `workflow.py` and `flipbook_job.py` (the workflow scripts), `toolsets.py` and `toolset_recipes.py` (ToolSets), `expressions.py` (the expression menu), `nuke_prefs.py` (reading Nuke preferences), `gui.py` (the Nuke menu, the first-launch question), `user_config.py` (the artist's answers) |
+| `ext/python/natron_layer/` | The layer's code: `look.py` (the Nuke look), `skin.py` (the skin: icons, font, session stylesheet), `hotkeys.py` (keys), `aliases.py` (Nuke names), `gizmo_kit.py` and `gizmos.py` (the gizmo pack), `workflow.py` and `flipbook_job.py` (the workflow scripts), `toolsets.py` and `toolset_recipes.py` (ToolSets), `expressions.py` (the expression menu), `nuke_prefs.py` (reading Nuke preferences), `gui.py` (the Nuke menu, the first-launch question), `user_config.py` (the artist's answers) |
 | `ext/presets/` | `nuke_look.toml` (the look's values), `nuke_hotkeys.toml` (Nuke's keys next to Natron's), `nuke_expressions.toml` (the expression recipes) |
 | `ext/toolsets/` | The studio ToolSets: Natron's own copied nodes, made by `tools/make_toolsets.py` |
 | `ext/qss/nuke.qss` | The stylesheet: Natron's own, unchanged, then a Nuke section |
+| `ext/icons/` | The skin's icons, PNG at 1x and 2x (our own drawings, made by `tools/make_icons.py`), `pixmaps.toml` (each with the Natron picture it stands for) and `qss/` (the stylesheet's own small pictures) |
+| `ext/fonts/` | The skin's font, DejaVu Sans, with its licence |
 | `patches/` | Core patches (none) and the budget |
 | `tests/smoke/` | The smoke test (`run_smoke.py`; inside Natron `smoke_checks.py` and `tool_checks.py`, without the layer `project_checks.py`), its window probe and the hand-written Nuke fixtures |
-| `tools/` | `package_build.py` (a build from a release), `sync_upstream.py` (the upstream watch, and bringing Niik-l's commits in), `make_toolsets.py` (the studio ToolSets' files, with its window probe `toolset_maker/`) |
+| `tools/` | `make_icons.py` (draws the skin's icons; Pillow), `natron_pixmaps.py` (Natron's pictures and their numbers, read from the fork's source), `package_build.py` (a build from a release), `sync_upstream.py` (the upstream watch, and bringing Niik-l's commits in), `make_toolsets.py` (the studio ToolSets' files, with its window probe `toolset_maker/`) |
 | `GAPS.md` | What's still missing compared with Nuke, ranked, with each item's route and status |
 
 ## How Natron loads it
@@ -51,15 +53,69 @@ Limits found on the fork:
 
 - **Natron loads its stylesheet before any startup script runs**, and reloads it only when the setting changes while
   its window exists, so the layer sets it again once the window is up (`gui.refresh_look`).
-- **The font and its size are read before any script runs** (straight from the stored settings), so the look can't
-  change them: Natron's 11 pt is Nuke's size anyway. The import says so for a Nuke font size.
+- **The font and its size are read before any script runs** (straight from the stored settings), so the look's
+  preferences can't change them; the skin does it through Qt instead (below). The import says so for a Nuke font
+  size.
 - **Natron's "Restore Defaults" button** (Preferences) gives Natron's stock values and stores them, which then count
   as the artist's own. The Nuke menu's **Use this build's look again…** asks, then removes the artist's stored values
   for the look's preferences (the only time the layer writes Natron's settings, on the artist's yes).
 - The node graph's background is the stylesheet's base colour; nodes take the per-class colours; the viewer and the
   curve editor draw themselves (the curve editor's background is a preference, set).
 
-The colours are approximations of Nuke's default theme by eye (Nuke's values aren't published as a list).
+The colours are approximations of Nuke's default theme by eye (Nuke's values aren't published as a list). The look's
+file has two tables: `[settings]` (what it looks like: the stylesheet, the colours of the interface, the timeline, the
+knob states, the curve editor, the dope sheet and the nodes) and `[habits]` (how it behaves).
+
+## The skin
+
+`skin.py`, from initGui.py **before Natron builds its window**, then once the window is up. Route P (GAPS.md):
+Python acting on Natron's live interface, nothing of Natron's changed.
+
+- **Icons.** Natron loads every interface picture through `GuiApplicationManager::getIcon`, which first looks in
+  Qt's picture cache under the picture's number (its place in `Global/Enums.h`), and, for a sized request, under
+  `<number>@<size>`. The skin puts our pictures there under those keys (the plain number and every size Natron asks
+  for, scaled for the screen) before the window exists, so Natron builds its toolbar, viewer bars, playback bar,
+  pane headers and panel headers with ours, **two-state buttons included** (Natron's own on and off pictures are
+  both replaced) and new viewers and panels made later too. Qt's cache is raised to 64 MB so nothing is dropped
+  (a dropped picture would come back as Natron's, harmlessly). A picture we haven't drawn stays Natron's.
+  `ext/icons/pixmaps.toml` lists each of ours with its number; `tools/natron_pixmaps.py` reads the numbers from the
+  fork's source and the smoke test fails when they no longer match (re-run `make_icons.py` after a release).
+- **The icons themselves** (110 pictures + 6 for the stylesheet) are our own, drawn by `tools/make_icons.py` on a
+  16-unit grid at 8x and reduced, at 18 px (viewer, playback, panels), 20 px (the left toolbar), 11 px (small
+  headers), each at 1x and 2x: flat light grey lines, orange when a toggle is on (Natron's "enabled" picture), a
+  dimmer grey when off or unavailable. In Nuke's spirit, never copied: the same everyday ideas (a play triangle, a
+  padlock, a crop mark) drawn our way. The build has no Qt SVG plug-in, hence PNG.
+- **Font.** Natron registers Droid Sans (compiled in) and names it everywhere, its stylesheet's first rule and the
+  node graph's labels included. The skin registers DejaVu Sans (`ext/fonts/`, Bitstream Vera licence: a free font on
+  Verdana-like proportions, standing in for Nuke's), takes Natron's registration out
+  (`QFontDatabase.removeAllApplicationFonts`) and tells Qt to use ours wherever Droid Sans is asked for
+  (`QFont.insertSubstitution`), then sets the application font at the look's size (10 pt). No hinting: with it,
+  node names scaled by the node graph's zoom showed gaps inside words (checked on the fork). **Not when the artist
+  chose a font in Natron's Preferences** (`systemFont` stored); their `fontSize` likewise keeps the skin's size out.
+- **The session stylesheet.** Natron reads a stylesheet file by itself, so the look's `nuke.qss` is written for the
+  session into the system's temporary folder (`%TEMP%\natron-layer\nuke-<content hash>.qss`): the layer's folder
+  filled in for `@layer/` (the stylesheet's own pictures) and, unless the artist stored a `fontSize`, the skin's size
+  after Natron's own font rule. That file is the session value of `stylesheetFile`. NatronRenderer sessions keep
+  the plain `nuke.qss` (no window, nothing to draw).
+- **The stylesheet's Nuke section** is a complete flat skin over Natron's: square buttons with a thin dark edge,
+  icon buttons in the viewer, playback and pane bars without a frame until the mouse is over them, value fields
+  darker than the panels, square fields with an orange edge while typing, thin flat scrollbars without arrows, flat
+  tabs (the selected one lighter, orange text), tight menus with the orange highlight and dark text, small dark
+  check boxes with a grey tick, flat headers and lists. Our own rules, written for this layer.
+- **Once the window is up** (a second after it shows, when Natron has finished sizing it): the left toolbar's
+  buttons show their icons at 20 px (Natron leaves Qt's 16), and, **only when the window still has Natron's default
+  layout** (its properties pane `pane2` at Natron's 35 % of the width), the properties pane takes the look's share
+  (30 %, Nuke's properties bin being narrower). Natron's default layout is already Nuke's arrangement (viewer top
+  left, node graph under it, properties on the right, toolbar on the left), so nothing else moves. Layout files
+  (Natron's `defaultLayout` preference) weren't needed.
+- **The artist's way back.** The Nuke menu's **Look › Natron's own look for me…** (after a yes) keeps `"look":
+  "natron"` in the layer's own config.json: from the next start the skin stays out and the look sets only its habits
+  (Natron's own stylesheet, colours, icons and font come back; the keys, Tab names, ToolSets stay). **Look › Nuke
+  look for me…** takes it back. `NATRON_LAYER_SKIN=off` does the same for one session (the "before" pictures).
+- What the skin doesn't reach: the node graph's drawing (node shapes, links: a core patch, GAPS.md), Natron's own
+  custom-drawn widgets (its drop-downs, the knobs' check boxes, sliders), icons not drawn yet (GAPS.md lists them),
+  the window title and program icon (kept: it's Natron, and its licence is happy with that), the menu names (kept
+  as Natron's so its help pages match).
 
 ## Nuke's keys
 
@@ -277,7 +333,9 @@ sequence collected, a flipbook rendered by a second NatronRenderer as frames and
 expression recipes' values on known frames; the CG beauty rebuild adding up to a render's beauty and the grain and
 lens stack rendering. `--gui` also opens Natron's window for about 25 seconds with a probe (`gui_probe/`): the
 question, the Nuke menu and its keys (every tool's entry), the stylesheet in use, where keys act, a command through
-its menu entry, each gizmo by its ID and coloured, Select similar colour, both studio ToolSets pasted with Natron's
+its menu entry, the skin (installed before the window, the font Qt uses for Droid Sans, the session stylesheet, every
+icon button of the window showing our picture and none still Natron's among those we drew, the checkerboard button
+keeping ours when clicked, the toolbar's icon size), each gizmo by its ID and coloured, Select similar colour, both studio ToolSets pasted with Natron's
 paste onto a render and a checker (passes matched, the clipboard put back), Save selection as ToolSet and its paste,
 an expression's window, and a picture of the window; it ends Natron at once so nothing is written at exit. Last,
 **a NatronRenderer without the layer** (`project_checks.py`) opens the comps saved by the checks and renders them:

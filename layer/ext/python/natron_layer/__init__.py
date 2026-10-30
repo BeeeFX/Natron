@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import os
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 last_report = None  # the look's report from start(), for the smoke test and the curious
 
@@ -35,8 +35,14 @@ def start() -> object | None:
 
 
 def start_gui() -> dict | None:
-    from . import gui  # noqa: PLC0415
+    """The skin (icons, font) before Natron builds its window, then the Nuke menu."""
+    from . import gui, skin  # noqa: PLC0415
 
+    if os.environ.get("NATRON_LAYER_LOOK", "").strip().lower() != "off":
+        try:
+            gui.compat.say(skin.install().summary())
+        except Exception as exc:  # noqa: BLE001  (Natron must start whatever happens)
+            gui.compat.say(f"Natron layer: the skin wasn't applied ({exc}).")
     try:
         return gui.install()
     except Exception as exc:  # noqa: BLE001

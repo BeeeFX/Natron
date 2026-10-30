@@ -29,6 +29,16 @@ GitHub Actions are off, see below). **No file of Niik-l's is changed.**
   mask inputs hidden, ten properties panels at most, no file browser when a Write is made. It's this build's default:
   a preference the artist changes in Natron's Preferences window is theirs and wins. Nothing is written to the
   artist's Natron settings by the layer.
+- **The skin: Natron drawn like Nuke** (since `.sng2`). Our own flat, light grey icons in the toolbar, the viewer's
+  bars, the playback bar and the panels' headers (110 pictures drawn for this fork in Nuke's spirit, never copied;
+  orange when a toggle is on), a free Verdana-like font (DejaVu Sans) at 10 pt everywhere, the node names included, a
+  complete flat stylesheet (square buttons, darker value fields, thin scrollbars, tight menus with the orange
+  highlight), Nuke-like greys, a grey timeline with an orange current frame, blue keyframed values, and the
+  properties pane at Nuke's narrower share of the window. All set from Python while Natron starts, for the session:
+  no file of Natron's is changed and nothing is written to the artist's settings; a font, size or stylesheet the
+  artist chose in Natron's Preferences wins. **Nuke › Look › Natron's own look for me** gives an artist Natron's
+  own look back (kept in the layer's own file). The window title, program icon, menu names and the node graph's
+  drawing (node shapes, links) stay Natron's.
 - **Nuke's keys.** Natron already has most of Nuke's default keys (B, C, D, G, M, O, P, R, T, W…). The layer adds
   the ones it lacks: K (Copy), I (node info), `\` (snap to grid), Shift+Y (connect), Alt+B (duplicate and branch),
   Alt+F (flipbook), in the menu bar's **Nuke** menu, changeable in Natron's shortcut editor. They act in the node
@@ -73,7 +83,7 @@ so the budget is at most 5 small patches (about 800 lines), each offered to him 
 - Natron and Niik-l's fork: GPL-2.0-or-later (see `LICENSE.txt`), with their bundled parts' own licences.
 - The layer: **GPL-3.0-or-later** (`layer/LICENSE`), each file says so in its first lines.
 - `layer/ext/qss/nuke.qss` contains Natron's own stylesheet (GPL-2.0-or-later) unchanged, with our Nuke section
-  after it. It isn't derived from natron-python-scripting's `mainstyle_NUKE` (MPL-2.0): no MPL file is used.
+  after it (our own rules, written for this layer). It isn't derived from natron-python-scripting's `mainstyle_NUKE` (MPL-2.0): no MPL file is used.
 - **The gizmo pack is our own** (`layer/ext/python/natron_layer/gizmos.py`), built from Natron's own nodes; nothing
   is derived from natron-plugins, the community PyPlugs the fork bundles. Checked on 5 October 2026 in the copy the
   2026.09.20 release ships (natron-plugins at its tip): its `Licenses/` folder holds only a GPL-2.0 and a CC-BY-2.0
@@ -87,5 +97,11 @@ so the budget is at most 5 small patches (about 800 lines), each offered to him 
   inspired the list of tools; none of its files or code is used, so no MPL notice is needed.
 - The studio ToolSets (`layer/ext/toolsets/*.xml`) are Natron's own copy format of nodes made by our recipes
   (`toolset_recipes.py`).
+- **The icons are our own drawings** (`layer/ext/icons/`, drawn by `layer/tools/make_icons.py` from code in that
+  file): simple line pictures made for this fork in the spirit of Nuke's flat interface; no picture of Nuke's or of
+  any other program is copied, traced or used as a template. They're GPL-3.0-or-later like the rest of the layer.
+- `layer/ext/fonts/DejaVuSans.ttf`: [DejaVu Fonts](https://dejavu-fonts.github.io/) 2.x, DejaVu Sans, unchanged,
+  under the Bitstream Vera licence and the Arev fonts' licence (DejaVu's changes are in the public domain), whose
+  text ships beside it (`layer/ext/fonts/LICENSE-DejaVu.txt`). The same file Singerie ships for its subtitles.
 - Nuke is a trademark of The Foundry Visionmongers Ltd. This fork isn't affiliated with The Foundry; it uses Nuke's
   node and menu names only so that people who know Nuke find their way.

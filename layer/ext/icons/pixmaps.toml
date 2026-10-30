@@ -1,0 +1,666 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# This file is part of the layer of this Natron fork (see FORK.md at the repository root).
+#
+# Made by layer/tools/make_icons.py: each of our icons with the Natron picture it stands for, by the number
+# Natron caches that picture under (its place in Global/Enums.h) and the size it is drawn for. The skin
+# (natron_layer/skin.py) reads this; the smoke test checks the numbers against the fork's source.
+
+[[icon]]
+file = "AutoContrast.png"
+natron = "NATRON_PIXMAP_VIEWER_AUTOCONTRAST_DISABLED"
+number = 52
+size = 18
+
+[[icon]]
+file = "AutoContrastON.png"
+natron = "NATRON_PIXMAP_VIEWER_AUTOCONTRAST_ENABLED"
+number = 51
+size = 18
+
+[[icon]]
+file = "GroupingIcons/Set3/3D_grouping_3.png"
+natron = "NATRON_PIXMAP_3D_GROUPING"
+number = 59
+size = 20
+
+[[icon]]
+file = "GroupingIcons/Set3/channel_grouping_3.png"
+natron = "NATRON_PIXMAP_CHANNEL_GROUPING"
+number = 60
+size = 20
+
+[[icon]]
+file = "GroupingIcons/Set3/color_grouping_3.png"
+natron = "NATRON_PIXMAP_COLOR_GROUPING"
+number = 62
+size = 20
+
+[[icon]]
+file = "GroupingIcons/Set3/deep_grouping_3.png"
+natron = "NATRON_PIXMAP_DEEP_GROUPING"
+number = 64
+size = 20
+
+[[icon]]
+file = "GroupingIcons/Set3/filter_grouping_3.png"
+natron = "NATRON_PIXMAP_FILTER_GROUPING"
+number = 65
+size = 20
+
+[[icon]]
+file = "GroupingIcons/Set3/image_grouping_3.png"
+natron = "NATRON_PIXMAP_IO_GROUPING"
+number = 58
+size = 20
+
+[[icon]]
+file = "GroupingIcons/Set3/keyer_grouping_3.png"
+natron = "NATRON_PIXMAP_KEYER_GROUPING"
+number = 72
+size = 20
+
+[[icon]]
+file = "GroupingIcons/Set3/merge_grouping_3.png"
+natron = "NATRON_PIXMAP_MERGE_GROUPING"
+number = 61
+size = 20
+
+[[icon]]
+file = "GroupingIcons/Set3/misc_grouping_3.png"
+natron = "NATRON_PIXMAP_MISC_GROUPING"
+number = 68
+size = 20
+
+[[icon]]
+file = "GroupingIcons/Set3/multiview_grouping_3.png"
+natron = "NATRON_PIXMAP_MULTIVIEW_GROUPING"
+number = 66
+size = 20
+
+[[icon]]
+file = "GroupingIcons/Set3/other_grouping_3.png"
+natron = "NATRON_PIXMAP_OTHER_PLUGINS"
+number = 73
+size = 20
+
+[[icon]]
+file = "GroupingIcons/Set3/paint_grouping_3.png"
+natron = "NATRON_PIXMAP_PAINT_GROUPING"
+number = 71
+size = 20
+
+[[icon]]
+file = "GroupingIcons/Set3/time_grouping_3.png"
+natron = "NATRON_PIXMAP_TIME_GROUPING"
+number = 70
+size = 20
+
+[[icon]]
+file = "GroupingIcons/Set3/toolsets_grouping_3.png"
+natron = "NATRON_PIXMAP_TOOLSETS_GROUPING"
+number = 67
+size = 20
+
+[[icon]]
+file = "GroupingIcons/Set3/transform_grouping_3.png"
+natron = "NATRON_PIXMAP_TRANSFORM_GROUPING"
+number = 63
+size = 20
+
+[[icon]]
+file = "addKF.png"
+natron = "NATRON_PIXMAP_ADD_KEYFRAME"
+number = 78
+size = 18
+
+[[icon]]
+file = "back1.png"
+natron = "NATRON_PIXMAP_PLAYER_PREVIOUS"
+number = 0
+size = 18
+
+[[icon]]
+file = "bounce.png"
+natron = "NATRON_PIXMAP_PLAYER_BOUNCE"
+number = 17
+size = 18
+
+[[icon]]
+file = "centerViewer.png"
+natron = "NATRON_PIXMAP_VIEWER_CENTER"
+number = 40
+size = 18
+
+[[icon]]
+file = "checkerboard_off.png"
+natron = "NATRON_PIXMAP_VIEWER_CHECKERBOARD_DISABLED"
+number = 162
+size = 18
+
+[[icon]]
+file = "checkerboard_on.png"
+natron = "NATRON_PIXMAP_VIEWER_CHECKERBOARD_ENABLED"
+number = 161
+size = 18
+
+[[icon]]
+file = "clearAnimation.png"
+natron = "NATRON_PIXMAP_CLEAR_ALL_ANIMATION"
+number = 130
+size = 18
+
+[[icon]]
+file = "clearAnimationBw.png"
+natron = "NATRON_PIXMAP_CLEAR_BACKWARD_ANIMATION"
+number = 131
+size = 18
+
+[[icon]]
+file = "clearAnimationFw.png"
+natron = "NATRON_PIXMAP_CLEAR_FORWARD_ANIMATION"
+number = 132
+size = 18
+
+[[icon]]
+file = "clearOutput.png"
+natron = "NATRON_PIXMAP_SCRIPT_CLEAR_OUTPUT"
+number = 169
+size = 18
+
+[[icon]]
+file = "cliptoprojectDisabled.png"
+natron = "NATRON_PIXMAP_VIEWER_CLIP_TO_PROJECT_DISABLED"
+number = 42
+size = 18
+
+[[icon]]
+file = "cliptoprojectEnabled.png"
+natron = "NATRON_PIXMAP_VIEWER_CLIP_TO_PROJECT_ENABLED"
+number = 41
+size = 18
+
+[[icon]]
+file = "close.png"
+natron = "NATRON_PIXMAP_CLOSE_WIDGET"
+number = 23
+size = 18
+
+[[icon]]
+file = "closePanel.png"
+natron = "NATRON_PIXMAP_CLOSE_PANEL"
+number = 25
+size = 18
+
+[[icon]]
+file = "color_picker.png"
+natron = "NATRON_PIXMAP_COLOR_PICKER"
+number = 57
+size = 18
+
+[[icon]]
+file = "colorwheel.png"
+natron = "NATRON_PIXMAP_COLORWHEEL"
+number = 54
+size = 18
+
+[[icon]]
+file = "colorwheel_overlay.png"
+natron = "NATRON_PIXMAP_OVERLAY"
+number = 55
+size = 18
+
+[[icon]]
+file = "enter_group.png"
+natron = "NATRON_PIXMAP_ENTER_GROUP"
+number = 156
+size = 18
+
+[[icon]]
+file = "execScript.png"
+natron = "NATRON_PIXMAP_SCRIPT_EXEC_SCRIPT"
+number = 170
+size = 18
+
+[[icon]]
+file = "expoOFF.png"
+natron = "NATRON_PIXMAP_VIEWER_GAIN_DISABLED"
+number = 168
+size = 18
+
+[[icon]]
+file = "expoON.png"
+natron = "NATRON_PIXMAP_VIEWER_GAIN_ENABLED"
+number = 167
+size = 18
+
+[[icon]]
+file = "firstFrame.png"
+natron = "NATRON_PIXMAP_PLAYER_FIRST_FRAME"
+number = 1
+size = 18
+
+[[icon]]
+file = "forward1.png"
+natron = "NATRON_PIXMAP_PLAYER_NEXT"
+number = 2
+size = 18
+
+[[icon]]
+file = "fullFrameOff.png"
+natron = "NATRON_PIXMAP_VIEWER_FULL_FRAME_OFF"
+number = 44
+size = 18
+
+[[icon]]
+file = "fullFrameOn.png"
+natron = "NATRON_PIXMAP_VIEWER_FULL_FRAME_ON"
+number = 43
+size = 18
+
+[[icon]]
+file = "gammaOFF.png"
+natron = "NATRON_PIXMAP_VIEWER_GAMMA_DISABLED"
+number = 166
+size = 18
+
+[[icon]]
+file = "gammaON.png"
+natron = "NATRON_PIXMAP_VIEWER_GAMMA_ENABLED"
+number = 165
+size = 18
+
+[[icon]]
+file = "groupbox_folded.png"
+natron = "NATRON_PIXMAP_GROUPBOX_FOLDED"
+number = 28
+size = 11
+
+[[icon]]
+file = "groupbox_unfolded.png"
+natron = "NATRON_PIXMAP_GROUPBOX_UNFOLDED"
+number = 29
+size = 11
+
+[[icon]]
+file = "help.png"
+natron = "NATRON_PIXMAP_HELP_WIDGET"
+number = 24
+size = 18
+
+[[icon]]
+file = "hide_unmodified.png"
+natron = "NATRON_PIXMAP_HIDE_UNMODIFIED"
+number = 26
+size = 18
+
+[[icon]]
+file = "inverted.png"
+natron = "NATRON_PIXMAP_INVERTED"
+number = 80
+size = 18
+
+[[icon]]
+file = "lastFrame.png"
+natron = "NATRON_PIXMAP_PLAYER_LAST_FRAME"
+number = 3
+size = 18
+
+[[icon]]
+file = "layer.png"
+natron = "NATRON_PIXMAP_LAYER"
+number = 86
+size = 18
+
+[[icon]]
+file = "layout.png"
+natron = "NATRON_PIXMAP_TAB_WIDGET_LAYOUT_BUTTON"
+number = 36
+size = 11
+
+[[icon]]
+file = "layout_anchor.png"
+natron = "NATRON_PIXMAP_TAB_WIDGET_LAYOUT_BUTTON_ANCHOR"
+number = 37
+size = 11
+
+[[icon]]
+file = "loadAndExecScript.png"
+natron = "NATRON_PIXMAP_SCRIPT_LOAD_EXEC_SCRIPT"
+number = 171
+size = 18
+
+[[icon]]
+file = "loadScript.png"
+natron = "NATRON_PIXMAP_SCRIPT_LOAD_SCRIPT"
+number = 172
+size = 18
+
+[[icon]]
+file = "locked.png"
+natron = "NATRON_PIXMAP_LOCKED"
+number = 84
+size = 18
+
+[[icon]]
+file = "loopmode.png"
+natron = "NATRON_PIXMAP_PLAYER_LOOP_MODE"
+number = 16
+size = 18
+
+[[icon]]
+file = "maximize.png"
+natron = "NATRON_PIXMAP_MAXIMIZE_WIDGET"
+number = 21
+size = 18
+
+[[icon]]
+file = "minimize.png"
+natron = "NATRON_PIXMAP_MINIMIZE_WIDGET"
+number = 22
+size = 18
+
+[[icon]]
+file = "nextIncr.png"
+natron = "NATRON_PIXMAP_PLAYER_NEXT_INCR"
+number = 4
+size = 18
+
+[[icon]]
+file = "nextKF.png"
+natron = "NATRON_PIXMAP_PLAYER_NEXT_KEY"
+number = 5
+size = 18
+
+[[icon]]
+file = "nextScript.png"
+natron = "NATRON_PIXMAP_SCRIPT_NEXT_SCRIPT"
+number = 173
+size = 18
+
+[[icon]]
+file = "open-file.png"
+natron = "NATRON_PIXMAP_OPEN_FILE"
+number = 53
+size = 18
+
+[[icon]]
+file = "openeffects.png"
+natron = "NATRON_PIXMAP_OPEN_EFFECTS_GROUPING"
+number = 69
+size = 20
+
+[[icon]]
+file = "outputPanelActivated.png"
+natron = "NATRON_PIXMAP_SCRIPT_OUTPUT_PANE_ACTIVATED"
+number = 174
+size = 18
+
+[[icon]]
+file = "outputPanelDeactivated.png"
+natron = "NATRON_PIXMAP_SCRIPT_OUTPUT_PANE_DEACTIVATED"
+number = 175
+size = 18
+
+[[icon]]
+file = "pauseDisabled.png"
+natron = "NATRON_PIXMAP_PLAYER_PAUSE_DISABLED"
+number = 14
+size = 18
+
+[[icon]]
+file = "pauseEnabled.png"
+natron = "NATRON_PIXMAP_PLAYER_PAUSE_ENABLED"
+number = 15
+size = 18
+
+[[icon]]
+file = "play.png"
+natron = "NATRON_PIXMAP_PLAYER_PLAY_DISABLED"
+number = 11
+size = 18
+
+[[icon]]
+file = "playOnce.png"
+natron = "NATRON_PIXMAP_PLAYER_PLAY_ONCE"
+number = 18
+size = 18
+
+[[icon]]
+file = "play_enabled.png"
+natron = "NATRON_PIXMAP_PLAYER_PLAY_ENABLED"
+number = 10
+size = 18
+
+[[icon]]
+file = "prevKF.png"
+natron = "NATRON_PIXMAP_PLAYER_PREVIOUS_KEY"
+number = 7
+size = 18
+
+[[icon]]
+file = "previousIncr.png"
+natron = "NATRON_PIXMAP_PLAYER_PREVIOUS_INCR"
+number = 6
+size = 18
+
+[[icon]]
+file = "previousScript.png"
+natron = "NATRON_PIXMAP_SCRIPT_PREVIOUS_SCRIPT"
+number = 176
+size = 18
+
+[[icon]]
+file = "readImage.png"
+natron = "NATRON_PIXMAP_READ_IMAGE"
+number = 74
+size = 18
+
+[[icon]]
+file = "redo.png"
+natron = "NATRON_PIXMAP_REDO"
+number = 31
+size = 18
+
+[[icon]]
+file = "redo_grayscale.png"
+natron = "NATRON_PIXMAP_REDO_GRAYSCALE"
+number = 33
+size = 18
+
+[[icon]]
+file = "refresh.png"
+natron = "NATRON_PIXMAP_VIEWER_REFRESH"
+number = 45
+size = 18
+
+[[icon]]
+file = "refreshActive.png"
+natron = "NATRON_PIXMAP_VIEWER_REFRESH_ACTIVE"
+number = 46
+size = 18
+
+[[icon]]
+file = "removeKF.png"
+natron = "NATRON_PIXMAP_REMOVE_KEYFRAME"
+number = 79
+size = 18
+
+[[icon]]
+file = "renderScale.png"
+natron = "NATRON_PIXMAP_VIEWER_RENDER_SCALE"
+number = 49
+size = 18
+
+[[icon]]
+file = "renderScale_checked.png"
+natron = "NATRON_PIXMAP_VIEWER_RENDER_SCALE_CHECKED"
+number = 50
+size = 18
+
+[[icon]]
+file = "restoreDefaultDisabled.png"
+natron = "NATRON_PIXMAP_RESTORE_DEFAULTS_DISABLED"
+number = 35
+size = 18
+
+[[icon]]
+file = "restoreDefaultEnabled.png"
+natron = "NATRON_PIXMAP_RESTORE_DEFAULTS_ENABLED"
+number = 34
+size = 18
+
+[[icon]]
+file = "rewind.png"
+natron = "NATRON_PIXMAP_PLAYER_REWIND_DISABLED"
+number = 9
+size = 18
+
+[[icon]]
+file = "rewind_enabled.png"
+natron = "NATRON_PIXMAP_PLAYER_REWIND_ENABLED"
+number = 8
+size = 18
+
+[[icon]]
+file = "saveScript.png"
+natron = "NATRON_PIXMAP_SCRIPT_SAVE_SCRIPT"
+number = 177
+size = 18
+
+[[icon]]
+file = "settings.png"
+natron = "NATRON_PIXMAP_SETTINGS"
+number = 157
+size = 18
+
+[[icon]]
+file = "splitHorizontally.png"
+natron = "NATRON_PIXMAP_TAB_WIDGET_SPLIT_HORIZONTALLY"
+number = 38
+size = 18
+
+[[icon]]
+file = "splitVertically.png"
+natron = "NATRON_PIXMAP_TAB_WIDGET_SPLIT_VERTICALLY"
+number = 39
+size = 18
+
+[[icon]]
+file = "stopDisabled.png"
+natron = "NATRON_PIXMAP_PLAYER_STOP_DISABLED"
+number = 12
+size = 18
+
+[[icon]]
+file = "stopEnabled.png"
+natron = "NATRON_PIXMAP_PLAYER_STOP_ENABLED"
+number = 13
+size = 18
+
+[[icon]]
+file = "timelineIn.png"
+natron = "NATRON_PIXMAP_PLAYER_TIMELINE_IN"
+number = 19
+size = 18
+
+[[icon]]
+file = "timelineOut.png"
+natron = "NATRON_PIXMAP_PLAYER_TIMELINE_OUT"
+number = 20
+size = 18
+
+[[icon]]
+file = "turbo_off.png"
+natron = "NATRON_PIXMAP_FREEZE_DISABLED"
+number = 159
+size = 18
+
+[[icon]]
+file = "turbo_on.png"
+natron = "NATRON_PIXMAP_FREEZE_ENABLED"
+number = 158
+size = 18
+
+[[icon]]
+file = "undo.png"
+natron = "NATRON_PIXMAP_UNDO"
+number = 30
+size = 18
+
+[[icon]]
+file = "undo_grayscale.png"
+natron = "NATRON_PIXMAP_UNDO_GRAYSCALE"
+number = 32
+size = 18
+
+[[icon]]
+file = "unhide_unmodified.png"
+natron = "NATRON_PIXMAP_UNHIDE_UNMODIFIED"
+number = 27
+size = 18
+
+[[icon]]
+file = "uninverted.png"
+natron = "NATRON_PIXMAP_UNINVERTED"
+number = 81
+size = 18
+
+[[icon]]
+file = "unlocked.png"
+natron = "NATRON_PIXMAP_UNLOCKED"
+number = 85
+size = 18
+
+[[icon]]
+file = "unvisible.png"
+natron = "NATRON_PIXMAP_UNVISIBLE"
+number = 83
+size = 18
+
+[[icon]]
+file = "updateViewerDisabled.png"
+natron = "NATRON_PIXMAP_UPDATE_VIEWER_DISABLED"
+number = 134
+size = 18
+
+[[icon]]
+file = "updateViewerEnabled.png"
+natron = "NATRON_PIXMAP_UPDATE_VIEWER_ENABLED"
+number = 133
+size = 18
+
+[[icon]]
+file = "viewer_roiDisabled.png"
+natron = "NATRON_PIXMAP_VIEWER_ROI_DISABLED"
+number = 48
+size = 18
+
+[[icon]]
+file = "viewer_roiEnabled.png"
+natron = "NATRON_PIXMAP_VIEWER_ROI_ENABLED"
+number = 47
+size = 18
+
+[[icon]]
+file = "visible.png"
+natron = "NATRON_PIXMAP_VISIBLE"
+number = 82
+size = 18
+
+[[icon]]
+file = "writeImage.png"
+natron = "NATRON_PIXMAP_WRITE_IMAGE"
+number = 75
+size = 18
+
+[[icon]]
+file = "zebra_off.png"
+natron = "NATRON_PIXMAP_VIEWER_ZEBRA_DISABLED"
+number = 164
+size = 18
+
+[[icon]]
+file = "zebra_on.png"
+natron = "NATRON_PIXMAP_VIEWER_ZEBRA_ENABLED"
+number = 163
+size = 18

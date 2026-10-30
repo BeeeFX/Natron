@@ -14,6 +14,11 @@ Values from 2 and 3 are set for the session only: Natron doesn't write a prefere
 also turns Natron's hidden "Save settings on change" off while it sets them (``compat.unsaved``). So the artist's
 Natron settings never change by themselves, and Natron's Preferences window saves only what the artist changes in it.
 
+The look has two tables: ``[settings]``, what it looks like (the stylesheet, the colours), and ``[habits]``, how it
+behaves (snap, Merge to A, panels). When the artist chose Natron's own look (``skin.natron_look_chosen``), only the
+habits apply. In a session with a window, the stylesheet is the skin's session copy of nuke.qss
+(``skin.session_stylesheet``: the layer's pictures' paths filled in, the skin's font size).
+
 ``reset`` is the menu's "Use this build's look again…": with the artist's yes, it removes their stored values of the
 look's preferences from Natron's settings, so the look applies again (Natron's own "Restore Defaults" button gives
 Natron's stock values instead, and stores them).
@@ -50,13 +55,15 @@ class Report:
         return "Nuke look: " + "; ".join(parts) + "."
 
 
-def load_look() -> dict[str, Any]:
-    """The look's preferences, by Natron script name, with ``@layer/`` paths made absolute."""
+def load_look(visual: bool = True) -> dict[str, Any]:
+    """The look's preferences, by Natron script name, with ``@layer/`` paths made absolute: its habits, and its
+    visual preferences unless ``visual`` is False."""
     import tomllib  # noqa: PLC0415
 
     with open(paths.preset("nuke_look.toml"), "rb") as file:
         data = tomllib.load(file)
-    values = dict(data.get("settings", {}))
+    values = dict(data.get("settings", {})) if visual else {}
+    values.update(data.get("habits", {}))
     root = paths.layer_root()
     for name, value in values.items():
         if isinstance(value, str) and value.startswith(LAYER_PREFIX):
@@ -72,7 +79,9 @@ def is_own(name: str, stored: compat.StoredSettings, param: Any = None) -> bool:
 def wanted_values(imported: dict[str, Any] | None = None) -> dict[str, tuple[str, Any]]:
     """Each preference the layer would set, with where its value comes from: ``imported`` (the artist's Nuke
     preferences) over ``look``."""
-    values = {name: ("look", value) for name, value in load_look().items()}
+    from . import skin  # noqa: PLC0415
+
+    values = {name: ("look", value) for name, value in load_look(visual=not skin.natron_look_chosen()).items()}
     imported = user_config.nuke_import().get("settings", {}) if imported is None else imported
     for name, value in (imported or {}).items():
         values[name] = ("imported", value)
@@ -92,11 +101,22 @@ def apply(stored: compat.StoredSettings | None = None, imported: dict[str, Any] 
             if is_own(name, stored, param):
                 report.kept.append(name)
                 continue
+            if name == "stylesheetFile" and source == "look" and _with_window():
+                from . import skin  # noqa: PLC0415
+
+                value = skin.session_stylesheet(str(value), stored)
             if not compat.set_param_value(param, value):
                 report.failed.append(name)
                 continue
             (report.imported if source == "imported" else report.applied).append(name)
     return report
+
+
+def _with_window() -> bool:
+    try:
+        return not compat.is_background()
+    except Exception:  # noqa: BLE001  (outside Natron: the tests)
+        return False
 
 
 def own_values_in_the_way(stored: compat.StoredSettings | None = None) -> list[str]:

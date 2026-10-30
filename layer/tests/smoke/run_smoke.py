@@ -9,7 +9,8 @@
 1. runs the Nuke preferences reader's tests (test_nuke_prefs.py, no Natron needed);
 2. checks the layer's files against the repository: the stylesheet still holds Natron's own mainstyle.qss unchanged,
    the patch series matches upstream.toml, the startup files are plain ASCII, every alias and gizmo has its PyPlug,
-   every studio ToolSet its file, every expression recipe makes valid Python;
+   every studio ToolSet its file, every expression recipe makes valid Python, the skin's icons (1x and 2x) match
+   their table and the table's numbers match the fork's source, the font ships with its licence;
 3. runs smoke_checks.py inside NatronRenderer, with only the layer's plug-in folder on NATRON_PLUGIN_PATH and
    Natron's disk cache, home folder, TEMP and the layer's config folder in a temporary folder (a clean session):
    the look, the aliases, the keys, the import, then the tools (tool_checks.py: gizmos, workflow scripts, expression
@@ -225,6 +226,36 @@ def repository_checks(say: Say) -> None:
         "layer/tools/make_toolsets.py makes them)")
     recipes = expressions.recipes()
     say(recipes and all(r.text() for r in recipes), f"every expression recipe makes valid Python ({len(recipes)})")
+    skin_checks(say)
+
+
+def skin_checks(say: Say) -> None:
+    """The skin's files: every icon in the table at 1x and 2x, the table's numbers and files the ones the fork's
+    source gives (Global/Enums.h, getIcon), the stylesheet's own pictures, the font and its licence."""
+    import tomllib
+
+    sys.path.insert(0, str(LAYER / "tools"))
+    import natron_pixmaps
+
+    icons = LAYER / "ext" / "icons"
+    table = tomllib.loads((icons / "pixmaps.toml").read_text(encoding="ascii")).get("icon", [])
+    missing = [row["file"] for row in table if not (icons / row["file"]).is_file()
+               or not (icons / row["file"]).with_name(Path(row["file"]).stem + "@2x.png").is_file()]
+    say(len(table) >= 100 and not missing, f"every icon of the skin's table is there at 1x and 2x ({len(table)})"
+        + (f": missing {missing[:5]}" if missing else ""))
+    if (REPO / "Global" / "Enums.h").is_file():
+        source = {name: (number, file) for name, number, file in natron_pixmaps.table(REPO)}
+        wrong = [row["file"] for row in table if source.get(row["natron"]) != (row["number"], row["file"])]
+        say(not wrong, "the icon table's numbers and files are the fork's own (Global/Enums.h, getIcon): "
+            + ("re-run layer/tools/make_icons.py for " + str(wrong[:5]) if wrong else "all match"))
+    else:
+        say(False, "the repository has Global/Enums.h to check the icon table against")
+    qss = (LAYER / "ext" / "qss" / "nuke.qss").read_text(encoding="utf-8")
+    named = sorted({part.split(")", 1)[0] for part in qss.split("url(@layer/")[1:]})
+    say(named and all((LAYER / n).is_file() for n in named), f"the pictures nuke.qss names are there ({len(named)})")
+    fonts = LAYER / "ext" / "fonts"
+    say((fonts / "DejaVuSans.ttf").is_file() and "Bitstream" in (fonts / "LICENSE-DejaVu.txt").read_text(
+        encoding="utf-8"), "the skin's font ships with its licence (ext/fonts)")
 
 
 def base_environment(tmp: Path) -> dict[str, str]:

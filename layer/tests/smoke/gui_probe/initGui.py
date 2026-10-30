@@ -165,10 +165,98 @@ def _layer_probe():
                 tools(app, natron_app)
         except Exception:
             say(False, "the tools' checks in the window raised:\n" + traceback.format_exc())
+        try:
+            skin_checks(app, window)
+        except Exception:
+            say(False, "the skin's checks in the window raised:\n" + traceback.format_exc())
         if out:
             picture = os.path.join(out, "natron_window.png")
             window.grab().save(picture)
             say(os.path.isfile(picture), "a picture of the window: " + picture)
+
+    def fingerprint(image, side=16):
+        from qtpy import QtGui
+
+        small = image.convertToFormat(QtGui.QImage.Format.Format_ARGB32).scaled(
+            side, side, QtCore.Qt.AspectRatioMode.IgnoreAspectRatio, QtCore.Qt.TransformationMode.SmoothTransformation)
+        values = []
+        for y in range(side):
+            for x in range(side):
+                c = small.pixelColor(x, y)
+                a = c.alphaF()
+                values.append((c.redF() * a, c.greenF() * a, c.blueF() * a, a))
+        return values
+
+    def distance(one, two):
+        return sum(abs(p - q) for a, b in zip(one, two) for p, q in zip(a, b)) / (4.0 * len(one))
+
+    def skin_checks(app, window):
+        """The skin in the window: the font Qt uses wherever Natron asks for Droid Sans, and the icon buttons of the
+        toolbar, viewer, playback bar and panels showing our pictures, none still showing Natron's picture among
+        those we drew; a two-state button keeps ours when clicked."""
+        from qtpy import QtGui
+        from natron_layer import paths, skin
+
+        report = skin.last_report
+        say(report is not None and not report.off and report.icons >= 100 and not report.missing,
+            "the skin was installed before the window: " + (report.summary() if report else "no report"))
+        family = QtGui.QFontInfo(QtGui.QFont("Droid Sans", 10)).family()
+        say(family == "DejaVu Sans" and app.font().family() == "DejaVu Sans",
+            "Qt draws Natron's Droid Sans with the skin's font: " + family + ", the application's " + app.font().family())
+        sheet = app.styleSheet()
+        say("@layer/" not in sheet and "/ext/icons/qss/" in sheet and "The skin's font size" in sheet,
+            "the window's stylesheet is the skin's session copy (paths filled in, the skin's font size)")
+        icons = paths.ext() / "icons"
+        ours, natrons = [], []
+        for row in skin.icon_table():
+            mine = QtGui.QImage(str(icons / row["file"]))
+            theirs = QtGui.QImage(":/Resources/Images/" + row["file"])
+            if not mine.isNull():
+                ours.append((row["file"], fingerprint(mine)))
+            if not theirs.isNull():
+                natrons.append((row["file"], fingerprint(theirs)))
+        say(len(natrons) >= 100, "Natron's own pictures are readable from its resources to compare (" + str(len(natrons))
+            + ")")
+        counts = {"ours": 0, "natron": [], "other": 0}
+        for button in window.findChildren(QtWidgets.QAbstractButton):
+            if not button.isVisible() or button.icon().isNull():
+                continue
+            size = button.iconSize()
+            seen = fingerprint(button.icon().pixmap(size).toImage())
+            best_ours = min((distance(seen, f), n) for n, f in ours) if ours else (1.0, "")
+            best_theirs = min((distance(seen, f), n) for n, f in natrons) if natrons else (1.0, "")
+            if best_ours[0] < 0.04 and best_ours[0] <= best_theirs[0]:
+                counts["ours"] += 1
+            elif best_theirs[0] < 0.04:
+                counts["natron"].append(best_theirs[1] + " (" + (button.toolTip() or "")[:30] + ")")
+            else:
+                counts["other"] += 1
+        say(counts["ours"] >= 40 and not counts["natron"],
+            "the window's icon buttons show our pictures: " + str(counts["ours"]) + " ours, "
+            + str(len(counts["natron"])) + " still Natron's" + (": " + ", ".join(counts["natron"][:6]) if counts["natron"]
+                                                               else "") + ", " + str(counts["other"]) + " others")
+        checker = [b for b in window.findChildren(QtWidgets.QAbstractButton) if b.isVisible() and b.isCheckable()
+                   and "checkerboard" in (b.toolTip() or "")]
+        on = dict(ours).get("checkerboard_on.png")
+        if checker and on is not None:
+            button = checker[0]
+            was = button.isChecked()
+            button.click()
+            app.processEvents()
+            mode = QtGui.QIcon.State.On if button.isChecked() else QtGui.QIcon.State.Off
+            seen = fingerprint(button.icon().pixmap(button.iconSize(), QtGui.QIcon.Mode.Normal, mode).toImage())
+            wanted = dict(ours).get("checkerboard_on.png" if button.isChecked() else "checkerboard_off.png")
+            say(distance(seen, wanted) < 0.04, "the viewer's checkerboard button, clicked, shows our "
+                + ("on" if button.isChecked() else "off") + " picture")
+            if button.isChecked() != was:
+                button.click()
+                app.processEvents()
+        else:
+            say(False, "the viewer's checkerboard button is found to click")
+        polished = [b for bar in window.findChildren(QtWidgets.QToolBar) for b in bar.findChildren(QtWidgets.QToolButton)]
+        side = int(skin.settings().get("toolbar_icon", 20))
+        say(polished and all(b.iconSize().width() >= side for b in polished),
+            "the left toolbar's buttons show their icons at " + str(side) + " pixels")
 
     def tools(app, natron_app):
         """Roadmap items 5 to 7 in the window: gizmos by their ID, similar colour, the ToolSets pasted with Natron's
