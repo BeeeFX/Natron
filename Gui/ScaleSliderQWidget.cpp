@@ -56,6 +56,16 @@ GCC_DIAG_UNUSED_PRIVATE_FIELD_ON
 
 NATRON_NAMESPACE_ENTER
 
+// Preference sliderHandleBar (off by default): the handle as a small upright bar over thin ticks. Read by name, so
+// Settings.h stays as it is.
+static bool
+sliderHandleBar()
+{
+    KnobBool* k = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("sliderHandleBar").get() );
+
+    return k && k->getValue();
+}
+
 struct ScaleSliderQWidgetPrivate
 {
     Gui* gui;
@@ -512,6 +522,7 @@ ScaleSliderQWidget::paintEvent(QPaintEvent* /*e*/)
     const double largestTickSize = range * largestTickSizePixel / rangePixel;
     const double minTickSizeTextPixel = fontM.horizontalAdvance( QLatin1String("00") ); // AXIS-SPECIFIC
     const double minTickSizeText = range * minTickSizeTextPixel / rangePixel;
+    const bool bar = sliderHandleBar();
     for (int i = m1; i <= m2; ++i) {
         double value = i * smallTickSize + offset;
         const double tickSize = ticks[i - m1] * smallTickSize;
@@ -519,7 +530,7 @@ ScaleSliderQWidget::paintEvent(QPaintEvent* /*e*/)
         QColor color(textColor);
         color.setAlphaF(alpha);
         QPen pen(color);
-        pen.setWidthF(1.9);
+        pen.setWidthF(bar ? 1. : 1.9);
         p.setPen(pen);
 
         // for Int slider, because smallTickSize is at least 1, isFloating can never be true
@@ -631,8 +642,15 @@ ScaleSliderQWidget::paintEvent(QPaintEvent* /*e*/)
         //p.setOpacity(0.8); // also sets opacity of the brush/fill!
         p.setPen(pen);
     }
-    // the magic 2.8 factor is here so that the full antialiased circle is not clipped
-    p.drawEllipse(QPointF(positionValue, lineYpos), TO_DPIX(SLIDER_HEIGHT/2.8), TO_DPIX(SLIDER_HEIGHT/2.8));
+    if (bar) {
+        // A small upright bar across the scale's line, outlined.
+        const double halfW = TO_DPIX(SLIDER_WIDTH) / 2., halfH = TO_DPIY(SLIDER_HEIGHT) / 2.6;
+        p.setRenderHints(QPainter::Antialiasing, false);
+        p.drawRect( QRectF(std::floor(positionValue - halfW) + 0.5, std::floor(lineYpos - halfH) + 0.5, 2 * halfW, 2 * halfH) );
+    } else {
+        // the magic 2.8 factor is here so that the full antialiased circle is not clipped
+        p.drawEllipse(QPointF(positionValue, lineYpos), TO_DPIX(SLIDER_HEIGHT/2.8), TO_DPIX(SLIDER_HEIGHT/2.8));
+    }
     p.setRenderHints(rh);
 #endif
 } // paintEvent

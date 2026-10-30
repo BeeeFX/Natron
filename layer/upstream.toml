@@ -25,19 +25,22 @@ qt_binding = "PySide6 6.11 through qtpy 2.4.3 (both bundled with the release)"
 # run_smoke.py --gui (31 October 2026, the second wave): 261 checks with the repository's layer on this release (its
 # node graph drawn as Natron's: no drawing preferences), 284 on the .sng3 source build (built from this branch with
 # core patches 0001 to 0003, MSYS2 packages of 2026-10-02; Python 3.14.8, PySide6 6.11.2; the window out of sight).
+# run_smoke.py --gui --offscreen (1 November 2026, .sng4): 297 checks on the .sng4 source build (core patches 0001 to
+# 0005, the window arranged like Nuke's); Singerie's Natron suite (--no-window) passed on it too (407 checks inside).
 checks = 261
-source_build_checks = 284
+source_build_checks = 297
 # Earlier releases the layer passed on (before the skin, 5 October 2026).
 also_passed = ["natron-2.6-2026.09.20"]
 
 [patches]
 # Core patches carried on top of Niik-l's code (patches/series). Budget: research, parity-layers.md section 1.2.
-# Since .sng3 the builds are made from source (README.md, "Building from source"): the node graph drawing and the
-# properties panel header name (patches/README.md).
-count = 3
+# Since .sng3 the builds are made from source (README.md, "Building from source"): the node graph drawing, the
+# properties panel header name, errors and selection, and since .sng4 the properties rows and the node graph's Viewer
+# nodes, input labels, backdrops and badges (patches/README.md).
+count = 5
 budget_count = 5
 budget_lines = 800
 
 [build]
 # How a packaged build is named (tools/package_build.py): 2.6.0+<release date>.sng<n>.
-version = "2.6.0+2026.10.02.sng3"
+version = "2.6.0+2026.10.02.sng4"

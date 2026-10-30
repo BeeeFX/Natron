@@ -24,8 +24,9 @@ name = "Nuke"
 # drawn on Verdana-like proportions, standing in for Nuke's. Not used when the artist chose a font in Natron's
 # Preferences.
 font = "@layer/ext/fonts/DejaVuSans.ttf"
-# Its size in points (Natron's is 11); not used when the artist chose a size in Natron's Preferences.
-font_size = 10
+# Its size in points (Natron's is 11): Nuke's interface text is small and dense (Foundry's guide pictures); not used
+# when the artist chose a size in Natron's Preferences.
+font_size = 9
 # Our own icons (ext/icons/, drawn by tools/make_icons.py) instead of Natron's pictures they stand for.
 icons = true
 # The left toolbar's icons, in pixels at 96 dpi.
@@ -38,22 +39,24 @@ properties_share = 0.30
 # Appearance > Stylesheet: Natron's own stylesheet with a flat Nuke skin after it (ext/qss/nuke.qss).
 stylesheetFile = "@layer/ext/qss/nuke.qss"
 
-# Appearance > Main Window: Nuke's greys (lighter panels, darker value fields) and its orange highlight.
-sunken = [0.13, 0.13, 0.13]
-base = [0.22, 0.22, 0.22]
-raised = [0.30, 0.30, 0.30]
-selection = [0.97, 0.58, 0.12]
-text = [0.84, 0.84, 0.84]
+# Appearance > Main Window: Nuke's greys and its orange, measured on Foundry's guide pictures (Nuke 17.1 user guide,
+# "Nuke Studio Environments", viewer_focus.png): panels and bars 50/255, value fields about 25-33, pane tab strips 33,
+# text 200, the orange of a current tab 246, 146, 32.
+sunken = [0.11, 0.11, 0.11]
+base = [0.196, 0.196, 0.196]
+raised = [0.27, 0.27, 0.27]
+selection = [0.96, 0.57, 0.125]
+text = [0.78, 0.78, 0.78]
 
 # Appearance > Main Window: knob states. Nuke tints an animated value blue (brighter on a keyframe) and an
 # expression's value lavender.
 interpValue = [0.27, 0.42, 0.62]
 keyframe = [0.30, 0.55, 0.88]
 exprColor = [0.62, 0.62, 0.92]
-slider = [0.80, 0.80, 0.80]
+slider = [0.62, 0.55, 0.32]
 
 # Appearance > Main Window: the timeline: dark grey, orange current frame, a green line on cached frames.
-timelineBG = [0.16, 0.16, 0.16]
+timelineBG = [0.12, 0.12, 0.12]
 timelinePlayhead = [0.97, 0.58, 0.12]
 timelineBound = [0.78, 0.62, 0.30]
 cachedFrame = [0.36, 0.72, 0.36]
@@ -78,8 +81,8 @@ writerColor = [0.75, 0.33, 0.33]
 generatorColor = [0.6, 0.6, 0.6]
 colorNodesColor = [0.47, 0.72, 0.45]
 filterNodesColor = [0.8, 0.5, 0.31]
-transformNodesColor = [0.65, 0.48, 0.73]
-timeNodesColor = [0.76, 0.63, 0.49]
+transformNodesColor = [0.66, 0.47, 0.69]
+timeNodesColor = [0.70, 0.65, 0.37]
 drawNodesColor = [0.44, 0.72, 0.62]
 keyerNodesColor = [0.33, 0.72, 0.42]
 channelNodesColor = [0.58, 0.42, 0.72]
@@ -116,6 +119,24 @@ nodeErrorTint = 0.7
 nodeErrorColor = [0.85, 0.12, 0.10]
 # No postage stamp on new Read nodes (Natron shows one by default); the node's Preview box (Node tab) shows it.
 readerPreview = false
+# Core patch 0005: an input's label (A, B, Mask) beside its link close to the node, and none on a node's only input,
+# as Nuke draws them; Viewer nodes with pointed ends (Nuke's Viewer node); backdrops with their label only, large at
+# the top left (no name strip).
+linkLabelNearInput = true
+viewerNodePointed = true
+backdropLabelOnly = true
+# The small marks on a node's corners (E, P, V) as flat discs instead of Natron's shaded ones.
+nodeBadgesFlat = true
+# A node whose label has no text keeps its name's size once its panel has been opened (Natron drew it much larger).
+nodeNameKeepsSize = true
+# Core patch 0004, the properties panels' rows as Nuke's (Foundry's "Properties Panels" picture of a knob row: value,
+# slider, colour swatch, colour wheel, the "4" dimensions button, the animation button): the slider's handle a small
+# bar over thin ticks, the "4" after the colour buttons, an animation button ending each value's row, and a node's
+# first tab named after it (Grade, Blur) instead of "Controls".
+sliderHandleBar = true
+knobDimensionButtonLast = true
+knobAnimationButton = true
+pageTabNodeName = true
 
 [habits]
 # Nodegraph: Nuke's habits. Snap to node, a new Merge takes the selected node in its A input, mask inputs hidden

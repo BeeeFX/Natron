@@ -512,6 +512,26 @@ DockablePanel::createPageMainWidget(QWidget* parent) const
     return clickableWidget;
 }
 
+// Optionally (preference pageTabNodeName, read by name) a node's first page, when its plug-in calls it "Controls", shows
+// the node's kind (Grade, Blur) as its tab.
+static QString
+pageTabLabel(DockablePanel* panel,
+             const KnobPageGuiPtr& page)
+{
+    QString label = QString::fromUtf8( page->pageKnob.lock()->getLabel().c_str() );
+    KnobBool* named = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("pageTabNodeName").get() );
+    NodeSettingsPanel* nodePanel = dynamic_cast<NodeSettingsPanel*>(panel);
+    if ( label != QString::fromUtf8("Controls") || !named || !named->getValue() || !nodePanel || !nodePanel->getNode() ) {
+        return label;
+    }
+    const Plugin* plugin = nodePanel->getNode()->getNode()->getPlugin();
+    if ( !plugin || plugin->getLabelWithoutSuffix().isEmpty() ) {
+        return label;
+    }
+
+    return plugin->getLabelWithoutSuffix();
+}
+
 void
 DockablePanel::onPageLabelChanged(const KnobPageGuiPtr& page)
 {
@@ -519,8 +539,7 @@ DockablePanel::onPageLabelChanged(const KnobPageGuiPtr& page)
         int nTabs = _imp->_tabWidget->count();
         for (int i = 0; i < nTabs; ++i) {
             if (_imp->_tabWidget->widget(i) == page->tab) {
-                QString newLabel = QString::fromUtf8( page->pageKnob.lock()->getLabel().c_str() );
-                _imp->_tabWidget->setTabText(i, newLabel);
+                _imp->_tabWidget->setTabText( i, pageTabLabel(this, page) );
                 break;
             }
         }
@@ -531,8 +550,7 @@ void
 DockablePanel::addPageToPagesContainer(const KnobPageGuiPtr& page)
 {
     if (_imp->_tabWidget) {
-        QString name = QString::fromUtf8( page->pageKnob.lock()->getLabel().c_str() );
-        _imp->_tabWidget->addTab(page->tab, name);
+        _imp->_tabWidget->addTab( page->tab, pageTabLabel(this, page) );
     } else {
         _imp->_horizLayout->addWidget(page->tab);
     }
@@ -560,8 +578,7 @@ DockablePanel::setPagesOrder(const std::list<KnobPageGuiPtr>& orderedPages,
     int index = 0;
     int i = 0;
     for (std::list<KnobPageGuiPtr>::const_iterator it = orderedPages.begin(); it != orderedPages.end(); ++it, ++i) {
-        QString tabName = QString::fromUtf8( (*it)->pageKnob.lock()->getLabel().c_str() );
-        _imp->_tabWidget->addTab( (*it)->tab, tabName );
+        _imp->_tabWidget->addTab( (*it)->tab, pageTabLabel(this, *it) );
         if ( restorePageIndex && (*it == curPage) ) {
             index = i;
         }

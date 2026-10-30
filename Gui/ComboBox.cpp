@@ -273,7 +273,12 @@ ComboBox::paintEvent(QPaintEvent* /*e*/)
     QPainter p(this);
     QRectF bRect = rect();
 
-    {
+    // A drop-down whose "flat" property is set (none in Natron itself; a stylesheet layer may set it on a toolbar's)
+    // shows its text and arrow only, without its box, unless it's open or being changed.
+    if ( property("flat").toBool() && !_clicked && !_dirty && (_animation == 0) ) {
+        double fw = frameWidth();
+        bRect.adjust(fw, fw, -fw, -fw);
+    } else {
         ///Now draw the frame
 
         QColor fillColor;

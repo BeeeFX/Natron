@@ -28,6 +28,9 @@
 
 #include <QPainter>
 #include <QLinearGradient>
+#include <QPolygonF>
+
+#include <algorithm>
 
 NATRON_NAMESPACE_ENTER
 
@@ -57,6 +60,16 @@ NodeGraphRectItem::paint(QPainter *painter, const QStyleOptionGraphicsItem* /*op
         painter->setBrush(QBrush(gradient));
     }
 
+    if ( data(kNodeGraphRectPointedEnds).toBool() ) {
+        // Pointed left and right ends (a Viewer node, NodeGui::createGui).
+        const QRectF r = rect();
+        const double tip = std::min( r.height() / 2., r.width() / 4. );
+        QPolygonF shape;
+        shape << QPointF(r.left() + tip, r.top()) << QPointF(r.right() - tip, r.top()) << QPointF( r.right(), r.center().y() )
+              << QPointF(r.right() - tip, r.bottom()) << QPointF(r.left() + tip, r.bottom()) << QPointF( r.left(), r.center().y() );
+        painter->drawPolygon(shape);
+        return;
+    }
     painter->drawRoundedRect(rect(), _cornerRadiusPx, _cornerRadiusPx);
 }
 

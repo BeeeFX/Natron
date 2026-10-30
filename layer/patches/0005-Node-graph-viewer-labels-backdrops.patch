@@ -1,0 +1,334 @@
+From 461304ab2d6dd50b779d6292f24b38fa9e7437ea Mon Sep 17 00:00:00 2001
+From: "Baptiste G." <70719480+BeeeFX@users.noreply.github.com>
+Date: Fri, 30 Oct 2026 14:51:00 +0000
+Subject: [PATCH 2/2] Node graph: Viewer nodes, input labels, backdrops and
+ badges optionally drawn like Nuke's
+
+Preferences in Appearance > Node Graph > Node and link drawing, each off by default (Natron's drawing as before):
+- linkLabelNearInput: a link's input label (A, B, Mask) sits beside the link close to the node it feeds, and a
+  node's only input that isn't a mask has no label (connected or not), instead of every label mid-link.
+- viewerNodePointed: Viewer nodes are drawn with pointed left and right ends (their outline too), so they stand out
+  from the nodes that process images. Through a QGraphicsItem data key on the node's box (NodeGraphRectItem.h).
+- backdropLabelOnly: a backdrop shows no name strip (the strip stays, unseen, to drag the backdrop by), only its
+  label, twice the interface size unless the label chose its own size, at its top left.
+- nodeBadgesFlat: the marks on a node's corners (E, P, V, C) are flat discs with a thin dark edge, not shaded.
+- nodeNameKeepsSize: a node whose label has no text of its own draws its name like every other node's. Once a
+  node's panel has been opened, Natron's label editor leaves an empty font tag (HTML size 6) in the label, which
+  drew that node's name much larger than the others'.
+- Every new preference is read by name, so Settings.h doesn't change.
+
+Core patch 0005 of the BeeeFX fork (layer/patches/), on top of 0001 and 0003, written to be offered upstream as it is.
+
+Gap: layer/GAPS.md, "Nuke's look and habits" (the node graph's drawing: Viewer node, input labels, backdrops,
+node badges).
+Size: 6 files, 139 lines added, 9 removed.
+upstream: not offered yet (Baptiste: keep the fork private for now).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ Engine/Settings.cpp       | 33 ++++++++++++++++++++++++++
+ Gui/BackdropGui.cpp       | 14 ++++++++++-
+ Gui/Edge.cpp              | 36 +++++++++++++++++++++++++---
+ Gui/NodeGraphRectItem.cpp | 13 +++++++++++
+ Gui/NodeGraphRectItem.h   |  3 +++
+ Gui/NodeGui.cpp           | 49 +++++++++++++++++++++++++++++++++++----
+ 6 files changed, 139 insertions(+), 9 deletions(-)
+
+diff --git a/Engine/Settings.cpp b/Engine/Settings.cpp
+index 002467427..868f4b58e 100644
+--- a/Engine/Settings.cpp
++++ b/Engine/Settings.cpp
+@@ -1059,6 +1059,39 @@ Settings::initializeKnobsNodeGraphDrawing()
+     readerPreview->setDefaultValue(true);
+     _nodegraphColorsTab->addKnob(readerPreview);
+ 
++    // Read by Edge, NodeGui and BackdropGui through their names (no member, so this header stays as it is).
++    KnobBoolPtr labelNearInput = AppManager::createKnob<KnobBool>( this, tr("Input labels near the node") );
++    labelNearInput->setName("linkLabelNearInput");
++    labelNearInput->setHintToolTip( tr("When checked, a link's input label (A, B, Mask) sits beside the link close to the "
++                                       "node it feeds; otherwise in the middle of the link.") );
++    labelNearInput->setDefaultValue(false);
++    _nodegraphColorsTab->addKnob(labelNearInput);
++    KnobBoolPtr viewerPointed = AppManager::createKnob<KnobBool>( this, tr("Viewer nodes with pointed ends") );
++    viewerPointed->setName("viewerNodePointed");
++    viewerPointed->setHintToolTip( tr("When checked, Viewer nodes are drawn with pointed left and right ends, so they stand "
++                                      "out from the nodes that process images.") );
++    viewerPointed->setDefaultValue(false);
++    _nodegraphColorsTab->addKnob(viewerPointed);
++    KnobBoolPtr backdropLabelOnly = AppManager::createKnob<KnobBool>( this, tr("Backdrops show their label only") );
++    backdropLabelOnly->setName("backdropLabelOnly");
++    backdropLabelOnly->setHintToolTip( tr("When checked, a backdrop shows no name strip, only its label, large, at its top "
++                                          "left; otherwise its name in a strip and the label under it.") );
++    backdropLabelOnly->setDefaultValue(false);
++    _nodegraphColorsTab->addKnob(backdropLabelOnly);
++    KnobBoolPtr flatBadges = AppManager::createKnob<KnobBool>( this, tr("Flat node badges") );
++    flatBadges->setName("nodeBadgesFlat");
++    flatBadges->setHintToolTip( tr("When checked, the small round marks on a node's corners (E for an expression, P for "
++                                   "the input passed through, V for views) are flat discs; otherwise shaded.") );
++    flatBadges->setDefaultValue(false);
++    _nodegraphColorsTab->addKnob(flatBadges);
++    KnobBoolPtr keepSize = AppManager::createKnob<KnobBool>( this, tr("Node names keep their size") );
++    keepSize->setName("nodeNameKeepsSize");
++    keepSize->setHintToolTip( tr("When checked, a node whose label has no text of its own draws its name like every other "
++                                 "node's; otherwise the name grows once the node's panel has been opened (the label editor "
++                                 "leaves an empty font in the label).") );
++    keepSize->setDefaultValue(false);
++    _nodegraphColorsTab->addKnob(keepSize);
++
+     struct IntDef { KnobIntPtr* knob; const char* name; QString label; int def, min, max; QString hint; };
+     const IntDef ints[] = {
+         { &_nodeTileWidth, "nodeTileWidth", tr("Node width"), 100, 20, 400, tr("The width of a new node in the node graph, in pixels.") },
+diff --git a/Gui/BackdropGui.cpp b/Gui/BackdropGui.cpp
+index ca5d768d1..b154f810f 100644
+--- a/Gui/BackdropGui.cpp
++++ b/Gui/BackdropGui.cpp
+@@ -51,6 +51,15 @@ CLANG_DIAG_ON(uninitialized)
+ 
+ NATRON_NAMESPACE_ENTER
+ 
++// Preference backdropLabelOnly (read by name): no name strip, the label large at the top left.
++static bool
++backdropLabelOnly()
++{
++    KnobBool* k = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("backdropLabelOnly").get() );
++
++    return k && k->getValue();
++}
++
+ struct BackdropGuiPrivate
+ {
+     BackdropGui* _publicInterface;
+@@ -145,7 +154,7 @@ BackdropGui::resizeExtraContent(int /*w*/,
+     QPointF thisItemPos = mapFromParent(p);
+     int nameHeight = getFrameNameHeight();
+ 
+-    _imp->label->setPos( thisItemPos.x(), thisItemPos.y() + nameHeight + TO_DPIY(10) );
++    _imp->label->setPos( thisItemPos.x(), thisItemPos.y() + ( backdropLabelOnly() ? TO_DPIY(2) : nameHeight + TO_DPIY(10) ) );
+     if (!forceResize) {
+         _imp->label->adjustSize();
+     }
+@@ -176,6 +185,9 @@ BackdropGuiPrivate::refreshLabelText(int nameHeight,
+         if (!antialias) {
+             f.setStyleStrategy(QFont::NoAntialias);
+         }
++        if ( backdropLabelOnly() && !text.contains( QString::fromUtf8("size=") ) ) {
++            f.setPointSizeF(f.pointSizeF() * 2.);
++        }
+         label->setFont(f);
+     }
+ 
+diff --git a/Gui/Edge.cpp b/Gui/Edge.cpp
+index c07775837..82a408017 100644
+--- a/Gui/Edge.cpp
++++ b/Gui/Edge.cpp
+@@ -40,6 +40,7 @@
+ #include "Gui/GuiApplicationManager.h"
+ #include "Engine/Node.h"
+ #include "Engine/Image.h"
++#include "Engine/KnobTypes.h"
+ #include "Engine/Settings.h"
+ #include "Engine/ViewerInstance.h"
+ 
+@@ -66,6 +67,23 @@
+ 
+ NATRON_NAMESPACE_ENTER
+ 
++// Whether input inputNb of the node is its only input that isn't a mask (a single input needs no label).
++static bool
++isOnlyMainInput(const NodeGuiPtr& nodeGui,
++                int inputNb)
++{
++    NodePtr node = nodeGui ? nodeGui->getNode() : NodePtr();
++    if ( !node || node->getEffectInstance()->isInputMask(inputNb) ) {
++        return false;
++    }
++    int mainInputs = 0;
++    for (int i = 0; i < node->getNInputs(); ++i) {
++        mainInputs += node->getEffectInstance()->isInputMask(i) ? 0 : 1;
++    }
++
++    return mainInputs <= 1;
++}
++
+ struct EdgePrivate
+ {
+     Edge* _publicInterface;
+@@ -531,13 +549,22 @@ Edge::initLine()
+ 
+             if (_imp->label) {
+                 QPointF pos( _imp->middlePoint + QPointF(-5, -10) );
+-                //qDebug() << pos;
+-                _imp->label->setPos(pos);
+                 QFontMetrics fm( _imp->label->font() );
+                 int fontHeight = fm.height();
++                // Optionally (preference linkLabelNearInput, read by name) beside the link close to the node it feeds,
++                // and only on nodes with several inputs (A, B, Mask): a single input needs no name.
++                KnobBool* nearInput = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("linkLabelNearInput").get() );
++                const bool labelNear = nearInput && nearInput->getValue() && (visibleLength > 0);
++                if (labelNear) {
++                    const double along = std::min( 0.5, TO_DPIY(6) / visibleLength );
++                    pos = dstIntersection + (srcInteresect - dstIntersection) * along + QPointF( TO_DPIX(3), -fontHeight );
++                }
++                //qDebug() << pos;
++                _imp->label->setPos(pos);
+                 double txtWidth = fm.horizontalAdvance( _imp->label->text() );
+ 
+-                if ( (visibleLength < fontHeight * 2) || (visibleLength < txtWidth) ) {
++                const bool single = labelNear && isOnlyMainInput(_imp->dest.lock(), _imp->inputNb);
++                if ( single || (visibleLength < fontHeight * 2) || (visibleLength < txtWidth) ) {
+                     _imp->label->hide();
+                     _imp->enoughSpaceToShowLabel = false;
+                 } else {
+@@ -588,6 +615,9 @@ Edge::initLine()
+                 QPointF labelDst = dstIntersection; //QPointF( destBBOX.x(),destBBOX.y() ) + QPointF(dstNodeSize.width() / 2.,0);
+ 
+                 _imp->label->setPos( ( ( labelDst.x() + srcpt.x() ) / 2. ) + yOffset, ( labelDst.y() + srcpt.y() ) / 2. - 20 );
++                // With linkLabelNearInput, an unconnected single input needs no name either.
++                KnobBool* nearInput = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("linkLabelNearInput").get() );
++                _imp->label->setVisible( !( nearInput && nearInput->getValue() && isOnlyMainInput(_imp->dest.lock(), _imp->inputNb) ) );
+             }
+         }
+     }
+diff --git a/Gui/NodeGraphRectItem.cpp b/Gui/NodeGraphRectItem.cpp
+index 884621b7c..2f5b46cde 100644
+--- a/Gui/NodeGraphRectItem.cpp
++++ b/Gui/NodeGraphRectItem.cpp
+@@ -28,6 +28,9 @@
+ 
+ #include <QPainter>
+ #include <QLinearGradient>
++#include <QPolygonF>
++
++#include <algorithm>
+ 
+ NATRON_NAMESPACE_ENTER
+ 
+@@ -57,6 +60,16 @@ NodeGraphRectItem::paint(QPainter *painter, const QStyleOptionGraphicsItem* /*op
+         painter->setBrush(QBrush(gradient));
+     }
+ 
++    if ( data(kNodeGraphRectPointedEnds).toBool() ) {
++        // Pointed left and right ends (a Viewer node, NodeGui::createGui).
++        const QRectF r = rect();
++        const double tip = std::min( r.height() / 2., r.width() / 4. );
++        QPolygonF shape;
++        shape << QPointF(r.left() + tip, r.top()) << QPointF(r.right() - tip, r.top()) << QPointF( r.right(), r.center().y() )
++              << QPointF(r.right() - tip, r.bottom()) << QPointF(r.left() + tip, r.bottom()) << QPointF( r.left(), r.center().y() );
++        painter->drawPolygon(shape);
++        return;
++    }
+     painter->drawRoundedRect(rect(), _cornerRadiusPx, _cornerRadiusPx);
+ }
+ 
+diff --git a/Gui/NodeGraphRectItem.h b/Gui/NodeGraphRectItem.h
+index aec751788..96179f21e 100644
+--- a/Gui/NodeGraphRectItem.h
++++ b/Gui/NodeGraphRectItem.h
+@@ -40,6 +40,9 @@ CLANG_DIAG_ON(uninitialized)
+ 
+ NATRON_NAMESPACE_ENTER
+ 
++// QGraphicsItem::data() key: when true, the item is drawn with pointed left and right ends (Viewer nodes).
++#define kNodeGraphRectPointedEnds 0x504E
++
+ class NodeGraphRectItem
+ : public QGraphicsRectItem
+ {
+diff --git a/Gui/NodeGui.cpp b/Gui/NodeGui.cpp
+index 2eea71209..6fdc20596 100644
+--- a/Gui/NodeGui.cpp
++++ b/Gui/NodeGui.cpp
+@@ -42,6 +42,7 @@ CLANG_DIAG_OFF(uninitialized)
+ #include <QGridLayout>
+ #include <QCursor>
+ #include <QFile>
++#include <QRegularExpression>
+ #include <QApplication>
+ CLANG_DIAG_ON(deprecated)
+ CLANG_DIAG_ON(uninitialized)
+@@ -679,6 +680,20 @@ NodeGui::createGui()
+         _boundingBox->setFlat(true);
+     }
+ 
++    // Optionally (preference backdropLabelOnly, read by name) a backdrop without its name strip (BackdropGui draws the
++    // label large at the top); the strip stays where it is, unseen, to drag the backdrop by.
++    KnobBool* labelOnly = dynamic_cast<KnobBool*>( settings->getKnobByName("backdropLabelOnly").get() );
++    if ( isBd && labelOnly && labelOnly->getValue() && _nameFrame ) {
++        _nameFrame->setPen(Qt::NoPen);
++        _nameFrame->setData(kNodeGraphRectPointedEnds + 1, true); // the name is hidden once made, below
++    }
++
++    // Optionally (preference viewerNodePointed, read by name) a Viewer node with pointed ends, its outline too.
++    KnobBool* pointed = dynamic_cast<KnobBool*>( settings->getKnobByName("viewerNodePointed").get() );
++    if ( pointed && pointed->getValue() && (node->getPluginID() == PLUGINID_NATRON_VIEWER) ) {
++        _boundingBox->setData(kNodeGraphRectPointedEnds, true);
++    }
++
+     if ( !isBd && !iconFilePath.isEmpty() && appPTR->getCurrentSettings()->isPluginIconActivatedOnNodeGraph() ) {
+         _pluginIcon = new NodeGraphPixmapItem(getDagGui(), this);
+         _pluginIcon->setZValue(depth + 1);
+@@ -713,6 +728,9 @@ NodeGui::createGui()
+     _nameItem->setDefaultTextColor( QColor(0, 0, 0, 255) );
+     //_nameItem->setFont( QFont(appFont,appFontSize) );
+     _nameItem->setZValue(depth + 1);
++    if ( _nameFrame && _nameFrame->data(kNodeGraphRectPointedEnds + 1).toBool() ) {
++        _nameItem->hide();
++    }
+ 
+     _persistentMessage = new NodeGraphSimpleTextItem(getDagGui(), this, false);
+     _persistentMessage->setZValue(depth + 3);
+@@ -727,6 +745,7 @@ NodeGui::createGui()
+ 
+     _stateIndicator = new NodeGraphRectItem(this, cornerRadiusPx);
+     _stateIndicator->setZValue(depth - 1);
++    _stateIndicator->setData( kNodeGraphRectPointedEnds, _boundingBox->data(kNodeGraphRectPointedEnds) );
+     _stateIndicator->hide();
+ 
+     QRectF bbox = boundingRect();
+@@ -3028,9 +3047,16 @@ struct NodeGuiIndicatorPrivate
+         ellipse->setZValue(depth);
+ 
+         QPointF ellipseCenter = ellipseRect.center();
+-        QRadialGradient radialGrad(ellipseCenter, ellipseRad);
+-        radialGrad.setStops(gradStops);
+-        ellipse->setBrush(radialGrad);
++        // Optionally (preference nodeBadgesFlat, read by name) a flat disc in the badge's main colour, thin dark edge.
++        KnobBool* flat = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("nodeBadgesFlat").get() );
++        if ( flat && flat->getValue() && !gradStops.isEmpty() ) {
++            ellipse->setBrush( gradStops[gradStops.size() / 2].second );
++            ellipse->setPen( QPen(QColor(20, 20, 20), 1) );
++        } else {
++            QRadialGradient radialGrad(ellipseCenter, ellipseRad);
++            radialGrad.setStops(gradStops);
++            ellipse->setBrush(radialGrad);
++        }
+ 
+ 
+         textItem = new NodeGraphSimpleTextItem(graph, parent, false);
+@@ -3180,8 +3206,21 @@ NodeGui::setNameItemHtml(const QString & name,
+     }
+     QString textLabel;
+ 
+-    if ( !label.isEmpty() ) {
+-        QString labelCopy = label;
++    // Optionally (preference nodeNameKeepsSize, read by name) a label with no text of its own doesn't change the name's
++    // font: once a node's panel has been opened, Natron's label editor leaves an empty font tag in the label (HTML size
++    // 6), which drew the name much larger than the other nodes'.
++    QString labelText = label;
++    KnobBool* keepSize = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("nodeNameKeepsSize").get() );
++    if ( keepSize && keepSize->getValue() ) {
++        QString plain = label;
++        plain.remove( QRegularExpression( QString::fromUtf8("<[^>]*>") ) );
++        if ( plain.trimmed().isEmpty() ) {
++            labelText.clear();
++        }
++    }
++
++    if ( !labelText.isEmpty() ) {
++        QString labelCopy = labelText;
+ 
+         ///remove any custom data tag natron might have added
+         QString startCustomTag = QString::fromUtf8(NATRON_CUSTOM_HTML_TAG_START);
+-- 
+2.48.1.windows.1
+

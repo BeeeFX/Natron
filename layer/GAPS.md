@@ -87,11 +87,20 @@ Done in `.sng3`: the second wave of icons (the Merge operations' pictures, the r
 curve editor's interpolation buttons, the text style buttons, the File menu's icons through an icon theme), the
 properties panels' header buttons flat (core patch 0002 names the header), Tab's search box in Nuke's style.
 
-Still Natron's (next): the knobs' own check boxes and Natron's custom drop-downs and sliders (drawn by Natron
-itself), the viewer's two toolbars' order and the info bar's layout (moving Natron's widgets is fragile; a core patch
-if Baptiste wants it), the curve editor's and dope sheet's own drawing beyond their colours, the node indicators'
-glossy round badges ("E", "V", "P"), the few icons no one has drawn yet (the combo box arrows, the cursors, the
-application and viewer icons).
+Done in `.sng4` (1 November 2026, measured against Foundry's guide pictures): the viewer's two bars in Nuke's order
+with flat drop-downs (`arrange.py`, route P, and patch 0004's flat drop-down), the playback buttons as raised boxes
+and the current frame orange, Nuke's pane tabs, the toolbar's tiles, Nuke's greys measured (50 / 33 / 200), the 9 pt
+font, the default layout's 58 % viewer and empty properties pane, Workspace for Layout; the properties rows (patch
+0004: bar handle, "4" after the colour buttons, animation buttons, a node's first tab named after it); the node
+graph's input labels near the node and none on a single input, pointed Viewer nodes, backdrops with their label
+only, flat badges, node names keeping their size (patch 0005).
+
+Still Natron's (next): the info bar's content and order (Natron's labels, "RoD" for Nuke's "bbox"), the timeline's
+ruler (numbers above the ticks, no in and out boxes at its ends), the properties header's buttons and order, the
+knobs' check boxes, Natron's drop-downs in the properties (boxed, as Nuke's are too, but Natron's shape), the curve
+editor's curve colours (Nuke draws r, g, b in red, green, blue) and its own drawing, the selected node (tinted, not
+Nuke's selection colour), the node's channel marks Nuke draws under its name, the Tab menu's favourites and weights,
+a few icons (combo box arrows, cursors, the application's).
 
 ## Roadmap (research section 2.7), and where this layer is
 

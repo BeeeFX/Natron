@@ -412,16 +412,21 @@ def _restore(p: Pen, c: tuple) -> None:
     p.circle(8, 8.5, 1.4, c, fill=True)
 
 
+# The pane's menu button: a small two-tone tile (light left half, grey right half), the way Nuke marks a pane's
+# content menu (our own drawing); orange-edged when it's the anchor pane.
 @icon("layout.png", size=11)
 def _layout(p: Pen, c: tuple) -> None:
-    for y in (4, 8, 12):
-        p.line([(3, y), (13, y)], c, 1.2)
+    p.rect(1.5, 1.5, 13, 13, (112, 112, 112, 255), fill=True, radius=1.2)
+    p.rect(1.5, 1.5, 6.5, 13, c, fill=True, radius=1.2)
+    p.rect(5, 1.5, 3, 13, c, fill=True)
+    p.line([(1.5, 9), (8, 9)], (150, 150, 150, 255), 0.8)
 
 
 @icon("layout_anchor.png", size=11, colour=ACC)
 def _layout_anchor(p: Pen, c: tuple) -> None:
-    for y in (4, 8, 12):
-        p.line([(3, y), (13, y)], c, 1.2)
+    p.rect(1.5, 1.5, 13, 13, (112, 112, 112, 255), fill=True, radius=1.2)
+    p.rect(1.5, 1.5, 6.5, 13, c, fill=True, radius=1.2)
+    p.rect(5, 1.5, 3, 13, c, fill=True)
 
 
 @icon("splitHorizontally.png")
@@ -553,10 +558,10 @@ def _zebra(p: Pen, c: tuple) -> None:
         p.line([(2.5 + max(0, k), 13.5 - max(0, -k)), (13.5 - max(0, -k), 2.5 + max(0, k))], c, 0.9)
 
 
+# The viewer's gamma switch: a bold Y (gamma's usual letter on a display control), as Nuke's viewer labels it.
 @pair("gammaON.png", "gammaOFF.png")
 def _gamma(p: Pen, c: tuple) -> None:
-    p.line([(2.5, 2.5), (2.5, 13.5), (13.5, 13.5)], c, 0.8)
-    p.line([(2.5 + 11 * t / 10, 13.5 - 11 * (t / 10) ** 0.45) for t in range(11)], c)
+    p.text(8, 8.3, "Y", c, 12, bold=True)
 
 
 @pair("expoON.png", "expoOFF.png")

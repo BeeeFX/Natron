@@ -290,7 +290,19 @@ def polish(window: Any) -> dict[str, int]:
             button.setIconSize(qt.QtCore.QSize(side, side))
             done["toolbar buttons"] += 1
     done["layout"] = int(default_layout(window, qt))
+    from . import arrange  # noqa: PLC0415
+
+    try:
+        done.update(arrange.install(window))
+    except Exception as error:  # noqa: BLE001  (the arrangement is a nicety: Natron's own stays on any surprise)
+        done["arrange failed"] = 1
+        compat.say(f"natron_layer: the window's arrangement stayed Natron's ({error!r})")
+    global last_polish  # noqa: PLW0603
+    last_polish = done
     return done
+
+
+last_polish: dict[str, int] | None = None
 
 
 NATRON_PROPERTIES_SHARE = 0.35  # Natron's default layout (Gui10.cpp, createDefaultLayout1): properties at 35 %

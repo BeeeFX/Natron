@@ -83,7 +83,8 @@ with Nuke, ranked: [`layer/GAPS.md`](layer/GAPS.md).
 
 ## Core patches
 
-Three (since `.sng3`, 31 October 2026), also carried as commits on `sng/main`, so our builds are made from source
+Five (three since `.sng3`, 31 October 2026, two more since `.sng4`), also carried as commits on `sng/main`, so our
+builds are made from source
 (`layer/README.md`, "Building from source", with Niik-l's own build scripts):
 
 1. `layer/patches/0001-Node-graph-drawing-preferences.patch`: the node graph's drawing as preferences (node size,
@@ -97,6 +98,15 @@ Three (since `.sng3`, 31 October 2026), also carried as commits on `sng/main`, s
    colour (preferences, 0 keeps Natron's frame), a selected node keeping its own colour, a Read saying "File not
    found" at once when postage stamps are off. About 170 lines in `Engine/Settings.cpp`, `Engine/ReadNode.cpp`,
    `Gui/NodeGui.{h,cpp}`.
+4. `layer/patches/0004-Properties-panel-rows.patch`: the properties rows as Nuke's, as preferences (a bar-shaped
+   slider handle, the "4" after the colour buttons, an animation button ending each value's row, a node's first tab
+   named after it) and drop-downs drawn flat on request. About 115 lines in `Engine/Settings.cpp`,
+   `Gui/KnobGui.cpp`, `Gui/KnobGuiValue.cpp`, `Gui/ScaleSliderQWidget.cpp`, `Gui/DockablePanel.cpp`,
+   `Gui/ComboBox.cpp`.
+5. `layer/patches/0005-Node-graph-viewer-labels-backdrops.patch` (on top of 0001 and 0003): input labels near the
+   node and none on a single input, pointed Viewer nodes, backdrops showing their label only, flat node badges, node
+   names keeping their size, as preferences. About 150 lines in `Engine/Settings.cpp`, `Gui/Edge.cpp`,
+   `Gui/NodeGraphRectItem.{h,cpp}`, `Gui/NodeGui.cpp`, `Gui/BackdropGui.cpp`.
 
 Changing Natron's own code makes every one of Niik-l's releases (every one to three weeks) harder to take, so the
 budget is at most 5 small patches (about 800 lines), each offered to him first: [`layer/patches/`](layer/patches/README.md).

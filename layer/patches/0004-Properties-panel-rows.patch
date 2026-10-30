@@ -1,0 +1,267 @@
+From a32b9af808a3410ee33215d5fa2a2ecdd642b939 Mon Sep 17 00:00:00 2001
+From: "Baptiste G." <70719480+BeeeFX@users.noreply.github.com>
+Date: Fri, 30 Oct 2026 14:50:50 +0000
+Subject: [PATCH 1/2] Properties panels: rows and drop-downs optionally drawn
+ like Nuke's
+
+- sliderHandleBar (Appearance > Main Window; off by default, Natron's round handle as before): a slider's handle
+  is a small upright bar in the slider colour, over a scale of thin ticks.
+- knobDimensionButtonLast (off by default): the button splitting a value into its dimensions ("4" on a colour)
+  comes after the colour swatch and wheel instead of before them.
+- knobAnimationButton (off by default): each row of an animatable value (a number or a colour, alone on its line,
+  outside the viewer) ends with a button opening its animation menu, the one a right-click on the value opens. The
+  button is named KnobAnimationButton for stylesheets.
+- pageTabNodeName (off by default): a node's first tab of controls, when its plug-in calls it "Controls", shows the
+  node's kind instead (Grade, Blur).
+- A drop-down (ComboBox) whose "flat" property is set shows its text and arrow without its box while it's at rest;
+  nothing in Natron sets the property, so nothing changes unless a stylesheet layer or script does.
+- Every new preference is read by name, so Settings.h doesn't change.
+
+Core patch 0004 of the BeeeFX fork (layer/patches/), written to be offered upstream as it is.
+
+Gap: layer/GAPS.md, "Nuke's look and habits" (the properties panels' knob rows).
+Size: 6 files, 104 lines added, 10 removed.
+upstream: not offered yet (Baptiste: keep the fork private for now).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ Engine/Settings.cpp        | 26 ++++++++++++++++++++++++++
+ Gui/ComboBox.cpp           |  7 ++++++-
+ Gui/DockablePanel.cpp      | 29 +++++++++++++++++++++++------
+ Gui/KnobGui.cpp            | 21 +++++++++++++++++++++
+ Gui/KnobGuiValue.cpp       |  7 +++++++
+ Gui/ScaleSliderQWidget.cpp | 24 +++++++++++++++++++++---
+ 6 files changed, 104 insertions(+), 10 deletions(-)
+
+diff --git a/Engine/Settings.cpp b/Engine/Settings.cpp
+index 416c2fbc2..002467427 100644
+--- a/Engine/Settings.cpp
++++ b/Engine/Settings.cpp
+@@ -823,6 +823,32 @@ Settings::initializeKnobsGuiColors()
+     _sliderColor->setName("slider");
+     _sliderColor->setSimplified(true);
+     _guiColorsTab->addKnob(_sliderColor);
++
++    // The properties panels' rows: read by the panels through their names (no member, so Settings.h stays as it is).
++    KnobBoolPtr sliderBar = AppManager::createKnob<KnobBool>( this, tr("Slider handle as a bar") );
++    sliderBar->setName("sliderHandleBar");
++    sliderBar->setHintToolTip( tr("When checked, a slider's handle is a small upright bar in the slider colour over a scale "
++                                  "of thin ticks; otherwise a round handle.") );
++    sliderBar->setDefaultValue(false);
++    _guiColorsTab->addKnob(sliderBar);
++    KnobBoolPtr animButton = AppManager::createKnob<KnobBool>( this, tr("Animation button on value rows") );
++    animButton->setName("knobAnimationButton");
++    animButton->setHintToolTip( tr("When checked, each row of an animatable value ends with a button opening its animation "
++                                   "menu (the menu a right-click on the value opens).") );
++    animButton->setDefaultValue(false);
++    _guiColorsTab->addKnob(animButton);
++    KnobBoolPtr dimensionsLast = AppManager::createKnob<KnobBool>( this, tr("Dimensions button last") );
++    dimensionsLast->setName("knobDimensionButtonLast");
++    dimensionsLast->setHintToolTip( tr("When checked, the button splitting a value into its dimensions (\"4\" on a colour) "
++                                       "comes after the colour buttons; otherwise before them.") );
++    dimensionsLast->setDefaultValue(false);
++    _guiColorsTab->addKnob(dimensionsLast);
++    KnobBoolPtr pageName = AppManager::createKnob<KnobBool>( this, tr("First tab named after the node") );
++    pageName->setName("pageTabNodeName");
++    pageName->setHintToolTip( tr("When checked, a node's first tab of controls, when its plug-in calls it \"Controls\", "
++                                 "shows the node's kind instead (Grade, Blur).") );
++    pageName->setDefaultValue(false);
++    _guiColorsTab->addKnob(pageName);
+ } // Settings::initializeKnobsGuiColors
+ 
+ void
+diff --git a/Gui/ComboBox.cpp b/Gui/ComboBox.cpp
+index f3e7dd384..9a4bfe01a 100644
+--- a/Gui/ComboBox.cpp
++++ b/Gui/ComboBox.cpp
+@@ -273,7 +273,12 @@ ComboBox::paintEvent(QPaintEvent* /*e*/)
+     QPainter p(this);
+     QRectF bRect = rect();
+ 
+-    {
++    // A drop-down whose "flat" property is set (none in Natron itself; a stylesheet layer may set it on a toolbar's)
++    // shows its text and arrow only, without its box, unless it's open or being changed.
++    if ( property("flat").toBool() && !_clicked && !_dirty && (_animation == 0) ) {
++        double fw = frameWidth();
++        bRect.adjust(fw, fw, -fw, -fw);
++    } else {
+         ///Now draw the frame
+ 
+         QColor fillColor;
+diff --git a/Gui/DockablePanel.cpp b/Gui/DockablePanel.cpp
+index 573aba38a..f7b073fd7 100644
+--- a/Gui/DockablePanel.cpp
++++ b/Gui/DockablePanel.cpp
+@@ -512,6 +512,26 @@ DockablePanel::createPageMainWidget(QWidget* parent) const
+     return clickableWidget;
+ }
+ 
++// Optionally (preference pageTabNodeName, read by name) a node's first page, when its plug-in calls it "Controls", shows
++// the node's kind (Grade, Blur) as its tab.
++static QString
++pageTabLabel(DockablePanel* panel,
++             const KnobPageGuiPtr& page)
++{
++    QString label = QString::fromUtf8( page->pageKnob.lock()->getLabel().c_str() );
++    KnobBool* named = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("pageTabNodeName").get() );
++    NodeSettingsPanel* nodePanel = dynamic_cast<NodeSettingsPanel*>(panel);
++    if ( label != QString::fromUtf8("Controls") || !named || !named->getValue() || !nodePanel || !nodePanel->getNode() ) {
++        return label;
++    }
++    const Plugin* plugin = nodePanel->getNode()->getNode()->getPlugin();
++    if ( !plugin || plugin->getLabelWithoutSuffix().isEmpty() ) {
++        return label;
++    }
++
++    return plugin->getLabelWithoutSuffix();
++}
++
+ void
+ DockablePanel::onPageLabelChanged(const KnobPageGuiPtr& page)
+ {
+@@ -519,8 +539,7 @@ DockablePanel::onPageLabelChanged(const KnobPageGuiPtr& page)
+         int nTabs = _imp->_tabWidget->count();
+         for (int i = 0; i < nTabs; ++i) {
+             if (_imp->_tabWidget->widget(i) == page->tab) {
+-                QString newLabel = QString::fromUtf8( page->pageKnob.lock()->getLabel().c_str() );
+-                _imp->_tabWidget->setTabText(i, newLabel);
++                _imp->_tabWidget->setTabText( i, pageTabLabel(this, page) );
+                 break;
+             }
+         }
+@@ -531,8 +550,7 @@ void
+ DockablePanel::addPageToPagesContainer(const KnobPageGuiPtr& page)
+ {
+     if (_imp->_tabWidget) {
+-        QString name = QString::fromUtf8( page->pageKnob.lock()->getLabel().c_str() );
+-        _imp->_tabWidget->addTab(page->tab, name);
++        _imp->_tabWidget->addTab( page->tab, pageTabLabel(this, page) );
+     } else {
+         _imp->_horizLayout->addWidget(page->tab);
+     }
+@@ -560,8 +578,7 @@ DockablePanel::setPagesOrder(const std::list<KnobPageGuiPtr>& orderedPages,
+     int index = 0;
+     int i = 0;
+     for (std::list<KnobPageGuiPtr>::const_iterator it = orderedPages.begin(); it != orderedPages.end(); ++it, ++i) {
+-        QString tabName = QString::fromUtf8( (*it)->pageKnob.lock()->getLabel().c_str() );
+-        _imp->_tabWidget->addTab( (*it)->tab, tabName );
++        _imp->_tabWidget->addTab( (*it)->tab, pageTabLabel(this, *it) );
+         if ( restorePageIndex && (*it == curPage) ) {
+             index = i;
+         }
+diff --git a/Gui/KnobGui.cpp b/Gui/KnobGui.cpp
+index 435b1ce06..9da125205 100644
+--- a/Gui/KnobGui.cpp
++++ b/Gui/KnobGui.cpp
+@@ -35,6 +35,9 @@
+ #include "Engine/EffectInstance.h"
+ #include "Engine/ViewIdx.h"
+ 
++#include "Engine/Settings.h"
++
++#include "Gui/Button.h"
+ #include "Gui/KnobGuiPrivate.h"
+ #include "Gui/GuiDefines.h"
+ #include "Gui/GuiApplicationManager.h"
+@@ -238,6 +241,24 @@ KnobGui::createGUI(QWidget* fieldContainer,
+         createWidget(layout);
+         onHasModificationsChanged();
+         updateToolTip();
++
++        // Optionally (preference knobAnimationButton, read by name) a row of an animatable value ends with a button
++        // opening its animation menu, the one a right-click on the value opens.
++        KnobBool* animButton = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("knobAnimationButton").get() );
++        const bool isValue = dynamic_cast<KnobDoubleBase*>( knob.get() ) || dynamic_cast<KnobInt*>( knob.get() );
++        if ( animButton && animButton->getValue() && isValue && knob->isAnimationEnabled() && knob->isNewLineActivated() &&
++             !_imp->container->isInViewerUIKnob() ) {
++            QPixmap pix;
++            appPTR->getIcon(NATRON_PIXMAP_CURVE, TO_DPIX(NATRON_MEDIUM_BUTTON_ICON_SIZE), &pix);
++            Button* button = new Button(QIcon(pix), QString(), fieldContainer);
++            button->setObjectName( QString::fromUtf8("KnobAnimationButton") );
++            button->setFixedSize( TO_DPIX(NATRON_MEDIUM_BUTTON_SIZE), TO_DPIY(NATRON_MEDIUM_BUTTON_SIZE) );
++            button->setIconSize( QSize( TO_DPIX(NATRON_MEDIUM_BUTTON_ICON_SIZE), TO_DPIY(NATRON_MEDIUM_BUTTON_ICON_SIZE) ) );
++            button->setFocusPolicy(Qt::NoFocus);
++            button->setToolTip( tr("Animation menu") );
++            QObject::connect( button, &QAbstractButton::clicked, this, [this]() { showRightClickMenuForDimension(QPoint(), -1); } );
++            layout->addWidget(button);
++        }
+     }
+ 
+ 
+diff --git a/Gui/KnobGuiValue.cpp b/Gui/KnobGuiValue.cpp
+index 10512d2eb..1a2e2ca55 100644
+--- a/Gui/KnobGuiValue.cpp
++++ b/Gui/KnobGuiValue.cpp
+@@ -503,6 +503,13 @@ KnobGuiValue::createWidget(QHBoxLayout* layout)
+     }
+ 
+     addExtraWidgets(containerLayout);
++
++    // Optionally (preference knobDimensionButtonLast, read by name) the dimensions button after the colour buttons.
++    KnobBool* dimensionsLast = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("knobDimensionButtonLast").get() );
++    if ( _imp->dimensionSwitchButton && dimensionsLast && dimensionsLast->getValue() ) {
++        containerLayout->removeWidget(_imp->dimensionSwitchButton);
++        containerLayout->addWidget(_imp->dimensionSwitchButton);
++    }
+ } // createWidget
+ 
+ void
+diff --git a/Gui/ScaleSliderQWidget.cpp b/Gui/ScaleSliderQWidget.cpp
+index 46c3a4f09..1bc50072f 100644
+--- a/Gui/ScaleSliderQWidget.cpp
++++ b/Gui/ScaleSliderQWidget.cpp
+@@ -56,6 +56,16 @@ GCC_DIAG_UNUSED_PRIVATE_FIELD_ON
+ 
+ NATRON_NAMESPACE_ENTER
+ 
++// Preference sliderHandleBar (off by default): the handle as a small upright bar over thin ticks. Read by name, so
++// Settings.h stays as it is.
++static bool
++sliderHandleBar()
++{
++    KnobBool* k = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("sliderHandleBar").get() );
++
++    return k && k->getValue();
++}
++
+ struct ScaleSliderQWidgetPrivate
+ {
+     Gui* gui;
+@@ -512,6 +522,7 @@ ScaleSliderQWidget::paintEvent(QPaintEvent* /*e*/)
+     const double largestTickSize = range * largestTickSizePixel / rangePixel;
+     const double minTickSizeTextPixel = fontM.horizontalAdvance( QLatin1String("00") ); // AXIS-SPECIFIC
+     const double minTickSizeText = range * minTickSizeTextPixel / rangePixel;
++    const bool bar = sliderHandleBar();
+     for (int i = m1; i <= m2; ++i) {
+         double value = i * smallTickSize + offset;
+         const double tickSize = ticks[i - m1] * smallTickSize;
+@@ -519,7 +530,7 @@ ScaleSliderQWidget::paintEvent(QPaintEvent* /*e*/)
+         QColor color(textColor);
+         color.setAlphaF(alpha);
+         QPen pen(color);
+-        pen.setWidthF(1.9);
++        pen.setWidthF(bar ? 1. : 1.9);
+         p.setPen(pen);
+ 
+         // for Int slider, because smallTickSize is at least 1, isFloating can never be true
+@@ -631,8 +642,15 @@ ScaleSliderQWidget::paintEvent(QPaintEvent* /*e*/)
+         //p.setOpacity(0.8); // also sets opacity of the brush/fill!
+         p.setPen(pen);
+     }
+-    // the magic 2.8 factor is here so that the full antialiased circle is not clipped
+-    p.drawEllipse(QPointF(positionValue, lineYpos), TO_DPIX(SLIDER_HEIGHT/2.8), TO_DPIX(SLIDER_HEIGHT/2.8));
++    if (bar) {
++        // A small upright bar across the scale's line, outlined.
++        const double halfW = TO_DPIX(SLIDER_WIDTH) / 2., halfH = TO_DPIY(SLIDER_HEIGHT) / 2.6;
++        p.setRenderHints(QPainter::Antialiasing, false);
++        p.drawRect( QRectF(std::floor(positionValue - halfW) + 0.5, std::floor(lineYpos - halfH) + 0.5, 2 * halfW, 2 * halfH) );
++    } else {
++        // the magic 2.8 factor is here so that the full antialiased circle is not clipped
++        p.drawEllipse(QPointF(positionValue, lineYpos), TO_DPIX(SLIDER_HEIGHT/2.8), TO_DPIX(SLIDER_HEIGHT/2.8));
++    }
+     p.setRenderHints(rh);
+ #endif
+ } // paintEvent
+-- 
+2.48.1.windows.1
+

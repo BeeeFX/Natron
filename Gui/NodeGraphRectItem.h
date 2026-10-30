@@ -40,6 +40,9 @@ CLANG_DIAG_ON(uninitialized)
 
 NATRON_NAMESPACE_ENTER
 
+// QGraphicsItem::data() key: when true, the item is drawn with pointed left and right ends (Viewer nodes).
+#define kNodeGraphRectPointedEnds 0x504E
+
 class NodeGraphRectItem
 : public QGraphicsRectItem
 {

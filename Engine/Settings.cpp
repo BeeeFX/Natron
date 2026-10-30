@@ -823,6 +823,32 @@ Settings::initializeKnobsGuiColors()
     _sliderColor->setName("slider");
     _sliderColor->setSimplified(true);
     _guiColorsTab->addKnob(_sliderColor);
+
+    // The properties panels' rows: read by the panels through their names (no member, so Settings.h stays as it is).
+    KnobBoolPtr sliderBar = AppManager::createKnob<KnobBool>( this, tr("Slider handle as a bar") );
+    sliderBar->setName("sliderHandleBar");
+    sliderBar->setHintToolTip( tr("When checked, a slider's handle is a small upright bar in the slider colour over a scale "
+                                  "of thin ticks; otherwise a round handle.") );
+    sliderBar->setDefaultValue(false);
+    _guiColorsTab->addKnob(sliderBar);
+    KnobBoolPtr animButton = AppManager::createKnob<KnobBool>( this, tr("Animation button on value rows") );
+    animButton->setName("knobAnimationButton");
+    animButton->setHintToolTip( tr("When checked, each row of an animatable value ends with a button opening its animation "
+                                   "menu (the menu a right-click on the value opens).") );
+    animButton->setDefaultValue(false);
+    _guiColorsTab->addKnob(animButton);
+    KnobBoolPtr dimensionsLast = AppManager::createKnob<KnobBool>( this, tr("Dimensions button last") );
+    dimensionsLast->setName("knobDimensionButtonLast");
+    dimensionsLast->setHintToolTip( tr("When checked, the button splitting a value into its dimensions (\"4\" on a colour) "
+                                       "comes after the colour buttons; otherwise before them.") );
+    dimensionsLast->setDefaultValue(false);
+    _guiColorsTab->addKnob(dimensionsLast);
+    KnobBoolPtr pageName = AppManager::createKnob<KnobBool>( this, tr("First tab named after the node") );
+    pageName->setName("pageTabNodeName");
+    pageName->setHintToolTip( tr("When checked, a node's first tab of controls, when its plug-in calls it \"Controls\", "
+                                 "shows the node's kind instead (Grade, Blur).") );
+    pageName->setDefaultValue(false);
+    _guiColorsTab->addKnob(pageName);
 } // Settings::initializeKnobsGuiColors
 
 void
@@ -1032,6 +1058,39 @@ Settings::initializeKnobsNodeGraphDrawing()
     readerPreview->setHintToolTip( tr("When checked, a new Read node shows a small picture of its image in the node graph.") );
     readerPreview->setDefaultValue(true);
     _nodegraphColorsTab->addKnob(readerPreview);
+
+    // Read by Edge, NodeGui and BackdropGui through their names (no member, so this header stays as it is).
+    KnobBoolPtr labelNearInput = AppManager::createKnob<KnobBool>( this, tr("Input labels near the node") );
+    labelNearInput->setName("linkLabelNearInput");
+    labelNearInput->setHintToolTip( tr("When checked, a link's input label (A, B, Mask) sits beside the link close to the "
+                                       "node it feeds; otherwise in the middle of the link.") );
+    labelNearInput->setDefaultValue(false);
+    _nodegraphColorsTab->addKnob(labelNearInput);
+    KnobBoolPtr viewerPointed = AppManager::createKnob<KnobBool>( this, tr("Viewer nodes with pointed ends") );
+    viewerPointed->setName("viewerNodePointed");
+    viewerPointed->setHintToolTip( tr("When checked, Viewer nodes are drawn with pointed left and right ends, so they stand "
+                                      "out from the nodes that process images.") );
+    viewerPointed->setDefaultValue(false);
+    _nodegraphColorsTab->addKnob(viewerPointed);
+    KnobBoolPtr backdropLabelOnly = AppManager::createKnob<KnobBool>( this, tr("Backdrops show their label only") );
+    backdropLabelOnly->setName("backdropLabelOnly");
+    backdropLabelOnly->setHintToolTip( tr("When checked, a backdrop shows no name strip, only its label, large, at its top "
+                                          "left; otherwise its name in a strip and the label under it.") );
+    backdropLabelOnly->setDefaultValue(false);
+    _nodegraphColorsTab->addKnob(backdropLabelOnly);
+    KnobBoolPtr flatBadges = AppManager::createKnob<KnobBool>( this, tr("Flat node badges") );
+    flatBadges->setName("nodeBadgesFlat");
+    flatBadges->setHintToolTip( tr("When checked, the small round marks on a node's corners (E for an expression, P for "
+                                   "the input passed through, V for views) are flat discs; otherwise shaded.") );
+    flatBadges->setDefaultValue(false);
+    _nodegraphColorsTab->addKnob(flatBadges);
+    KnobBoolPtr keepSize = AppManager::createKnob<KnobBool>( this, tr("Node names keep their size") );
+    keepSize->setName("nodeNameKeepsSize");
+    keepSize->setHintToolTip( tr("When checked, a node whose label has no text of its own draws its name like every other "
+                                 "node's; otherwise the name grows once the node's panel has been opened (the label editor "
+                                 "leaves an empty font in the label).") );
+    keepSize->setDefaultValue(false);
+    _nodegraphColorsTab->addKnob(keepSize);
 
     struct IntDef { KnobIntPtr* knob; const char* name; QString label; int def, min, max; QString hint; };
     const IntDef ints[] = {

@@ -335,6 +335,24 @@ def _layer_probe():
         side = int(skin.settings().get("toolbar_icon", 20))
         say(polished and all(b.iconSize().width() >= side for b in polished),
             "the left toolbar's buttons show their icons at " + str(side) + " pixels")
+        # The window arranged like Nuke's once it's up (natron_layer/arrange.py, from skin.polish).
+        done = skin.last_polish or {}
+        say(done.get("viewers", 0) >= 1 and not done.get("viewers left as Natron's"),
+            "the viewer's two bars are in Nuke's order: " + str(done))
+        bars = [w.objectName() for w in window.findChildren(QtWidgets.QWidget)
+                if w.objectName() in ("SngViewerBar1", "SngViewerBar2", "SngPlayerBar", "SngCurrentFrame")]
+        say(len(set(bars)) == 4, "the viewer's bars, playback bar and current frame are named for the stylesheet ("
+            + ", ".join(sorted(set(bars))) + ")")
+        say(any(a.text() == "Workspace" for a in window.menuBar().actions()), "Natron's Layout menu reads Workspace")
+        # This fork's builds draw the properties rows and parts of the node graph like Nuke's (core patches 0004, 0005).
+        if patched:
+            settings = NatronEngine.natron.getSettings()
+            wanted = ("sliderHandleBar", "knobDimensionButtonLast", "knobAnimationButton", "pageTabNodeName",
+                      "linkLabelNearInput", "viewerNodePointed", "backdropLabelOnly", "nodeBadgesFlat", "nodeNameKeepsSize")
+            missing = [n for n in wanted if settings.getParam(n) is None]
+            off = [n for n in wanted if n not in missing and not settings.getParam(n).get()]
+            say(not missing and not off, "the Nuke drawing preferences of patches 0004 and 0005 are on for the session"
+                + (" (missing: " + ", ".join(missing) + ")" if missing else "") + (" (off: " + ", ".join(off) + ")" if off else ""))
 
     def tools(app, natron_app):
         """Roadmap items 5 to 7 in the window: gizmos by their ID, similar colour, the ToolSets pasted with Natron's
