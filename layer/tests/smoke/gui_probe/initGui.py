@@ -197,14 +197,19 @@ def _layer_probe():
                 if node.getInput(i) is not None:
                     node.disconnectInput(i)
             node.setPosition(area.left() + 80 + dx, area.top() + 80)
-        app.processEvents()
+        # Let the deferred file check run and the graph repaint (no fixed wait: a few turns of the event loop).
+        for _ in range(20):
+            app.processEvents()
+        whole = graph.viewport().grab().toImage()
 
         def redness(node):
             x, y = node.getPosition()
             w, h = node.getSize()
             top_left = graph.mapFromScene(QtCore.QPointF(x + w * 0.15, y + h * 0.2))
             bottom_right = graph.mapFromScene(QtCore.QPointF(x + w * 0.85, y + h * 0.8))
-            image = graph.viewport().grab(QtCore.QRect(top_left, bottom_right)).toImage()
+            box = QtCore.QRect(top_left, bottom_right).intersected(whole.rect())
+            boxes.append("%dx%d at %d,%d" % (box.width(), box.height(), box.x(), box.y()))
+            image = whole.copy(box)
             total, count = [0, 0, 0], 0
             for i in range(image.width()):
                 for j in range(image.height()):
@@ -215,10 +220,11 @@ def _layer_probe():
                 return 0.0
             return total[0] / count - (total[1] + total[2]) / (2.0 * count)
 
+        boxes = []
         red_missing, red_normal = redness(missing), redness(normal)
         say(red_missing > 60 and red_normal < 30,
-            "a node in error is drawn in the error colour (a Read of a missing file: redness %d; a Grade: %d)"
-            % (red_missing, red_normal))
+            "a node in error is drawn in the error colour (a Read of a missing file: redness %d; a Grade: %d; %s)"
+            % (red_missing, red_normal, ", ".join(boxes)))
         x, y = missing.getPosition()
         w, h = missing.getSize()
         point = graph.mapFromScene(QtCore.QPointF(x + w / 2.0, y + h / 2.0))
