@@ -1,0 +1,17 @@
+diff --git a/src/graph/node_type.h b/src/graph/node_type.h
+index 04c1e96..cfea873 100644
+--- a/src/graph/node_type.h
++++ b/src/graph/node_type.h
+@@ -159,7 +159,11 @@ struct NodeType {
+   const NodeType *structname::get_node_type() \
+   { \
+     if (node_type_ == nullptr) { \
+-      thread_scoped_lock lock(node_type_mutex_); \
++      /* A mutex made on first use: another file's static values can ask for this type before this \
++       * file's own are made (Background asks for Shader), and with GCC 16's MinGW std::mutex locking \
++       * node_type_mutex_ before its construction stopped the program at start. */ \
++      static thread_mutex first_use_mutex; \
++      thread_scoped_lock lock(first_use_mutex); \
+       if (node_type_ == nullptr) { \
+         node_type_ = structname::register_type<structname>(); \
+       } \

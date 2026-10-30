@@ -114,15 +114,75 @@ number = 78
 size = 18
 
 [[icon]]
+file = "addPoints.png"
+natron = "NATRON_PIXMAP_ADD_POINTS"
+number = 93
+size = 18
+
+[[icon]]
+file = "addTrack.png"
+natron = "NATRON_PIXMAP_ADD_TRACK"
+number = 135
+size = 18
+
+[[icon]]
+file = "addUserKey.png"
+natron = "NATRON_PIXMAP_ADD_USER_KEY"
+number = 136
+size = 18
+
+[[icon]]
+file = "autoKeyingDisabled.png"
+natron = "NATRON_PIXMAP_AUTO_KEYING_DISABLED"
+number = 104
+size = 18
+
+[[icon]]
+file = "autoKeyingEnabled.png"
+natron = "NATRON_PIXMAP_AUTO_KEYING_ENABLED"
+number = 103
+size = 18
+
+[[icon]]
 file = "back1.png"
 natron = "NATRON_PIXMAP_PLAYER_PREVIOUS"
 number = 0
 size = 18
 
 [[icon]]
+file = "bezier.png"
+natron = "NATRON_PIXMAP_BEZIER"
+number = 87
+size = 18
+
+[[icon]]
+file = "bezier32.png"
+natron = "NATRON_PIXMAP_BEZIER_32"
+number = 90
+size = 18
+
+[[icon]]
+file = "bold_checked.png"
+natron = "NATRON_PIXMAP_BOLD_CHECKED"
+number = 126
+size = 18
+
+[[icon]]
+file = "bold_unchecked.png"
+natron = "NATRON_PIXMAP_BOLD_UNCHECKED"
+number = 127
+size = 18
+
+[[icon]]
 file = "bounce.png"
 natron = "NATRON_PIXMAP_PLAYER_BOUNCE"
 number = 17
+size = 18
+
+[[icon]]
+file = "centerOnTrack.png"
+natron = "NATRON_PIXMAP_CENTER_VIEWER_ON_TRACK"
+number = 144
 size = 18
 
 [[icon]]
@@ -210,6 +270,42 @@ number = 55
 size = 18
 
 [[icon]]
+file = "createKeyOnMoveOff.png"
+natron = "NATRON_PIXMAP_CREATE_USER_KEY_ON_MOVE_OFF"
+number = 142
+size = 18
+
+[[icon]]
+file = "createKeyOnMoveOn.png"
+natron = "NATRON_PIXMAP_CREATE_USER_KEY_ON_MOVE_ON"
+number = 141
+size = 18
+
+[[icon]]
+file = "cursor.png"
+natron = "NATRON_PIXMAP_SELECT_ALL"
+number = 99
+size = 18
+
+[[icon]]
+file = "curve.png"
+natron = "NATRON_PIXMAP_CURVE"
+number = 89
+size = 18
+
+[[icon]]
+file = "cuspPoints.png"
+natron = "NATRON_PIXMAP_CUSP_POINTS"
+number = 95
+size = 18
+
+[[icon]]
+file = "ellipse.png"
+natron = "NATRON_PIXMAP_ELLIPSE"
+number = 91
+size = 18
+
+[[icon]]
 file = "enter_group.png"
 natron = "NATRON_PIXMAP_ENTER_GROUP"
 number = 156
@@ -231,6 +327,30 @@ size = 18
 file = "expoON.png"
 natron = "NATRON_PIXMAP_VIEWER_GAIN_ENABLED"
 number = 167
+size = 18
+
+[[icon]]
+file = "featherDisabled.png"
+natron = "NATRON_PIXMAP_FEATHER_UNVISIBLE"
+number = 110
+size = 18
+
+[[icon]]
+file = "featherEnabled.png"
+natron = "NATRON_PIXMAP_FEATHER_VISIBLE"
+number = 109
+size = 18
+
+[[icon]]
+file = "featherLinkDisabled.png"
+natron = "NATRON_PIXMAP_FEATHER_LINK_DISABLED"
+number = 108
+size = 18
+
+[[icon]]
+file = "featherLinkEnabled.png"
+natron = "NATRON_PIXMAP_FEATHER_LINK_ENABLED"
+number = 107
 size = 18
 
 [[icon]]
@@ -288,15 +408,81 @@ number = 24
 size = 18
 
 [[icon]]
+file = "hideTrackError.png"
+natron = "NATRON_PIXMAP_HIDE_TRACK_ERROR"
+number = 139
+size = 18
+
+[[icon]]
 file = "hide_unmodified.png"
 natron = "NATRON_PIXMAP_HIDE_UNMODIFIED"
 number = 26
 size = 18
 
 [[icon]]
+file = "interp_break.png"
+natron = "NATRON_PIXMAP_INTERP_BREAK"
+number = 224
+size = 18
+
+[[icon]]
+file = "interp_constant.png"
+natron = "NATRON_PIXMAP_INTERP_CONSTANT"
+number = 223
+size = 18
+
+[[icon]]
+file = "interp_curve.png"
+natron = "NATRON_PIXMAP_INTERP_CURVE"
+number = 222
+size = 18
+
+[[icon]]
+file = "interp_curve_c.png"
+natron = "NATRON_PIXMAP_INTERP_CURVE_C"
+number = 225
+size = 18
+
+[[icon]]
+file = "interp_curve_h.png"
+natron = "NATRON_PIXMAP_INTERP_CURVE_H"
+number = 226
+size = 18
+
+[[icon]]
+file = "interp_curve_r.png"
+natron = "NATRON_PIXMAP_INTERP_CURVE_R"
+number = 227
+size = 18
+
+[[icon]]
+file = "interp_curve_z.png"
+natron = "NATRON_PIXMAP_INTERP_CURVE_Z"
+number = 228
+size = 18
+
+[[icon]]
+file = "interp_linear.png"
+natron = "NATRON_PIXMAP_INTERP_LINEAR"
+number = 221
+size = 18
+
+[[icon]]
 file = "inverted.png"
 natron = "NATRON_PIXMAP_INVERTED"
 number = 80
+size = 18
+
+[[icon]]
+file = "italic_checked.png"
+natron = "NATRON_PIXMAP_ITALIC_CHECKED"
+number = 128
+size = 18
+
+[[icon]]
+file = "italic_unchecked.png"
+natron = "NATRON_PIXMAP_ITALIC_UNCHECKED"
+number = 129
 size = 18
 
 [[icon]]
@@ -354,6 +540,240 @@ number = 21
 size = 18
 
 [[icon]]
+file = "merge_atop.png"
+natron = "NATRON_PIXMAP_MERGE_ATOP"
+number = 178
+size = 18
+
+[[icon]]
+file = "merge_average.png"
+natron = "NATRON_PIXMAP_MERGE_AVERAGE"
+number = 179
+size = 18
+
+[[icon]]
+file = "merge_color.png"
+natron = "NATRON_PIXMAP_MERGE_COLOR"
+number = 180
+size = 18
+
+[[icon]]
+file = "merge_color_burn.png"
+natron = "NATRON_PIXMAP_MERGE_COLOR_BURN"
+number = 181
+size = 18
+
+[[icon]]
+file = "merge_color_dodge.png"
+natron = "NATRON_PIXMAP_MERGE_COLOR_DODGE"
+number = 182
+size = 18
+
+[[icon]]
+file = "merge_conjoint_over.png"
+natron = "NATRON_PIXMAP_MERGE_CONJOINT_OVER"
+number = 183
+size = 18
+
+[[icon]]
+file = "merge_copy.png"
+natron = "NATRON_PIXMAP_MERGE_COPY"
+number = 184
+size = 18
+
+[[icon]]
+file = "merge_difference.png"
+natron = "NATRON_PIXMAP_MERGE_DIFFERENCE"
+number = 185
+size = 18
+
+[[icon]]
+file = "merge_disjoint_over.png"
+natron = "NATRON_PIXMAP_MERGE_DISJOINT_OVER"
+number = 186
+size = 18
+
+[[icon]]
+file = "merge_divide.png"
+natron = "NATRON_PIXMAP_MERGE_DIVIDE"
+number = 187
+size = 18
+
+[[icon]]
+file = "merge_exclusion.png"
+natron = "NATRON_PIXMAP_MERGE_EXCLUSION"
+number = 188
+size = 18
+
+[[icon]]
+file = "merge_freeze.png"
+natron = "NATRON_PIXMAP_MERGE_FREEZE"
+number = 189
+size = 18
+
+[[icon]]
+file = "merge_from.png"
+natron = "NATRON_PIXMAP_MERGE_FROM"
+number = 190
+size = 18
+
+[[icon]]
+file = "merge_geometric.png"
+natron = "NATRON_PIXMAP_MERGE_GEOMETRIC"
+number = 191
+size = 18
+
+[[icon]]
+file = "merge_grain_extract.png"
+natron = "NATRON_PIXMAP_MERGE_GRAIN_EXTRACT"
+number = 192
+size = 18
+
+[[icon]]
+file = "merge_grain_merge.png"
+natron = "NATRON_PIXMAP_MERGE_GRAIN_MERGE"
+number = 193
+size = 18
+
+[[icon]]
+file = "merge_hard_light.png"
+natron = "NATRON_PIXMAP_MERGE_HARD_LIGHT"
+number = 194
+size = 18
+
+[[icon]]
+file = "merge_hue.png"
+natron = "NATRON_PIXMAP_MERGE_HUE"
+number = 195
+size = 18
+
+[[icon]]
+file = "merge_hypot.png"
+natron = "NATRON_PIXMAP_MERGE_HYPOT"
+number = 196
+size = 18
+
+[[icon]]
+file = "merge_in.png"
+natron = "NATRON_PIXMAP_MERGE_IN"
+number = 197
+size = 18
+
+[[icon]]
+file = "merge_luminosity.png"
+natron = "NATRON_PIXMAP_MERGE_LUMINOSITY"
+number = 198
+size = 18
+
+[[icon]]
+file = "merge_mask.png"
+natron = "NATRON_PIXMAP_MERGE_MASK"
+number = 199
+size = 18
+
+[[icon]]
+file = "merge_matte.png"
+natron = "NATRON_PIXMAP_MERGE_MATTE"
+number = 200
+size = 18
+
+[[icon]]
+file = "merge_max.png"
+natron = "NATRON_PIXMAP_MERGE_MAX"
+number = 201
+size = 18
+
+[[icon]]
+file = "merge_min.png"
+natron = "NATRON_PIXMAP_MERGE_MIN"
+number = 202
+size = 18
+
+[[icon]]
+file = "merge_minus.png"
+natron = "NATRON_PIXMAP_MERGE_MINUS"
+number = 203
+size = 18
+
+[[icon]]
+file = "merge_multiply.png"
+natron = "NATRON_PIXMAP_MERGE_MULTIPLY"
+number = 204
+size = 18
+
+[[icon]]
+file = "merge_out.png"
+natron = "NATRON_PIXMAP_MERGE_OUT"
+number = 205
+size = 18
+
+[[icon]]
+file = "merge_over.png"
+natron = "NATRON_PIXMAP_MERGE_OVER"
+number = 206
+size = 18
+
+[[icon]]
+file = "merge_overlay.png"
+natron = "NATRON_PIXMAP_MERGE_OVERLAY"
+number = 207
+size = 18
+
+[[icon]]
+file = "merge_pinlight.png"
+natron = "NATRON_PIXMAP_MERGE_PINLIGHT"
+number = 208
+size = 18
+
+[[icon]]
+file = "merge_plus.png"
+natron = "NATRON_PIXMAP_MERGE_PLUS"
+number = 209
+size = 18
+
+[[icon]]
+file = "merge_reflect.png"
+natron = "NATRON_PIXMAP_MERGE_REFLECT"
+number = 210
+size = 18
+
+[[icon]]
+file = "merge_saturation.png"
+natron = "NATRON_PIXMAP_MERGE_SATURATION"
+number = 211
+size = 18
+
+[[icon]]
+file = "merge_screen.png"
+natron = "NATRON_PIXMAP_MERGE_SCREEN"
+number = 212
+size = 18
+
+[[icon]]
+file = "merge_soft_light.png"
+natron = "NATRON_PIXMAP_MERGE_SOFT_LIGHT"
+number = 213
+size = 18
+
+[[icon]]
+file = "merge_stencil.png"
+natron = "NATRON_PIXMAP_MERGE_STENCIL"
+number = 214
+size = 18
+
+[[icon]]
+file = "merge_under.png"
+natron = "NATRON_PIXMAP_MERGE_UNDER"
+number = 215
+size = 18
+
+[[icon]]
+file = "merge_xor.png"
+natron = "NATRON_PIXMAP_MERGE_XOR"
+number = 216
+size = 18
+
+[[icon]]
 file = "minimize.png"
 natron = "NATRON_PIXMAP_MINIMIZE_WIDGET"
 number = 22
@@ -378,9 +798,21 @@ number = 173
 size = 18
 
 [[icon]]
+file = "nextUserKey.png"
+natron = "NATRON_PIXMAP_NEXT_USER_KEY"
+number = 154
+size = 18
+
+[[icon]]
 file = "open-file.png"
 natron = "NATRON_PIXMAP_OPEN_FILE"
 number = 53
+size = 18
+
+[[icon]]
+file = "openCloseCurve.png"
+natron = "NATRON_PIXMAP_OPEN_CLOSE_CURVE"
+number = 98
 size = 18
 
 [[icon]]
@@ -438,6 +870,12 @@ number = 7
 size = 18
 
 [[icon]]
+file = "prevUserKey.png"
+natron = "NATRON_PIXMAP_PREV_USER_KEY"
+number = 155
+size = 18
+
+[[icon]]
 file = "previousIncr.png"
 natron = "NATRON_PIXMAP_PLAYER_PREVIOUS_INCR"
 number = 6
@@ -453,6 +891,12 @@ size = 18
 file = "readImage.png"
 natron = "NATRON_PIXMAP_READ_IMAGE"
 number = 74
+size = 18
+
+[[icon]]
+file = "rectangle.png"
+natron = "NATRON_PIXMAP_RECTANGLE"
+number = 92
 size = 18
 
 [[icon]]
@@ -480,9 +924,33 @@ number = 46
 size = 18
 
 [[icon]]
+file = "removeFeather.png"
+natron = "NATRON_PIXMAP_REMOVE_FEATHER"
+number = 97
+size = 18
+
+[[icon]]
 file = "removeKF.png"
 natron = "NATRON_PIXMAP_REMOVE_KEYFRAME"
 number = 79
+size = 18
+
+[[icon]]
+file = "removePoints.png"
+natron = "NATRON_PIXMAP_REMOVE_POINTS"
+number = 94
+size = 18
+
+[[icon]]
+file = "removeUserKey.png"
+natron = "NATRON_PIXMAP_REMOVE_USER_KEY"
+number = 137
+size = 18
+
+[[icon]]
+file = "removeUserKeys.png"
+natron = "NATRON_PIXMAP_RESET_USER_KEYS"
+number = 143
 size = 18
 
 [[icon]]
@@ -495,6 +963,12 @@ size = 18
 file = "renderScale_checked.png"
 natron = "NATRON_PIXMAP_VIEWER_RENDER_SCALE_CHECKED"
 number = 50
+size = 18
+
+[[icon]]
+file = "resetTrackOffset.png"
+natron = "NATRON_PIXMAP_RESET_TRACK_OFFSET"
+number = 140
 size = 18
 
 [[icon]]
@@ -522,15 +996,147 @@ number = 8
 size = 18
 
 [[icon]]
+file = "rippleEditDisabled.png"
+natron = "NATRON_PIXMAP_RIPPLE_EDIT_DISABLED"
+number = 112
+size = 18
+
+[[icon]]
+file = "rippleEditEnabled.png"
+natron = "NATRON_PIXMAP_RIPPLE_EDIT_ENABLED"
+number = 111
+size = 18
+
+[[icon]]
+file = "rotoToolPencil.png"
+natron = "NATRON_PIXMAP_PENCIL"
+number = 88
+size = 18
+
+[[icon]]
+file = "roto_merge.png"
+natron = "NATRON_PIXMAP_ROTO_MERGE"
+number = 56
+size = 18
+
+[[icon]]
+file = "rotopaint_blur.png"
+natron = "NATRON_PIXMAP_ROTOPAINT_BLUR"
+number = 113
+size = 18
+
+[[icon]]
+file = "rotopaint_buildup_off.png"
+natron = "NATRON_PIXMAP_ROTOPAINT_BUILDUP_DISABLED"
+number = 115
+size = 18
+
+[[icon]]
+file = "rotopaint_buildup_on.png"
+natron = "NATRON_PIXMAP_ROTOPAINT_BUILDUP_ENABLED"
+number = 114
+size = 18
+
+[[icon]]
+file = "rotopaint_burn.png"
+natron = "NATRON_PIXMAP_ROTOPAINT_BURN"
+number = 116
+size = 18
+
+[[icon]]
+file = "rotopaint_clone.png"
+natron = "NATRON_PIXMAP_ROTOPAINT_CLONE"
+number = 117
+size = 18
+
+[[icon]]
+file = "rotopaint_dodge.png"
+natron = "NATRON_PIXMAP_ROTOPAINT_DODGE"
+number = 118
+size = 18
+
+[[icon]]
+file = "rotopaint_eraser.png"
+natron = "NATRON_PIXMAP_ROTOPAINT_ERASER"
+number = 119
+size = 18
+
+[[icon]]
+file = "rotopaint_pressure_off.png"
+natron = "NATRON_PIXMAP_ROTOPAINT_PRESSURE_DISABLED"
+number = 121
+size = 18
+
+[[icon]]
+file = "rotopaint_pressure_on.png"
+natron = "NATRON_PIXMAP_ROTOPAINT_PRESSURE_ENABLED"
+number = 120
+size = 18
+
+[[icon]]
+file = "rotopaint_reveal.png"
+natron = "NATRON_PIXMAP_ROTOPAINT_REVEAL"
+number = 122
+size = 18
+
+[[icon]]
+file = "rotopaint_sharpen.png"
+natron = "NATRON_PIXMAP_ROTOPAINT_SHARPEN"
+number = 123
+size = 18
+
+[[icon]]
+file = "rotopaint_smear.png"
+natron = "NATRON_PIXMAP_ROTOPAINT_SMEAR"
+number = 124
+size = 18
+
+[[icon]]
+file = "rotopaint_solid.png"
+natron = "NATRON_PIXMAP_ROTOPAINT_SOLID"
+number = 125
+size = 18
+
+[[icon]]
 file = "saveScript.png"
 natron = "NATRON_PIXMAP_SCRIPT_SAVE_SCRIPT"
 number = 177
 size = 18
 
 [[icon]]
+file = "selectCurves.png"
+natron = "NATRON_PIXMAP_SELECT_CURVES"
+number = 102
+size = 18
+
+[[icon]]
+file = "selectFeather.png"
+natron = "NATRON_PIXMAP_SELECT_FEATHER"
+number = 101
+size = 18
+
+[[icon]]
+file = "selectPoints.png"
+natron = "NATRON_PIXMAP_SELECT_POINTS"
+number = 100
+size = 18
+
+[[icon]]
 file = "settings.png"
 natron = "NATRON_PIXMAP_SETTINGS"
 number = 157
+size = 18
+
+[[icon]]
+file = "showTrackError.png"
+natron = "NATRON_PIXMAP_SHOW_TRACK_ERROR"
+number = 138
+size = 18
+
+[[icon]]
+file = "smoothPoints.png"
+natron = "NATRON_PIXMAP_SMOOTH_POINTS"
+number = 96
 size = 18
 
 [[icon]]
@@ -543,6 +1149,18 @@ size = 18
 file = "splitVertically.png"
 natron = "NATRON_PIXMAP_TAB_WIDGET_SPLIT_VERTICALLY"
 number = 39
+size = 18
+
+[[icon]]
+file = "stickySelectionDisabled.png"
+natron = "NATRON_PIXMAP_STICKY_SELECTION_DISABLED"
+number = 106
+size = 18
+
+[[icon]]
+file = "stickySelectionEnabled.png"
+natron = "NATRON_PIXMAP_STICKY_SELECTION_ENABLED"
+number = 105
 size = 18
 
 [[icon]]
@@ -567,6 +1185,60 @@ size = 18
 file = "timelineOut.png"
 natron = "NATRON_PIXMAP_PLAYER_TIMELINE_OUT"
 number = 20
+size = 18
+
+[[icon]]
+file = "trackAllKeyframes.png"
+natron = "NATRON_PIXMAP_TRACK_ALL_KEYS"
+number = 152
+size = 18
+
+[[icon]]
+file = "trackBackwardOff.png"
+natron = "NATRON_PIXMAP_TRACK_BACKWARD_OFF"
+number = 146
+size = 18
+
+[[icon]]
+file = "trackBackwardOn.png"
+natron = "NATRON_PIXMAP_TRACK_BACKWARD_ON"
+number = 145
+size = 18
+
+[[icon]]
+file = "trackCurrentKeyframe.png"
+natron = "NATRON_PIXMAP_TRACK_CURRENT_KEY"
+number = 153
+size = 18
+
+[[icon]]
+file = "trackForwardOff.png"
+natron = "NATRON_PIXMAP_TRACK_FORWARD_OFF"
+number = 148
+size = 18
+
+[[icon]]
+file = "trackForwardOn.png"
+natron = "NATRON_PIXMAP_TRACK_FORWARD_ON"
+number = 147
+size = 18
+
+[[icon]]
+file = "trackNext.png"
+natron = "NATRON_PIXMAP_TRACK_NEXT"
+number = 150
+size = 18
+
+[[icon]]
+file = "trackPrev.png"
+natron = "NATRON_PIXMAP_TRACK_PREVIOUS"
+number = 149
+size = 18
+
+[[icon]]
+file = "trackRange.png"
+natron = "NATRON_PIXMAP_TRACK_RANGE"
+number = 151
 size = 18
 
 [[icon]]

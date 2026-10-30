@@ -1,3 +1,4 @@
 # The core patches this fork carries on top of Niik-l's code, in the order they apply (quilt's series format: one
-# patch file name per line, from this folder). Empty: the layer changes no file of Natron's. See README.md here for
-# the budget and what each patch's header must say.
+# patch file name per line, from this folder). See README.md here for the budget and what each patch's header must say.
+0001-Node-graph-drawing-preferences.patch
+0002-Properties-panel-header-name.patch

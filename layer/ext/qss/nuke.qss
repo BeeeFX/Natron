@@ -1314,3 +1314,79 @@ Natron--NodeCreationDialog {
 QMessageBox {
     background-color: %2;
 }
+
+/* -- Properties panel header (this fork's builds name it, core patch 0001): small flat buttons as Nuke's
+      header, a frame only under the mouse; the panel's own knob buttons above stay raised. -- */
+
+QFrame#DockablePanelHeader {
+    border: 0px;
+    border-bottom: 1px solid rgb(24, 24, 24);
+    background-color: %2;
+}
+
+QFrame#DockablePanelHeader QPushButton {
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 0px;
+    padding: 0px;
+}
+
+QFrame#DockablePanelHeader QPushButton:hover {
+    background-color: rgb(70, 70, 70);
+    border: 1px solid rgb(24, 24, 24);
+}
+
+QFrame#DockablePanelHeader QPushButton:pressed,
+QFrame#DockablePanelHeader QPushButton:checked {
+    background-color: rgb(34, 34, 34);
+    border: 1px solid rgb(24, 24, 24);
+}
+
+QFrame#DockablePanelHeader QLineEdit {
+    background-color: rgb(30, 30, 30);
+    border: 1px solid rgb(18, 18, 18);
+    padding: 1px 4px;
+}
+
+/* -- Tab's node search, Nuke's way: a compact dark box, the typed text large, matches in a tight list with the
+      orange highlight. (Natron names the dialog nodeCreationDialog.) -- */
+
+QDialog#nodeCreationDialog,
+NodeCreationDialog#nodeCreationDialog,
+Natron--NodeCreationDialog#nodeCreationDialog {
+    background-color: rgb(40, 40, 40);
+    border: 1px solid rgb(14, 14, 14);
+    padding: 3px;
+}
+
+#nodeCreationDialog QLineEdit {
+    background-color: rgb(24, 24, 24);
+    color: rgb(236, 236, 236);
+    border: 1px solid %1;
+    border-radius: 0px;
+    padding: 3px 6px;
+    min-height: 18px;
+}
+
+#nodeCreationDialog QListView,
+QListView#nodeCreationDialogList {
+    background-color: rgb(40, 40, 40);
+    alternate-background-color: rgb(40, 40, 40);
+    border: 1px solid rgb(14, 14, 14);
+    outline: 0px;
+    padding: 0px;
+}
+
+#nodeCreationDialog QListView::item,
+QListView#nodeCreationDialogList::item {
+    padding: 0px 6px;
+    border: 0px;
+}
+
+#nodeCreationDialog QListView::item:selected,
+#nodeCreationDialog QListView::item:hover,
+QListView#nodeCreationDialogList::item:selected,
+QListView#nodeCreationDialogList::item:hover {
+    background-color: %1;
+    color: rgb(20, 20, 20);
+}

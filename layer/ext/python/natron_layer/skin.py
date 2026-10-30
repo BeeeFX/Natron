@@ -46,6 +46,7 @@ CACHE_LIMIT_KB = 65536  # Qt's picture cache, raised so our pictures are never d
 class Report:
     font: str = ""  # the font now in use, or why Natron's stayed
     icons: int = 0  # pictures given to Natron
+    theme: str = ""  # the icon theme Qt reads the menus' icons from (the File menu), or "" when not set
     missing: list[str] = dataclasses.field(default_factory=list)  # table entries whose PNG isn't there
     off: str = ""  # why the skin stayed out (the artist's choice, the environment)
 
@@ -53,6 +54,8 @@ class Report:
         if self.off:
             return f"Skin: off ({self.off})."
         parts = [f"{self.icons} icons", f"font {self.font}"]
+        if self.theme:
+            parts.append(f"menu icons from the {self.theme} theme")
         if self.missing:
             parts.append(f"{len(self.missing)} icon files missing ({', '.join(self.missing[:5])})")
         return "Skin: " + "; ".join(parts) + "."
@@ -200,6 +203,23 @@ def install_icons(qt: Any) -> tuple[int, list[str]]:
     return given, missing
 
 
+THEME = "natron-layer"  # ext/icons/theme/<THEME>/index.theme, written by tools/make_icons.py
+
+
+def install_theme(qt: Any) -> str:
+    """Natron gives its File menu's actions icons by name (``QIcon::fromTheme("document-open", ...)``, falling back
+    to its own pictures): our icon theme answers those names first. Returns the theme's name, or "" when it isn't
+    there."""
+    folder = paths.ext() / "icons" / "theme"
+    if not (folder / THEME / "index.theme").is_file():
+        return ""
+    QtGui = qt.QtGui
+    search = [str(folder)] + [str(p) for p in QtGui.QIcon.themeSearchPaths() if str(p) != str(folder)]
+    QtGui.QIcon.setThemeSearchPaths(search)
+    QtGui.QIcon.setThemeName(THEME)
+    return THEME
+
+
 # --- The font ---
 
 
@@ -249,6 +269,7 @@ def install(stored: compat.StoredSettings | None = None) -> Report:
         stored = compat.StoredSettings.of_natron() if stored is None else stored
         if settings().get("icons", True):
             report.icons, report.missing = install_icons(qt)
+            report.theme = install_theme(qt)
         report.font = install_font(qt, stored)
     last_report = report
     return report

@@ -253,6 +253,25 @@ def _layer_probe():
                 app.processEvents()
         else:
             say(False, "the viewer's checkerboard button is found to click")
+        # The File menu's icons come from the skin's icon theme (Natron asks Qt for them by name).
+        say(report is not None and report.theme == skin.THEME and QtGui.QIcon.themeName() == skin.THEME,
+            "the skin's icon theme is Qt's: " + QtGui.QIcon.themeName())
+        # The menu by its title among the window's own children (a QAction's menu() can hand back a wrapper whose
+        # C++ object Qt has already replaced).
+        menus = [m for m in window.findChildren(QtWidgets.QMenu) if m.title().replace("&", "") == "File"]
+        named = [a.icon().name() for a in (menus[0].actions() if menus else []) if not a.icon().isNull()]
+        say("document-open" in named and "document-save" in named,
+            "the File menu's actions take their icons from the theme by name (" + ", ".join(sorted(set(named))) + ")")
+        # This fork's builds name the properties panels' header (core patch 0002); Niik-l's plain release doesn't.
+        try:
+            import NatronEngine
+
+            patched = NatronEngine.natron.getSettings().getParam("nodeTileWidth") is not None
+        except Exception:  # noqa: BLE001  (the check reports what it saw)
+            patched = False
+        if patched:
+            headers = window.findChildren(QtWidgets.QFrame, "DockablePanelHeader")
+            say(len(headers) >= 1, "the properties panels' header is named for the stylesheet (" + str(len(headers)) + ")")
         polished = [b for bar in window.findChildren(QtWidgets.QToolBar) for b in bar.findChildren(QtWidgets.QToolButton)]
         side = int(skin.settings().get("toolbar_icon", 20))
         say(polished and all(b.iconSize().width() >= side for b in polished),

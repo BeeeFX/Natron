@@ -131,6 +131,7 @@ Settings::initializeKnobs()
     initializeKnobsCurveEditorColors();
     initializeKnobsDopeSheetColors();
     initializeKnobsNodeGraphColors();
+    initializeKnobsNodeGraphDrawing();
     initializeKnobsScriptEditorColors();
 
     setDefaultValues();
@@ -990,6 +991,86 @@ Settings::initializeKnobsNodeGraphColors()
     _defaultDeepGroupColor->setHintToolTip( tr("The color used for newly created Deep nodes.") );
     _nodegraphColorsTab->addKnob(_defaultDeepGroupColor);
 } // Settings::initializeKnobsNodeGraphColors
+
+void
+Settings::initializeKnobsNodeGraphDrawing()
+{
+    // How nodes and links are drawn. Every default is Natron's own drawing, so nothing changes unless a value is set.
+    KnobSeparatorPtr sep = AppManager::createKnob<KnobSeparator>( this, tr("Node and link drawing") );
+    _nodegraphColorsTab->addKnob(sep);
+
+    // Read by NodeGui through its name (no member, so this header stays as it is).
+    KnobBoolPtr fitLabel = AppManager::createKnob<KnobBool>( this, tr("Nodes as wide as their label") );
+    fitLabel->setName("nodeFitLabel");
+    fitLabel->setHintToolTip( tr("When checked, a node whose label is longer than the node width grows to fit it; "
+                                 "otherwise every node keeps the same width and a long label spills over.") );
+    fitLabel->setDefaultValue(false);
+    _nodegraphColorsTab->addKnob(fitLabel);
+
+    // Read by Node::makePreviewByDefault through its name (no member, so this header stays as it is).
+    KnobBoolPtr readerPreview = AppManager::createKnob<KnobBool>( this, tr("Postage stamps on Read nodes") );
+    readerPreview->setName("readerPreview");
+    readerPreview->setHintToolTip( tr("When checked, a new Read node shows a small picture of its image in the node graph.") );
+    readerPreview->setDefaultValue(true);
+    _nodegraphColorsTab->addKnob(readerPreview);
+
+    struct IntDef { KnobIntPtr* knob; const char* name; QString label; int def, min, max; QString hint; };
+    const IntDef ints[] = {
+        { &_nodeTileWidth, "nodeTileWidth", tr("Node width"), 100, 20, 400, tr("The width of a new node in the node graph, in pixels.") },
+        { &_nodeTileHeight, "nodeTileHeight", tr("Node height"), 30, 10, 200, tr("The smallest height of a node in the node graph, in pixels (a longer label makes it taller).") },
+        { &_nodeCornerRadius, "nodeCornerRadius", tr("Node corner radius"), 5, 0, 20, tr("How rounded the corners of nodes and backdrops are, in pixels.") },
+        { &_dotDiameter, "dotDiameter", tr("Dot diameter"), 15, 4, 60, tr("The size of Dot nodes, in pixels.") },
+    };
+    for (const IntDef& d : ints) {
+        *d.knob = AppManager::createKnob<KnobInt>(this, d.label);
+        (*d.knob)->setName(d.name);
+        (*d.knob)->setHintToolTip(d.hint);
+        (*d.knob)->disableSlider();
+        (*d.knob)->setMinimum(d.min);
+        (*d.knob)->setMaximum(d.max);
+        (*d.knob)->setDefaultValue(d.def);
+        _nodegraphColorsTab->addKnob(*d.knob);
+    }
+
+    struct DoubleDef { KnobDoublePtr* knob; const char* name; QString label; double def, min, max; QString hint; };
+    const DoubleDef doubles[] = {
+        { &_nodeShading, "nodeShading", tr("Node shading"), 1., 0., 2., tr("How strong the top-to-bottom shading of nodes is: 0 is a flat colour, 1 is Natron's shading.") },
+        { &_nodeSelectedTint, "nodeSelectedTint", tr("Selected node tint"), 0., 0., 1., tr("How much a selected node takes the selection colour (0: a halo around it instead).") },
+        { &_linkWidth, "linkWidth", tr("Link width"), 3., 0.5, 6., tr("The width of the links between nodes, in pixels.") },
+        { &_linkArrowLength, "linkArrowLength", tr("Link arrow length"), 14., 4., 40., tr("The length of the arrow heads of links, in pixels.") },
+        { &_linkArrowAngle, "linkArrowAngle", tr("Link arrow opening"), 24., 10., 90., tr("How wide the arrow heads of links open, in degrees.") },
+        { &_disabledCrossWidth, "disabledCrossWidth", tr("Disabled node cross width"), 1., 0.5, 6., tr("The width of the cross drawn over a disabled node, in pixels.") },
+    };
+    for (const DoubleDef& d : doubles) {
+        *d.knob = AppManager::createKnob<KnobDouble>(this, d.label);
+        (*d.knob)->setName(d.name);
+        (*d.knob)->setHintToolTip(d.hint);
+        (*d.knob)->disableSlider();
+        (*d.knob)->setMinimum(d.min);
+        (*d.knob)->setMaximum(d.max);
+        (*d.knob)->setDefaultValue(d.def);
+        _nodegraphColorsTab->addKnob(*d.knob);
+    }
+
+    struct ColorDef { KnobColorPtr* knob; const char* name; QString label; double r, g, b; QString hint; };
+    const ColorDef colors[] = {
+        { &_nodeOutlineColor, "nodeOutlineColor", tr("Node outline"), 0., 0., 0., tr("The colour of the thin line around nodes.") },
+        { &_nodeSelectedColor, "nodeSelectedColor", tr("Selected node"), 1., 230. / 255., 128. / 255., tr("The colour that shows a node is selected.") },
+        { &_linkColor, "linkColor", tr("Links"), 0., 0., 0., tr("The colour of the links between nodes.") },
+        { &_linkSelectedColor, "linkSelectedColor", tr("Links of selected nodes"), 1., 1., 1., tr("The colour of the links of selected nodes.") },
+        { &_disabledCrossColor, "disabledCrossColor", tr("Disabled node cross"), 0., 0., 0., tr("The colour of the cross drawn over a disabled node.") },
+    };
+    for (const ColorDef& d : colors) {
+        *d.knob = AppManager::createKnob<KnobColor>(this, d.label, 3);
+        (*d.knob)->setName(d.name);
+        (*d.knob)->setSimplified(true);
+        (*d.knob)->setHintToolTip(d.hint);
+        (*d.knob)->setDefaultValue(d.r, 0);
+        (*d.knob)->setDefaultValue(d.g, 1);
+        (*d.knob)->setDefaultValue(d.b, 2);
+        _nodegraphColorsTab->addKnob(*d.knob);
+    }
+} // Settings::initializeKnobsNodeGraphDrawing
 
 void
 Settings::initializeKnobsScriptEditorColors()
@@ -3335,6 +3416,31 @@ Settings::getDisconnectedArrowLength() const
 {
     return _disconnectedArrowLength->getValue();
 }
+
+int Settings::getNodeTileWidth() const { return _nodeTileWidth->getValue(); }
+int Settings::getNodeTileHeight() const { return _nodeTileHeight->getValue(); }
+int Settings::getNodeCornerRadius() const { return _nodeCornerRadius->getValue(); }
+double Settings::getNodeShading() const { return _nodeShading->getValue(); }
+double Settings::getNodeSelectedTint() const { return _nodeSelectedTint->getValue(); }
+int Settings::getDotDiameter() const { return _dotDiameter->getValue(); }
+double Settings::getLinkWidth() const { return _linkWidth->getValue(); }
+double Settings::getLinkArrowLength() const { return _linkArrowLength->getValue(); }
+double Settings::getLinkArrowAngle() const { return _linkArrowAngle->getValue(); }
+double Settings::getDisabledCrossWidth() const { return _disabledCrossWidth->getValue(); }
+
+static void
+getColorKnobValue(const KnobColorPtr& k, double *r, double *g, double *b)
+{
+    *r = k->getValue(0);
+    *g = k->getValue(1);
+    *b = k->getValue(2);
+}
+
+void Settings::getNodeOutlineColor(double *r, double *g, double *b) const { getColorKnobValue(_nodeOutlineColor, r, g, b); }
+void Settings::getNodeSelectedColor(double *r, double *g, double *b) const { getColorKnobValue(_nodeSelectedColor, r, g, b); }
+void Settings::getLinkColor(double *r, double *g, double *b) const { getColorKnobValue(_linkColor, r, g, b); }
+void Settings::getLinkSelectedColor(double *r, double *g, double *b) const { getColorKnobValue(_linkSelectedColor, r, g, b); }
+void Settings::getDisabledCrossColor(double *r, double *g, double *b) const { getColorKnobValue(_disabledCrossColor, r, g, b); }
 
 std::string
 Settings::getHostName() const

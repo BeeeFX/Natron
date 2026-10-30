@@ -17,10 +17,12 @@ without changing Natron's own code.
 **https://github.com/BeeeFX/Natron/compare/RB-2.6...sng/main**
 
 That page compares his branch with ours and shows only our changes: the list of our commits at the top, then every
-file we added or changed, line by line (green for what we added). Today every change is a new file: the `layer/`
-folder, this page, a short introduction GitHub shows on the repository's front page when it opens on `sng/main`
+file we added or changed, line by line (green for what we added). Most changes are new files: the `layer/` folder,
+this page, a short introduction GitHub shows on the repository's front page when it opens on `sng/main`
 (`.github/README.md`), and one small workflow (`.github/workflows/upstream-watch.yml`, which doesn't run since
-GitHub Actions are off, see below). **No file of Niik-l's is changed.**
+GitHub Actions are off, see below). **Since `.sng3`, two small changes to Niik-l's own files** (the core patches
+below: the node graph's drawing as preferences, and a name for the properties panels' header), each written so he
+can take it as it is.
 
 ## What the layer does (all in `layer/`)
 
@@ -37,8 +39,14 @@ GitHub Actions are off, see below). **No file of Niik-l's is changed.**
   properties pane at Nuke's narrower share of the window. All set from Python while Natron starts, for the session:
   no file of Natron's is changed and nothing is written to the artist's settings; a font, size or stylesheet the
   artist chose in Natron's Preferences wins. **Nuke › Look › Natron's own look for me** gives an artist Natron's
-  own look back (kept in the layer's own file). The window title, program icon, menu names and the node graph's
-  drawing (node shapes, links) stay Natron's.
+  own look back (kept in the layer's own file). The window title, program icon and menu names stay Natron's.
+- **The node graph drawn like Nuke's, and the skin's second wave** (since `.sng3`, this fork's first build from
+  source). Compact nodes (80 x 18) with slightly rounded corners and a light shading, thin dark links with small open
+  arrow heads, a selected node tinted orange-yellow with its links lit, a red cross on disabled nodes, small Dots, no
+  postage stamps on new Read nodes: preferences added by core patch 0001 (their defaults are Natron's own drawing),
+  set by the layer for the session. 112 more of our icons (the Merge operations, roto, paint and tracker tools, the
+  curve editor's interpolation), the File menu's icons, flat properties-panel header buttons (core patch 0002) and
+  Tab's search box in Nuke's style.
 - **Nuke's keys.** Natron already has most of Nuke's default keys (B, C, D, G, M, O, P, R, T, W…). The layer adds
   the ones it lacks: K (Copy), I (node info), `\` (snap to grid), Shift+Y (connect), Alt+B (duplicate and branch),
   Alt+F (flipbook), in the menu bar's **Nuke** menu, changeable in Natron's shortcut editor. They act in the node
@@ -75,8 +83,23 @@ with Nuke, ranked: [`layer/GAPS.md`](layer/GAPS.md).
 
 ## Core patches
 
-None. Changing Natron's own code makes every one of Niik-l's releases (every one to three weeks) harder to take,
-so the budget is at most 5 small patches (about 800 lines), each offered to him first: [`layer/patches/`](layer/patches/README.md).
+Two (since `.sng3`, 31 October 2026), also carried as commits on `sng/main`, so our builds are made from source
+(`layer/README.md`, "Building from source", with Niik-l's own build scripts):
+
+1. `layer/patches/0001-Node-graph-drawing-preferences.patch`: the node graph's drawing as preferences (node size,
+   corners, shading, outline, selection colour and tint, Dots, link width, colours and arrow heads, the disabled
+   cross, postage stamps on Read nodes, nodes as wide as their label), each defaulting to Natron's own drawing. About 280 lines in
+   `Engine/Settings.{h,cpp}`, `Engine/Node.cpp`, `Gui/NodeGui.{h,cpp}`, `Gui/Edge.cpp`, `Gui/DotGui.cpp`,
+   `Gui/NodeGraphRectItem.{h,cpp}`.
+2. `layer/patches/0002-Properties-panel-header-name.patch`: an object name on the properties panels' header, for
+   stylesheets. Two lines in `Gui/DockablePanel.cpp`.
+
+Changing Natron's own code makes every one of Niik-l's releases (every one to three weeks) harder to take, so the
+budget is at most 5 small patches (about 800 lines), each offered to him first: [`layer/patches/`](layer/patches/README.md).
+
+The corresponding source of a build (GPL): this repository at the commit its `Resources/layer/SOURCE.txt` names,
+Niik-l's build scripts in it (`tools/win-build/`), the plug-ins at the commits those scripts pin, and the MSYS2
+packages listed in its `Resources/layer/MSYS2-PACKAGES.lock` (sources in MSYS2's repositories).
 
 ## Licences
 
@@ -97,8 +120,8 @@ so the budget is at most 5 small patches (about 800 lines), each offered to him 
   inspired the list of tools; none of its files or code is used, so no MPL notice is needed.
 - The studio ToolSets (`layer/ext/toolsets/*.xml`) are Natron's own copy format of nodes made by our recipes
   (`toolset_recipes.py`).
-- **The icons are our own drawings** (`layer/ext/icons/`, drawn by `layer/tools/make_icons.py` from code in that
-  file): simple line pictures made for this fork in the spirit of Nuke's flat interface; no picture of Nuke's or of
+- **The icons are our own drawings** (`layer/ext/icons/`, drawn by `layer/tools/make_icons.py` and
+  `make_icons_wave2.py` from code in those files; the File menu's as an icon theme, `layer/ext/icons/theme/`): simple line pictures made for this fork in the spirit of Nuke's flat interface; no picture of Nuke's or of
   any other program is copied, traced or used as a template. They're GPL-3.0-or-later like the rest of the layer.
 - `layer/ext/fonts/DejaVuSans.ttf`: [DejaVu Fonts](https://dejavu-fonts.github.io/) 2.x, DejaVu Sans, unchanged,
   under the Bitstream Vera licence and the Arev fonts' licence (DejaVu's changes are in the public domain), whose

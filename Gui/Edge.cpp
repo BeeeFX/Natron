@@ -55,9 +55,11 @@
 
 #define EDGE_LENGTH_MIN 0.1
 #define ARROW_OFFSET 3 // offset of the arrow tip from the object border
-#define ARROW_SIZE_CONNECTED 14
-#define ARROW_SIZE_DISCONNECTED 10
-#define ARROW_HEAD_ANGLE ( (2 * M_PI) / 15 ) // 24 degrees opening angle is a nice thin arrow
+// Arrow heads from the preferences (Appearance > Node Graph): 14 px long and 24 degrees by default, a nice thin
+// arrow; a disconnected input's arrow is 10/14 of a connected one.
+#define ARROW_SIZE_CONNECTED ( appPTR->getCurrentSettings()->getLinkArrowLength() )
+#define ARROW_SIZE_DISCONNECTED ( appPTR->getCurrentSettings()->getLinkArrowLength() * 10. / 14. )
+#define ARROW_HEAD_ANGLE ( appPTR->getCurrentSettings()->getLinkArrowAngle() * M_PI / 180. )
 
 // number of offset pixels from the arrow that determine if a click is contained in the arrow or not
 #define kGraphicalContainerOffset 10
@@ -75,6 +77,7 @@ struct EdgePrivate
     NodeGuiWPtr dest;
     NodeGuiWPtr source;
     QColor defaultColor;
+    bool defaultColorSet; // else the links' colour preference
     QColor renderingColor;
     bool useRenderingColor;
     bool useHighlight;
@@ -101,6 +104,7 @@ struct EdgePrivate
         , dest()
         , source()
         , defaultColor(Qt::black)
+        , defaultColorSet(false)
         , renderingColor(243, 149, 0)
         , useRenderingColor(false)
         , useHighlight(false)
@@ -257,6 +261,7 @@ void
 Edge::setDefaultColor(const QColor & color)
 {
     _imp->defaultColor = color;
+    _imp->defaultColorSet = true;
 }
 
 bool
@@ -776,15 +781,26 @@ Edge::paint(QPainter *painter,
         myPen.setStyle(Qt::SolidLine);
     }
 
+    // The pen keeps its width for picking (shape()); the line is drawn at the preference's width.
+    SettingsPtr settings = appPTR->getCurrentSettings();
+    myPen.setWidthF( settings->getLinkWidth() );
+    double r, g, b;
     QColor color, arrowColor;
     if (_imp->useSelected) {
-        color = arrowColor = Qt::white;
+        settings->getLinkSelectedColor(&r, &g, &b);
+        color = arrowColor = QColor::fromRgbF( Image::clamp(r, 0., 1.), Image::clamp(g, 0., 1.), Image::clamp(b, 0., 1.) );
     } else if (_imp->useHighlight) {
         color = arrowColor = Qt::green;
     } else if (_imp->useRenderingColor) {
         color = arrowColor = _imp->renderingColor;
     } else {
-        color = arrowColor = _imp->defaultColor;
+        if (_imp->defaultColorSet) {
+            color = _imp->defaultColor;
+        } else {
+            settings->getLinkColor(&r, &g, &b);
+            color = QColor::fromRgbF( Image::clamp(r, 0., 1.), Image::clamp(g, 0., 1.), Image::clamp(b, 0., 1.) );
+        }
+        arrowColor = color;
         if (_imp->optional && !_imp->paintWithDash) {
             color.setAlphaF(0.4);
         }

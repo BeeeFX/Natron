@@ -12,6 +12,9 @@ stay crisp at 11, 18 and 24 pixels. Each picture is named after the file Natron 
 which ``natron_pixmaps.py`` reads from the fork's source with its number. ``--sheet`` also writes a contact sheet of
 every icon, large, on the interface's grey, to look at them side by side.
 
+The second wave (the Merge operations, roto, paint and tracker tools, the curve editor's interpolation, the File
+menu as an icon theme) is in ``make_icons_wave2.py``.
+
 Colours: grey for a button at rest, a dimmer grey for "off" or unavailable, Nuke-like orange for "on" (a toggled
 viewer option, the playing direction). Two-state buttons get both pictures, so Natron's own switching keeps working.
 """
@@ -867,10 +870,36 @@ def render(name: str, scale: int) -> Image.Image:
     return pen.done()
 
 
+THEME = "natron-layer"  # the File menu's icons: an icon theme Qt reads by name (natron_layer/skin.py sets it)
+THEME_INDEX = """[Icon Theme]
+Name=natron-layer
+Comment=The Natron layer's own icons for Natron's menus (our drawings)
+Directories=16x16,32x32
+
+[16x16]
+Size=16
+Type=Fixed
+
+[32x32]
+Size=16
+Scale=2
+Type=Fixed
+"""
+
+
 def write_all(out: Path) -> list[str]:
     out.mkdir(parents=True, exist_ok=True)
     written = []
     for name in sorted(ICONS):
+        if name.startswith("theme/"):
+            base = out / "theme" / THEME
+            for folder, scale in (("16x16", 1), ("32x32", 2)):
+                target = base / folder / name[len("theme/"):]
+                target.parent.mkdir(parents=True, exist_ok=True)
+                render(name, scale).save(target, optimize=True)
+            (base / "index.theme").write_text(THEME_INDEX, encoding="ascii")
+            written.append(name)
+            continue
         target = out / name
         target.parent.mkdir(parents=True, exist_ok=True)
         render(name, 1).save(target, optimize=True)
@@ -895,7 +924,7 @@ def write_table(out: Path, written: list[str]) -> Path:
         "",
     ]
     for file in written:
-        if file.startswith("qss/"):
+        if file.startswith(("qss/", "theme/")):
             continue
         if file not in by_file:
             raise SystemExit(f"{file} isn't one of Natron's pictures (natron_pixmaps.py didn't find it)")
@@ -932,6 +961,11 @@ def main() -> int:
     parser.add_argument("--sheet", help="also write a contact sheet of every icon to this PNG")
     parser.add_argument("--out", default=str(OUT))
     args = parser.parse_args()
+    # The second wave (make_icons_wave2.py) registers its drawings here: it imports this module by name.
+    sys.modules.setdefault("make_icons", sys.modules[__name__])
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import make_icons_wave2  # noqa: F401, PLC0415
+
     out = Path(args.out)
     written = write_all(out)
     table = write_table(out, written)

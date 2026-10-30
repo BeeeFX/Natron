@@ -1,0 +1,609 @@
+From: "Baptiste G." <70719480+BeeeFX@users.noreply.github.com>
+Subject: [PATCH] Node graph: the drawing of nodes and links as preferences
+
+The node graph drew its nodes and links with sizes and colours written in the code (NODE_WIDTH and
+NODE_HEIGHT, a 5 px corner radius, Natron's shading, a 3 px black link pen with 14 px, 24 degree arrow
+heads, a white link when selected, a light yellow halo around a selected node, a thin black cross on a
+disabled node, 15 px Dots, a postage stamp on every new Read node). Each is now a preference in
+Appearance > Node Graph > Node and link drawing, and every default is the value the code had, so nothing
+changes for anyone who doesn't set them:
+
+  nodeTileWidth, nodeTileHeight, nodeCornerRadius, nodeShading, nodeOutlineColor, nodeSelectedColor,
+  nodeSelectedTint (a selected node takes the selection colour instead of the halo; backdrops keep the
+  halo), dotDiameter, linkWidth (the line drawn; the item's pen keeps 3 px for picking), linkColor,
+  linkSelectedColor, linkArrowLength, linkArrowAngle, disabledCrossColor, disabledCrossWidth,
+  readerPreview (whether a new Read node shows its postage stamp).
+
+Values are read when a node is made and when a link is drawn, so a script can set them for a session
+(the BeeeFX fork's layer sets Nuke-like values) without touching anyone's stored preferences.
+
+Core patch 0001 of the BeeeFX fork (layer/patches/), written to be offered upstream as it is.
+
+Also (second commit on sng/main): A new preference, nodeFitLabel (Appearance > Node Graph > Node and link drawing, off by default: every node
+keeps the same width, as before), lets a node whose label is longer than the node width grow to fit it. The
+width is measured from the node's initial width plus the label, never from its current width, so it can't
+creep (the reason the width was left alone); backdrops and nodes showing a postage stamp size themselves as
+before. Read by name from the settings, so Settings.h doesn't change.
+
+Gap: layer/GAPS.md, "Nuke's look and habits" (the node graph's drawing).
+Size: 9 files changed, 255 insertions(+), 25 deletions(-).
+upstream: not offered yet (to offer to Niik-l: github.com/Niik-l/Natron).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ Engine/Node.cpp           |   8 ++++
+ Engine/Settings.cpp       | 106 ++++++++++++++++++++++++++++++++++++++++++++++
+ Engine/Settings.h         |  33 +++++++++++++++
+ Gui/DotGui.cpp            |   8 +++-
+ Gui/Edge.cpp              |  26 +++++++++---
+ Gui/NodeGraphRectItem.cpp |   7 +--
+ Gui/NodeGraphRectItem.h   |   7 +++
+ Gui/NodeGui.cpp           |  80 +++++++++++++++++++++++++++-------
+ Gui/NodeGui.h             |   5 +++
+ 9 files changed, 255 insertions(+), 25 deletions(-)
+
+diff --git a/Engine/Node.cpp b/Engine/Node.cpp
+index a6a4eae3..1442a65a 100644
+--- a/Engine/Node.cpp
++++ b/Engine/Node.cpp
+@@ -3821,6 +3821,14 @@ Node::makePreviewByDefault() const
+     ///MT-safe, never changes
+     assert(_imp->effect);
+ 
++    // Readers show a postage stamp by default unless the preference says no (Appearance > Node Graph).
++    if ( _imp->effect->isReader() ) {
++        KnobBool* readerPreview = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("readerPreview").get() );
++        if ( readerPreview && !readerPreview->getValue() ) {
++            return false;
++        }
++    }
++
+     return _imp->effect->makePreviewByDefault();
+ }
+ 
+diff --git a/Engine/Settings.cpp b/Engine/Settings.cpp
+index 07a79aaf..466c3194 100644
+--- a/Engine/Settings.cpp
++++ b/Engine/Settings.cpp
+@@ -131,6 +131,7 @@ Settings::initializeKnobs()
+     initializeKnobsCurveEditorColors();
+     initializeKnobsDopeSheetColors();
+     initializeKnobsNodeGraphColors();
++    initializeKnobsNodeGraphDrawing();
+     initializeKnobsScriptEditorColors();
+ 
+     setDefaultValues();
+@@ -991,6 +992,86 @@ Settings::initializeKnobsNodeGraphColors()
+     _nodegraphColorsTab->addKnob(_defaultDeepGroupColor);
+ } // Settings::initializeKnobsNodeGraphColors
+ 
++void
++Settings::initializeKnobsNodeGraphDrawing()
++{
++    // How nodes and links are drawn. Every default is Natron's own drawing, so nothing changes unless a value is set.
++    KnobSeparatorPtr sep = AppManager::createKnob<KnobSeparator>( this, tr("Node and link drawing") );
++    _nodegraphColorsTab->addKnob(sep);
++
++    // Read by NodeGui through its name (no member, so this header stays as it is).
++    KnobBoolPtr fitLabel = AppManager::createKnob<KnobBool>( this, tr("Nodes as wide as their label") );
++    fitLabel->setName("nodeFitLabel");
++    fitLabel->setHintToolTip( tr("When checked, a node whose label is longer than the node width grows to fit it; "
++                                 "otherwise every node keeps the same width and a long label spills over.") );
++    fitLabel->setDefaultValue(false);
++    _nodegraphColorsTab->addKnob(fitLabel);
++
++    // Read by Node::makePreviewByDefault through its name (no member, so this header stays as it is).
++    KnobBoolPtr readerPreview = AppManager::createKnob<KnobBool>( this, tr("Postage stamps on Read nodes") );
++    readerPreview->setName("readerPreview");
++    readerPreview->setHintToolTip( tr("When checked, a new Read node shows a small picture of its image in the node graph.") );
++    readerPreview->setDefaultValue(true);
++    _nodegraphColorsTab->addKnob(readerPreview);
++
++    struct IntDef { KnobIntPtr* knob; const char* name; QString label; int def, min, max; QString hint; };
++    const IntDef ints[] = {
++        { &_nodeTileWidth, "nodeTileWidth", tr("Node width"), 100, 20, 400, tr("The width of a new node in the node graph, in pixels.") },
++        { &_nodeTileHeight, "nodeTileHeight", tr("Node height"), 30, 10, 200, tr("The smallest height of a node in the node graph, in pixels (a longer label makes it taller).") },
++        { &_nodeCornerRadius, "nodeCornerRadius", tr("Node corner radius"), 5, 0, 20, tr("How rounded the corners of nodes and backdrops are, in pixels.") },
++        { &_dotDiameter, "dotDiameter", tr("Dot diameter"), 15, 4, 60, tr("The size of Dot nodes, in pixels.") },
++    };
++    for (const IntDef& d : ints) {
++        *d.knob = AppManager::createKnob<KnobInt>(this, d.label);
++        (*d.knob)->setName(d.name);
++        (*d.knob)->setHintToolTip(d.hint);
++        (*d.knob)->disableSlider();
++        (*d.knob)->setMinimum(d.min);
++        (*d.knob)->setMaximum(d.max);
++        (*d.knob)->setDefaultValue(d.def);
++        _nodegraphColorsTab->addKnob(*d.knob);
++    }
++
++    struct DoubleDef { KnobDoublePtr* knob; const char* name; QString label; double def, min, max; QString hint; };
++    const DoubleDef doubles[] = {
++        { &_nodeShading, "nodeShading", tr("Node shading"), 1., 0., 2., tr("How strong the top-to-bottom shading of nodes is: 0 is a flat colour, 1 is Natron's shading.") },
++        { &_nodeSelectedTint, "nodeSelectedTint", tr("Selected node tint"), 0., 0., 1., tr("How much a selected node takes the selection colour (0: a halo around it instead).") },
++        { &_linkWidth, "linkWidth", tr("Link width"), 3., 0.5, 6., tr("The width of the links between nodes, in pixels.") },
++        { &_linkArrowLength, "linkArrowLength", tr("Link arrow length"), 14., 4., 40., tr("The length of the arrow heads of links, in pixels.") },
++        { &_linkArrowAngle, "linkArrowAngle", tr("Link arrow opening"), 24., 10., 90., tr("How wide the arrow heads of links open, in degrees.") },
++        { &_disabledCrossWidth, "disabledCrossWidth", tr("Disabled node cross width"), 1., 0.5, 6., tr("The width of the cross drawn over a disabled node, in pixels.") },
++    };
++    for (const DoubleDef& d : doubles) {
++        *d.knob = AppManager::createKnob<KnobDouble>(this, d.label);
++        (*d.knob)->setName(d.name);
++        (*d.knob)->setHintToolTip(d.hint);
++        (*d.knob)->disableSlider();
++        (*d.knob)->setMinimum(d.min);
++        (*d.knob)->setMaximum(d.max);
++        (*d.knob)->setDefaultValue(d.def);
++        _nodegraphColorsTab->addKnob(*d.knob);
++    }
++
++    struct ColorDef { KnobColorPtr* knob; const char* name; QString label; double r, g, b; QString hint; };
++    const ColorDef colors[] = {
++        { &_nodeOutlineColor, "nodeOutlineColor", tr("Node outline"), 0., 0., 0., tr("The colour of the thin line around nodes.") },
++        { &_nodeSelectedColor, "nodeSelectedColor", tr("Selected node"), 1., 230. / 255., 128. / 255., tr("The colour that shows a node is selected.") },
++        { &_linkColor, "linkColor", tr("Links"), 0., 0., 0., tr("The colour of the links between nodes.") },
++        { &_linkSelectedColor, "linkSelectedColor", tr("Links of selected nodes"), 1., 1., 1., tr("The colour of the links of selected nodes.") },
++        { &_disabledCrossColor, "disabledCrossColor", tr("Disabled node cross"), 0., 0., 0., tr("The colour of the cross drawn over a disabled node.") },
++    };
++    for (const ColorDef& d : colors) {
++        *d.knob = AppManager::createKnob<KnobColor>(this, d.label, 3);
++        (*d.knob)->setName(d.name);
++        (*d.knob)->setSimplified(true);
++        (*d.knob)->setHintToolTip(d.hint);
++        (*d.knob)->setDefaultValue(d.r, 0);
++        (*d.knob)->setDefaultValue(d.g, 1);
++        (*d.knob)->setDefaultValue(d.b, 2);
++        _nodegraphColorsTab->addKnob(*d.knob);
++    }
++} // Settings::initializeKnobsNodeGraphDrawing
++
+ void
+ Settings::initializeKnobsScriptEditorColors()
+ {
+@@ -3336,6 +3417,31 @@ Settings::getDisconnectedArrowLength() const
+     return _disconnectedArrowLength->getValue();
+ }
+ 
++int Settings::getNodeTileWidth() const { return _nodeTileWidth->getValue(); }
++int Settings::getNodeTileHeight() const { return _nodeTileHeight->getValue(); }
++int Settings::getNodeCornerRadius() const { return _nodeCornerRadius->getValue(); }
++double Settings::getNodeShading() const { return _nodeShading->getValue(); }
++double Settings::getNodeSelectedTint() const { return _nodeSelectedTint->getValue(); }
++int Settings::getDotDiameter() const { return _dotDiameter->getValue(); }
++double Settings::getLinkWidth() const { return _linkWidth->getValue(); }
++double Settings::getLinkArrowLength() const { return _linkArrowLength->getValue(); }
++double Settings::getLinkArrowAngle() const { return _linkArrowAngle->getValue(); }
++double Settings::getDisabledCrossWidth() const { return _disabledCrossWidth->getValue(); }
++
++static void
++getColorKnobValue(const KnobColorPtr& k, double *r, double *g, double *b)
++{
++    *r = k->getValue(0);
++    *g = k->getValue(1);
++    *b = k->getValue(2);
++}
++
++void Settings::getNodeOutlineColor(double *r, double *g, double *b) const { getColorKnobValue(_nodeOutlineColor, r, g, b); }
++void Settings::getNodeSelectedColor(double *r, double *g, double *b) const { getColorKnobValue(_nodeSelectedColor, r, g, b); }
++void Settings::getLinkColor(double *r, double *g, double *b) const { getColorKnobValue(_linkColor, r, g, b); }
++void Settings::getLinkSelectedColor(double *r, double *g, double *b) const { getColorKnobValue(_linkSelectedColor, r, g, b); }
++void Settings::getDisabledCrossColor(double *r, double *g, double *b) const { getColorKnobValue(_disabledCrossColor, r, g, b); }
++
+ std::string
+ Settings::getHostName() const
+ {
+diff --git a/Engine/Settings.h b/Engine/Settings.h
+index 977d4f1f..f2c57c6b 100644
+--- a/Engine/Settings.h
++++ b/Engine/Settings.h
+@@ -205,6 +205,23 @@ public:
+ 
+     int getDisconnectedArrowLength() const;
+ 
++    // How the node graph draws nodes and links (Appearance > Node Graph). The defaults are Natron's own drawing.
++    int getNodeTileWidth() const;
++    int getNodeTileHeight() const;
++    int getNodeCornerRadius() const;
++    double getNodeShading() const;
++    void getNodeOutlineColor(double *r, double *g, double *b) const;
++    void getNodeSelectedColor(double *r, double *g, double *b) const;
++    double getNodeSelectedTint() const;
++    int getDotDiameter() const;
++    double getLinkWidth() const;
++    void getLinkColor(double *r, double *g, double *b) const;
++    void getLinkSelectedColor(double *r, double *g, double *b) const;
++    double getLinkArrowLength() const;
++    double getLinkArrowAngle() const;
++    void getDisabledCrossColor(double *r, double *g, double *b) const;
++    double getDisabledCrossWidth() const;
++
+     void getGeneratorColor(float *r, float *g, float *b) const;
+     void getReaderColor(float *r, float *g, float *b) const;
+     void getWriterColor(float *r, float *g, float *b) const;
+@@ -430,6 +447,7 @@ private:
+     void initializeKnobsCurveEditorColors();
+     void initializeKnobsDopeSheetColors();
+     void initializeKnobsNodeGraphColors();
++    void initializeKnobsNodeGraphDrawing();
+     void initializeKnobsScriptEditorColors();
+ 
+ 
+@@ -669,6 +687,21 @@ private:
+ 
+     // Appearance/Node Graph
+     KnobPagePtr _nodegraphColorsTab;
++    KnobIntPtr _nodeTileWidth;
++    KnobIntPtr _nodeTileHeight;
++    KnobIntPtr _nodeCornerRadius;
++    KnobDoublePtr _nodeShading;
++    KnobColorPtr _nodeOutlineColor;
++    KnobColorPtr _nodeSelectedColor;
++    KnobDoublePtr _nodeSelectedTint;
++    KnobIntPtr _dotDiameter;
++    KnobDoublePtr _linkWidth;
++    KnobColorPtr _linkColor;
++    KnobColorPtr _linkSelectedColor;
++    KnobDoublePtr _linkArrowLength;
++    KnobDoublePtr _linkArrowAngle;
++    KnobColorPtr _disabledCrossColor;
++    KnobDoublePtr _disabledCrossWidth;
+     KnobColorPtr _defaultNodeColor;
+     KnobColorPtr _defaultBackdropColor;
+     KnobColorPtr _defaultGeneratorColor;
+diff --git a/Gui/DotGui.cpp b/Gui/DotGui.cpp
+index e5924991..ef015c5b 100644
+--- a/Gui/DotGui.cpp
++++ b/Gui/DotGui.cpp
+@@ -127,7 +127,7 @@ DotGui::createGui()
+     diskShape = new QGraphicsEllipseItem(this);
+     diskShape->setZValue(depth);
+     QPointF topLeft = mapFromParent( pos() );
+-    int diam = TO_DPIX(DOT_GUI_DIAMETER);
++    int diam = TO_DPIX( appPTR->getCurrentSettings()->getDotDiameter() );
+     int stateOffset = TO_DPIX(NATRON_STATE_INDICATOR_OFFSET);
+ 
+     diskShape->setRect( QRectF(topLeft.x(), topLeft.y(), diam, diam) );
+@@ -145,7 +145,11 @@ DotGui::refreshStateIndicator()
+ {
+     bool showIndicator = true;
+ 
+-    if ( getIsSelected() ) {
++    if ( isSelectionTinted() ) {
++        // The disk itself takes the selection colour (NodeGui::refreshCurrentBrush).
++        showIndicator = false;
++        refreshCurrentBrush();
++    } else if ( getIsSelected() ) {
+         ellipseIndicator->setBrush( QColor(255, 255, 255, 128) );
+     } else {
+         showIndicator = false;
+diff --git a/Gui/Edge.cpp b/Gui/Edge.cpp
+index 54871ac9..c0777583 100644
+--- a/Gui/Edge.cpp
++++ b/Gui/Edge.cpp
+@@ -55,9 +55,11 @@
+ 
+ #define EDGE_LENGTH_MIN 0.1
+ #define ARROW_OFFSET 3 // offset of the arrow tip from the object border
+-#define ARROW_SIZE_CONNECTED 14
+-#define ARROW_SIZE_DISCONNECTED 10
+-#define ARROW_HEAD_ANGLE ( (2 * M_PI) / 15 ) // 24 degrees opening angle is a nice thin arrow
++// Arrow heads from the preferences (Appearance > Node Graph): 14 px long and 24 degrees by default, a nice thin
++// arrow; a disconnected input's arrow is 10/14 of a connected one.
++#define ARROW_SIZE_CONNECTED ( appPTR->getCurrentSettings()->getLinkArrowLength() )
++#define ARROW_SIZE_DISCONNECTED ( appPTR->getCurrentSettings()->getLinkArrowLength() * 10. / 14. )
++#define ARROW_HEAD_ANGLE ( appPTR->getCurrentSettings()->getLinkArrowAngle() * M_PI / 180. )
+ 
+ // number of offset pixels from the arrow that determine if a click is contained in the arrow or not
+ #define kGraphicalContainerOffset 10
+@@ -75,6 +77,7 @@ struct EdgePrivate
+     NodeGuiWPtr dest;
+     NodeGuiWPtr source;
+     QColor defaultColor;
++    bool defaultColorSet; // else the links' colour preference
+     QColor renderingColor;
+     bool useRenderingColor;
+     bool useHighlight;
+@@ -101,6 +104,7 @@ struct EdgePrivate
+         , dest()
+         , source()
+         , defaultColor(Qt::black)
++        , defaultColorSet(false)
+         , renderingColor(243, 149, 0)
+         , useRenderingColor(false)
+         , useHighlight(false)
+@@ -257,6 +261,7 @@ void
+ Edge::setDefaultColor(const QColor & color)
+ {
+     _imp->defaultColor = color;
++    _imp->defaultColorSet = true;
+ }
+ 
+ bool
+@@ -776,15 +781,26 @@ Edge::paint(QPainter *painter,
+         myPen.setStyle(Qt::SolidLine);
+     }
+ 
++    // The pen keeps its width for picking (shape()); the line is drawn at the preference's width.
++    SettingsPtr settings = appPTR->getCurrentSettings();
++    myPen.setWidthF( settings->getLinkWidth() );
++    double r, g, b;
+     QColor color, arrowColor;
+     if (_imp->useSelected) {
+-        color = arrowColor = Qt::white;
++        settings->getLinkSelectedColor(&r, &g, &b);
++        color = arrowColor = QColor::fromRgbF( Image::clamp(r, 0., 1.), Image::clamp(g, 0., 1.), Image::clamp(b, 0., 1.) );
+     } else if (_imp->useHighlight) {
+         color = arrowColor = Qt::green;
+     } else if (_imp->useRenderingColor) {
+         color = arrowColor = _imp->renderingColor;
+     } else {
+-        color = arrowColor = _imp->defaultColor;
++        if (_imp->defaultColorSet) {
++            color = _imp->defaultColor;
++        } else {
++            settings->getLinkColor(&r, &g, &b);
++            color = QColor::fromRgbF( Image::clamp(r, 0., 1.), Image::clamp(g, 0., 1.), Image::clamp(b, 0., 1.) );
++        }
++        arrowColor = color;
+         if (_imp->optional && !_imp->paintWithDash) {
+             color.setAlphaF(0.4);
+         }
+diff --git a/Gui/NodeGraphRectItem.cpp b/Gui/NodeGraphRectItem.cpp
+index 707ff50b..884621b7 100644
+--- a/Gui/NodeGraphRectItem.cpp
++++ b/Gui/NodeGraphRectItem.cpp
+@@ -36,6 +36,7 @@ NodeGraphRectItem::NodeGraphRectItem(QGraphicsItem *parent,
+ : QGraphicsRectItem(parent)
+ , _cornerRadiusPx(cornerRadiusPx)
+ , _flat(false)
++, _shading(1.)
+ {
+ }
+ 
+@@ -44,15 +45,15 @@ NodeGraphRectItem::paint(QPainter *painter, const QStyleOptionGraphicsItem* /*op
+ {
+     painter->setPen(pen());
+ 
+-    if (_flat) {
++    if (_flat || _shading <= 0.) {
+         // Flat fill: show the picked color exactly, no gradient (Backdrop, Nuke-style).
+         painter->setBrush(brush());
+     } else {
+         // Apply a subtle top-to-bottom gradient over the node's base color
+         QColor baseColor = brush().color();
+         QLinearGradient gradient(rect().topLeft(), rect().bottomLeft());
+-        gradient.setColorAt(0.0, baseColor.lighter(130));  // lighter at top
+-        gradient.setColorAt(1.0, baseColor.darker(120));   // darker at bottom
++        gradient.setColorAt(0.0, baseColor.lighter(100 + (int)(30 * _shading)));  // lighter at top
++        gradient.setColorAt(1.0, baseColor.darker(100 + (int)(20 * _shading)));   // darker at bottom
+         painter->setBrush(QBrush(gradient));
+     }
+ 
+diff --git a/Gui/NodeGraphRectItem.h b/Gui/NodeGraphRectItem.h
+index 4fdcc9bb..aec75178 100644
+--- a/Gui/NodeGraphRectItem.h
++++ b/Gui/NodeGraphRectItem.h
+@@ -45,6 +45,7 @@ class NodeGraphRectItem
+ {
+     int _cornerRadiusPx;
+     bool _flat;
++    double _shading;
+ public:
+ 
+     NodeGraphRectItem(QGraphicsItem *parent,
+@@ -67,6 +68,12 @@ public:
+         _flat = flat;
+     }
+ 
++    // Strength of the top-to-bottom shading: 0 is a flat fill, 1 Natron's shading (the default).
++    void setShading(double shading)
++    {
++        _shading = shading;
++    }
++
+     virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) OVERRIDE FINAL;
+ };
+ 
+diff --git a/Gui/NodeGui.cpp b/Gui/NodeGui.cpp
+index 2dc3afa8..d087f3a0 100644
+--- a/Gui/NodeGui.cpp
++++ b/Gui/NodeGui.cpp
+@@ -27,6 +27,7 @@
+ 
+ #include <cassert>
+ #include <algorithm> // min, max
++#include <cmath> // ceil
+ #include <stdexcept>
+ 
+ CLANG_DIAG_OFF(deprecated)
+@@ -120,6 +121,28 @@ NATRON_NAMESPACE_ENTER
+ 
+ using std::make_pair;
+ 
++// The node's size and the colours that show its state, from the preferences (Appearance > Node Graph; the defaults
++// are NODE_WIDTH, NODE_HEIGHT and Natron's light yellow).
++static int nodeTileWidth() { return appPTR->getCurrentSettings()->getNodeTileWidth(); }
++static int nodeTileHeight() { return appPTR->getCurrentSettings()->getNodeTileHeight(); }
++
++static QColor
++settingsColor(void (Settings::*getter)(double*, double*, double*) const)
++{
++    double r, g, b;
++    ( (*appPTR->getCurrentSettings()).*getter )(&r, &g, &b);
++    QColor c;
++    c.setRgbF( Image::clamp(r, 0., 1.), Image::clamp(g, 0., 1.), Image::clamp(b, 0., 1.) );
++    return c;
++}
++
++static QColor
++mixColors(const QColor& a, const QColor& b, double t)
++{
++    return QColor::fromRgbF( a.redF() + (b.redF() - a.redF()) * t, a.greenF() + (b.greenF() - a.greenF()) * t,
++                             a.blueF() + (b.blueF() - a.blueF()) * t, a.alphaF() );
++}
++
+ #ifndef M_PI
+ #define M_PI        3.14159265358979323846264338327950288   /* pi             */
+ #define M_PI_2      1.57079632679489661923132169163975144   /* pi/2           */
+@@ -571,7 +594,7 @@ NodeGui::getSizeWithPreview(int *w,
+                             int *h) const
+ {
+     getInitialSize(w, h);
+-    *w = *w -  (TO_DPIX(NODE_WIDTH) / 2.) + TO_DPIX(NATRON_PREVIEW_WIDTH);
++    *w = *w -  (TO_DPIX(nodeTileWidth()) / 2.) + TO_DPIX(NATRON_PREVIEW_WIDTH);
+     *h = *h + TO_DPIY(NATRON_PREVIEW_HEIGHT) + 10;
+ }
+ 
+@@ -581,18 +604,18 @@ NodeGui::getInitialSize(int *w,
+ {
+     NodePtr internalNode = getNode();
+     if (!internalNode) {
+-        *w = TO_DPIX(NODE_WIDTH);
+-        *h = TO_DPIY(NODE_HEIGHT);
++        *w = TO_DPIX(nodeTileWidth());
++        *h = TO_DPIY(nodeTileHeight());
+         return;
+     }
+     const QString& iconFilePath = internalNode->getPlugin()->getIconFilePath();
+ 
+     if ( !iconFilePath.isEmpty() && QFile::exists(iconFilePath) && appPTR->getCurrentSettings()->isPluginIconActivatedOnNodeGraph() ) {
+-        *w = TO_DPIX(NODE_WIDTH) + TO_DPIX(NATRON_PLUGIN_ICON_SIZE) + TO_DPIX(PLUGIN_ICON_OFFSET) * 2;
++        *w = TO_DPIX(nodeTileWidth()) + TO_DPIX(NATRON_PLUGIN_ICON_SIZE) + TO_DPIX(PLUGIN_ICON_OFFSET) * 2;
+     } else {
+-        *w = TO_DPIX(NODE_WIDTH);
++        *w = TO_DPIX(nodeTileWidth());
+     }
+-    *h = TO_DPIY(NODE_HEIGHT);
++    *h = TO_DPIY(nodeTileHeight());
+ }
+ 
+ void
+@@ -605,9 +628,12 @@ NodeGui::createGui()
+     if (!node) {
+         return; // throw exception instead?
+     }
+-    int cornerRadiusPx = 5;
++    SettingsPtr settings = appPTR->getCurrentSettings();
++    int cornerRadiusPx = settings->getNodeCornerRadius();
+     _boundingBox = new NodeGraphRectItem(this, cornerRadiusPx);
+     _boundingBox->setZValue(depth);
++    _boundingBox->setShading( settings->getNodeShading() );
++    _boundingBox->setPen( QPen( settingsColor(&Settings::getNodeOutlineColor), 1 ) );
+ 
+     if ( mustFrameName() ) {
+         _nameFrame = new QGraphicsRectItem(this);
+@@ -718,10 +744,13 @@ NodeGui::createGui()
+         _passThroughIndicator->setActive(false);
+     }
+ 
++    QPen crossPen( settingsColor(&Settings::getDisabledCrossColor), settings->getDisabledCrossWidth() );
+     _disabledBtmLeftTopRight = new QGraphicsLineItem(this);
+     _disabledBtmLeftTopRight->setZValue(depth + 1);
++    _disabledBtmLeftTopRight->setPen(crossPen);
+     _disabledBtmLeftTopRight->hide();
+     _disabledTopLeftBtmRight = new QGraphicsLineItem(this);
++    _disabledTopLeftBtmRight->setPen(crossPen);
+     _disabledTopLeftBtmRight->hide();
+     _disabledTopLeftBtmRight->setZValue(depth + 1);
+ } // NodeGui::createGui
+@@ -879,7 +908,7 @@ NodeGui::isNearbyResizeHandle(const QPointF& pos) const
+ }
+ 
+ void
+-NodeGui::adjustSizeToContent(int* /*w*/,
++NodeGui::adjustSizeToContent(int* w,
+                              int *h,
+                              bool adjustToTextSize)
+ {
+@@ -892,6 +921,16 @@ NodeGui::adjustSizeToContent(int* /*w*/,
+     // height is fit to content.
+     QRectF labelBbox = _nameItem->boundingRect();
+ 
++    // Optionally (preference nodeFitLabel, off by default) a node grows to fit a longer label. Measured from the
++    // node's initial width, never from its current one, so the width can't creep. Backdrops size themselves.
++    KnobBool* fitLabel = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("nodeFitLabel").get() );
++    if ( w && fitLabel && fitLabel->getValue() && !dynamic_cast<BackdropGui*>(this) &&
++         !( _previewPixmap && _previewPixmap->isVisible() ) ) {
++        int initialW, initialH;
++        getInitialSize(&initialW, &initialH);
++        *w = std::max( initialW, (int)std::ceil( labelBbox.width() ) + TO_DPIX(8) );
++    }
++
+     if (adjustToTextSize) {
+         if ( _previewPixmap && _previewPixmap->isVisible() ) {
+             int pw, ph;
+@@ -1757,14 +1796,22 @@ NodeGui::applyBrush(const QBrush & brush)
+     }
+ }
+ 
++bool
++NodeGui::isSelectionTinted() const
++{
++    // A selected node takes the selection colour instead of a halo when the preference asks (backdrops keep the halo).
++    return !dynamic_cast<const BackdropGui*>(this) && appPTR->getCurrentSettings()->getNodeSelectedTint() > 0.;
++}
++
+ void
+ NodeGui::refreshCurrentBrush()
+ {
+-    if (_slaveMasterLink) {
+-        applyBrush(_clonedColor);
+-    } else {
+-        applyBrush(_currentColor);
++    QColor color = _slaveMasterLink ? _clonedColor : _currentColor;
++    if ( isSelectionTinted() && getIsSelected() ) {
++        color = mixColors( color, settingsColor(&Settings::getNodeSelectedColor),
++                           appPTR->getCurrentSettings()->getNodeSelectedTint() );
+     }
++    applyBrush(color);
+ }
+ 
+ bool
+@@ -2324,8 +2371,8 @@ NodeGui::refreshStateIndicator()
+         _stateIndicator->setBrush(Qt::yellow);
+     } else if (_mergeHintActive) {
+         _stateIndicator->setBrush(Qt::green);
+-    } else if (isSelected) {
+-        _stateIndicator->setBrush( QColor(255, 230, 128, 255) ); // light yellow selection
++    } else if ( isSelected && !isSelectionTinted() ) {
++        _stateIndicator->setBrush( settingsColor(&Settings::getNodeSelectedColor) ); // light yellow selection by default
+     } else if ( !message.isEmpty() && ( (type == 1) || (type == 2) ) ) {
+         if (type == 1) {
+             _stateIndicator->setBrush( QColor(128, 0, 0, 255) ); //< error
+@@ -2344,6 +2391,9 @@ NodeGui::refreshStateIndicator()
+             (*it)->setUseSelected(isSelected);
+         }
+     }
++    if ( isSelectionTinted() ) {
++        refreshCurrentBrush();
++    }
+     if ( showIndicator && !_stateIndicator->isVisible() ) {
+         _stateIndicator->show();
+     } else if ( !showIndicator && _stateIndicator->isVisible() ) {
+@@ -3825,7 +3875,7 @@ NodeGui::setPluginIDAndVersion(const std::list<std::string>& /*grouping*/,
+         }
+         double w, h;
+         getSize(&w, &h);
+-        w = TO_DPIX(NODE_WIDTH) + TO_DPIX(NATRON_PLUGIN_ICON_SIZE) + TO_DPIX(PLUGIN_ICON_OFFSET) * 2;
++        w = TO_DPIX(nodeTileWidth()) + TO_DPIX(NATRON_PLUGIN_ICON_SIZE) + TO_DPIX(PLUGIN_ICON_OFFSET) * 2;
+         resize(w, h);
+ 
+         double x, y;
+diff --git a/Gui/NodeGui.h b/Gui/NodeGui.h
+index 49e2fc10..f5f68d32 100644
+--- a/Gui/NodeGui.h
++++ b/Gui/NodeGui.h
+@@ -579,8 +579,13 @@ private:
+ 
+     void populateMenu();
+ 
++protected:
++    // The node's colour, with the selection tint when the preference asks for it (Dots use it too).
+     void refreshCurrentBrush();
+ 
++    bool isSelectionTinted() const;
++
++private:
+     void initializeInputsForInspector();
+ 
+ 

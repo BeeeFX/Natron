@@ -183,6 +183,20 @@ def check_look(layer):
     for name in ("mergeConnectToA", "autoHideInputs", "writeUseDialog", "usePluginIcons"):
         if name not in report.kept:
             say(compat.setting_value(name) == wanted[name], name + " is " + str(wanted[name]))
+    # The node graph's drawing: preferences of this fork's own builds (core patch 0001). On Niik-l's plain release
+    # they're absent and the node graph keeps Natron's drawing; on a build from this fork they're all there and set.
+    drawing = look.drawing_names()
+    if compat.setting("nodeTileWidth") is None:
+        say(sorted(report.unpatched) == sorted(drawing),
+            "this Natron has no drawing preferences (not built from this fork): the node graph keeps Natron's drawing")
+    else:
+        say(not report.unpatched, "this Natron has every drawing preference of the look (built from this fork)")
+        for name in sorted(drawing - set(report.kept)):
+            got, want = compat.setting_value(name), wanted[name]
+            got = list(got) if isinstance(got, (list, tuple)) else [got]
+            want = list(want) if isinstance(want, (list, tuple)) else [want]
+            say(close(got, want, 1e-4),
+                name + " is the look's " + str(wanted[name]) + " for this session")
 
     # Precedence: the artist's stored value over the imported Nuke preference over the look.
     panels = compat.setting("maxPanels")

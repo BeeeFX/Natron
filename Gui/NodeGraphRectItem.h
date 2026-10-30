@@ -45,6 +45,7 @@ class NodeGraphRectItem
 {
     int _cornerRadiusPx;
     bool _flat;
+    double _shading;
 public:
 
     NodeGraphRectItem(QGraphicsItem *parent,
@@ -65,6 +66,12 @@ public:
     void setFlat(bool flat)
     {
         _flat = flat;
+    }
+
+    // Strength of the top-to-bottom shading: 0 is a flat fill, 1 Natron's shading (the default).
+    void setShading(double shading)
+    {
+        _shading = shading;
     }
 
     virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) OVERRIDE FINAL;

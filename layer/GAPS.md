@@ -76,21 +76,29 @@ route P: our own icons, the font, the session stylesheet, the properties pane's 
 (`ext/presets/nuke_hotkeys.toml`: 50 compared, 38 already the same in Natron, 6 added, 3 missing, 3 different), the
 Nuke group of aliases and gizmos, the workflow scripts, ToolSets and expressions, and "Import my Nuke preferences".
 Not reachable without a core patch: changing Natron's own default keys (they're compiled in; an artist's own keys
-can only be stored in Natron's settings), and the node graph's drawing (node size and shading, link width and
-arrows, selection tint: hard-coded in `NodeGui.cpp`, `Edge.cpp`, `GuiDefines.h`). The font, once thought out of
+can only be stored in Natron's settings). The node graph's drawing (node size and shading, link width and arrows,
+selection tint, the disabled cross, Dots, postage stamps on Read nodes) is **core patch 0001** since `.sng3`
+(preferences defaulting to Natron's drawing, the look setting Nuke's; `README.md`, "The node graph's drawing"). The
+font, once thought out of
 reach (Natron reads it before any script runs), is reached through Qt: the skin registers its own and substitutes it
 for Natron's.
 
-Still Natron's after the skin (next waves): the icons we haven't drawn yet (the Merge operations' pictures, the
-roto and tracker tools in the viewer, the curve editor's interpolation buttons, the File menu's icons), the knobs'
-own check boxes and Natron's custom drop-downs (drawn by Natron itself), the properties panels' header buttons
-(raised, not flat: the stylesheet can't tell them from the knobs' buttons without names).
+Done in `.sng3`: the second wave of icons (the Merge operations' pictures, the roto, paint and tracker tools, the
+curve editor's interpolation buttons, the text style buttons, the File menu's icons through an icon theme), the
+properties panels' header buttons flat (core patch 0002 names the header), Tab's search box in Nuke's style.
+
+Still Natron's (next): the knobs' own check boxes and Natron's custom drop-downs and sliders (drawn by Natron
+itself), the viewer's two toolbars' order and the info bar's layout (moving Natron's widgets is fragile; a core patch
+if Baptiste wants it), the curve editor's and dope sheet's own drawing beyond their colours, the node indicators'
+glossy round badges ("E", "V", "P"), the few icons no one has drawn yet (the combo box arrows, the cursors, the
+application and viewer icons).
 
 ## Roadmap (research section 2.7), and where this layer is
 
 1. Layer folder, adapter and smoke test — **done**.
 2. Nuke look — **done**; the skin (icons, font, flat stylesheet, palette, layout share) — **first wave done**
-   (`.sng2`); the node graph's drawing needs a core patch (Baptiste's call).
+   (`.sng2`), **second wave done** (`.sng3`: the rest of the icons, the menus', the panel headers, Tab's box); the node
+   graph drawn like Nuke's — **done** (`.sng3`, core patch 0001, this fork's first source build).
 3. Nuke keys — **done** for what Natron lacks; Natron's own keys clashing with an artist's imported ones are listed
    at import.
 4. Nuke menu of aliases — **done** (13).
