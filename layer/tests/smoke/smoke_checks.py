@@ -115,6 +115,50 @@ def own_values():
 # --- 2. The Nuke look ---
 
 
+def check_skin():
+    """The skin's parts that run headless: the session stylesheet, the look's two tables, the artist's way back to
+    Natron's own look (kept in the test's config folder only)."""
+    from natron_layer import compat, look, paths, skin, user_config
+
+    wanted = skin.settings()
+    say(str(wanted.get("font", "")).startswith("@layer/") and skin.layer_path(wanted["font"]).is_file(),
+        "the skin's font file is in the layer: " + str(wanted.get("font")))
+    say(len(skin.icon_table()) >= 100, "the skin's icon table lists our pictures (" + str(len(skin.icon_table())) + ")")
+    source = str(paths.stylesheet())
+    made = skin.session_stylesheet(source, compat.StoredSettings({}))
+    text = open(made, encoding="utf-8").read() if os.path.isfile(made) else ""
+    say(made != source and "Nuke section" in text and "@layer/" not in text
+        and "font-size: " + format(float(wanted.get("font_size")), "g") + "pt" in text,
+        "the session stylesheet has the layer's paths filled in and the skin's font size: " + made)
+    images = [line.split("url(", 1)[1].split(")", 1)[0] for line in text.splitlines() if "url(" in line
+              and "/ext/icons/" in line]
+    say(images and all(os.path.isfile(i) for i in images),
+        "every picture the Nuke section names is there (" + str(len(images)) + ")")
+    own = skin.session_stylesheet(source, compat.StoredSettings({"fontSize": 12}))
+    own_text = open(own, encoding="utf-8").read() if os.path.isfile(own) else ""
+    say(own != made and "The skin's font size" not in own_text,
+        "an artist's own font size (fontSize stored) leaves the skin's size out")
+    say(made.replace("\\", "/").startswith(skin.session_folder().as_posix()),
+        "the session stylesheet is written in the temporary folder, not in Natron's settings")
+    habits = look.load_look(visual=False)
+    visual = set(look.load_look()) - set(habits)
+    say("stylesheetFile" in visual and "selection" in visual and "mergeConnectToA" in habits
+        and "stylesheetFile" not in habits, "the look's habits and its visual preferences are apart ("
+        + str(len(habits)) + " habits, " + str(len(visual)) + " visual)")
+    asked = []
+    say(skin.choose_natron_look(confirm=lambda t, x: asked.append(t) or True, done=lambda t, x: None)
+        and user_config.load().get(skin.LOOK_KEY) == "natron" and asked,
+        "Nuke > Look > Natron's own look for me keeps the choice in the layer's own config (after a yes)")
+    say(skin.natron_look_chosen() and not (set(look.wanted_values()) & visual),
+        "with Natron's own look chosen, only the habits are set (no stylesheet, colours)")
+    say(skin.install().off != "", "and the skin stays out: " + skin.install().summary())
+    say(skin.choose_nuke_look(confirm=lambda t, x: True, done=lambda t, x: None)
+        and skin.LOOK_KEY not in user_config.load() and not skin.natron_look_chosen(),
+        "Nuke > Look > Nuke look for me takes the choice back")
+    say(not skin.choose_nuke_look(confirm=lambda t, x: True, done=lambda t, x: None),
+        "asking for the Nuke look again when it's already there changes nothing")
+
+
 def check_look(layer):
     from natron_layer import compat, look
 
@@ -459,7 +503,7 @@ def main():
         app = NatronEngine.natron.getActiveInstance()
         layer = check_loaded()
         if layer is not None:
-            for check in (lambda: check_look(layer), lambda: check_aliases(app), lambda: check_comp(app),
+            for check in (lambda: check_look(layer), check_skin, lambda: check_aliases(app), lambda: check_comp(app),
                           lambda: check_hotkeys(app), check_import, check_reset, lambda: check_tools(app)):
                 try:
                     check()

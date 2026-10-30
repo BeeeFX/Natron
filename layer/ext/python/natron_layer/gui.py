@@ -198,7 +198,7 @@ def about(done: Tell | None = None) -> str:
 def install() -> dict[str, list[str]]:
     """The menu bar's Nuke menu and keys, the imported shortcuts, and the first-launch question once Natron's
     window is up. Interface only (initGui.py)."""
-    from . import expressions, toolsets, workflow  # noqa: PLC0415  (menu functions: natron_layer.<module>.<function>)
+    from . import expressions, skin, toolsets, workflow  # noqa: F401, PLC0415  (menu functions: natron_layer.<module>.<function>)
 
     done = {"keys": hotkeys.register()}
     done["imported"] = hotkeys.register_imported(user_config.nuke_import().get("shortcuts", []))
@@ -209,6 +209,8 @@ def install() -> dict[str, list[str]]:
         ("Nuke/Import my Nuke preferences...", "natron_layer.gui.import_nuke_preferences"),
         ("Nuke/Forget my imported Nuke preferences...", "natron_layer.gui.forget_nuke_preferences"),
         ("Nuke/Use this build's look again...", "natron_layer.gui.reset_look"),
+        ("Nuke/Look/Natron's own look for me...", "natron_layer.skin.choose_natron_look"),
+        ("Nuke/Look/Nuke look for me...", "natron_layer.skin.choose_nuke_look"),
         ("Nuke/About this fork...", "natron_layer.gui.about"),
     ):
         compat.add_menu_command(grouping, function)
@@ -237,6 +239,12 @@ def _when_window_is_up(qt: Any) -> None:
         timer.stop()
         _waiting.clear()
         refresh_look()
+        if windows:
+            from . import skin  # noqa: PLC0415
+
+            # once Natron has finished sizing its window (its splitters settle after the window shows)
+            window = windows[0]
+            qt.QtCore.QTimer.singleShot(1000, lambda: skin.polish(window))
         qt.QtCore.QTimer.singleShot(1500, first_launch)
 
     timer.timeout.connect(look_for_window)

@@ -5,7 +5,9 @@ Ranked by how much compositors use each thing (our estimate), from the gap analy
 closed and where it stands.
 
 **Routes.** **E**: through Natron's own ways in (startup scripts, PyPlugs, OpenFX plug-ins built apart, the
-stylesheet, preferences), nothing of Natron's changed: costs nothing when a release comes. **C**: a core patch,
+stylesheet, preferences), nothing of Natron's changed: costs nothing when a release comes. **P**: Python (PySide)
+acting on Natron's live interface from the startup scripts (Qt's picture cache, fonts, widgets), nothing of Natron's
+changed: a release that renames a picture or widget leaves that one thing as Natron draws it. **C**: a core patch,
 Natron's own code changed: costly at every release, so few (see `patches/README.md`).
 
 **Status.** *done* (in the layer), *partly*, *planned* (in the roadmap below), *open*, *not planned*.
@@ -69,16 +71,26 @@ default colourspace under ACES.
 
 ## Nuke's look and habits (done in this layer)
 
-The Nuke look by default (`ext/presets/nuke_look.toml`, `ext/qss/nuke.qss`), Nuke's keys
+The Nuke look by default (`ext/presets/nuke_look.toml`, `ext/qss/nuke.qss`), the skin (`natron_layer/skin.py`,
+route P: our own icons, the font, the session stylesheet, the properties pane's share), Nuke's keys
 (`ext/presets/nuke_hotkeys.toml`: 50 compared, 38 already the same in Natron, 6 added, 3 missing, 3 different), the
 Nuke group of aliases and gizmos, the workflow scripts, ToolSets and expressions, and "Import my Nuke preferences".
 Not reachable without a core patch: changing Natron's own default keys (they're compiled in; an artist's own keys
-can only be stored in Natron's settings) and the font (Natron reads it before any script runs).
+can only be stored in Natron's settings), and the node graph's drawing (node size and shading, link width and
+arrows, selection tint: hard-coded in `NodeGui.cpp`, `Edge.cpp`, `GuiDefines.h`). The font, once thought out of
+reach (Natron reads it before any script runs), is reached through Qt: the skin registers its own and substitutes it
+for Natron's.
+
+Still Natron's after the skin (next waves): the icons we haven't drawn yet (the Merge operations' pictures, the
+roto and tracker tools in the viewer, the curve editor's interpolation buttons, the File menu's icons), the knobs'
+own check boxes and Natron's custom drop-downs (drawn by Natron itself), the properties panels' header buttons
+(raised, not flat: the stylesheet can't tell them from the knobs' buttons without names).
 
 ## Roadmap (research section 2.7), and where this layer is
 
 1. Layer folder, adapter and smoke test — **done**.
-2. Nuke look — **done**.
+2. Nuke look — **done**; the skin (icons, font, flat stylesheet, palette, layout share) — **first wave done**
+   (`.sng2`); the node graph's drawing needs a core patch (Baptiste's call).
 3. Nuke keys — **done** for what Natron lacks; Natron's own keys clashing with an artist's imported ones are listed
    at import.
 4. Nuke menu of aliases — **done** (13).

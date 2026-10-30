@@ -10,7 +10,8 @@ The release folder is only read. In the copy:
 
 - ``Plugins/PyPlugs/layer/`` gets the layer's startup scripts, alias nodes and gizmos (``layer/ext/plugin``): Natron
   reads its bundled PyPlugs folder at every start, so the build is Nuke-like with nothing set by whoever launches it;
-- ``Resources/layer/`` gets the rest of the layer (compat/, ext/python, ext/qss, ext/presets, ext/toolsets,
+- ``Resources/layer/`` gets the rest of the layer (compat/, ext/python, ext/qss, ext/presets, ext/toolsets, ext/icons,
+  ext/fonts,
   upstream.toml, the licence, FORK.md and GAPS.md), with ``BUILD.toml`` (the version, the release it's based on, the
   layer's commit)
   and ``SOURCE.txt`` (where the corresponding source is, as the GPL asks when a build is handed to someone).
@@ -40,7 +41,8 @@ from pathlib import Path
 LAYER = Path(__file__).resolve().parents[1]
 REPO = LAYER.parent
 TAG = re.compile(r"^natron-(\d+)\.(\d+)-(\d{4}\.\d{2}\.\d{2})$")
-RESOURCE_PARTS = ("compat", "ext/python", "ext/qss", "ext/presets", "ext/toolsets", "upstream.toml", "LICENSE",
+RESOURCE_PARTS = ("compat", "ext/python", "ext/qss", "ext/presets", "ext/toolsets", "ext/icons", "ext/fonts",
+                  "upstream.toml", "LICENSE",
                   "README.md", "GAPS.md")
 
 

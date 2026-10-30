@@ -806,34 +806,95 @@ QToolButton#ColorSelectorButton:pressed {
 /* ---- NATRON mainstyle.qss: end ---- */
 
 /* ---- Nuke section ----
- * Nuke's interface: flat square tabs, thin flat splitters, value fields darker than the panels they sit on, the
- * orange highlight on the selected tab's text. The node graph's background is the base colour (QGraphicsView,
- * above); the nodes, the viewer and the curve editor are drawn by Natron itself and take their colours from the
- * preferences, not from here.
+ * Nuke's interface, flat: square buttons with a thin dark edge, value fields darker than the panels they sit on,
+ * thin scrollbars without arrows, tight menus with the orange highlight and dark text, flat tabs, icon buttons in
+ * the viewer, playback and pane bars drawn without a frame until the mouse is over them. Our own rules, written
+ * for this layer (nothing from Nuke). %1 selection (orange), %2 base (panels), %3 raised (buttons), %4 sunken
+ * (fields, pane backgrounds), %5 text, %6 interpolated, %7 keyframe, %9 expression, %11 mouse over. "@layer/" is
+ * the layer's folder: the skin writes this file for the session with it filled in (natron_layer/skin.py). The
+ * nodes, the viewer's picture, the timeline and the curve editor are drawn by Natron itself and take their colours
+ * from the preferences (ext/presets/nuke_look.toml), not from here.
  */
 
-QTabBar::tab {
+/* -- Panes, panels, frames -- */
+
+TabWidget,
+Natron--TabWidget {
+    background-color: %4;
+}
+
+NodeSettingsPanel[_selected="true"],
+Natron--NodeSettingsPanel[_selected="true"] {
+    border: 1px solid %1;
+    border-radius: 0px;
+}
+
+NodeSettingsPanel[_selected="false"],
+Natron--NodeSettingsPanel[_selected="false"] {
     border: 1px solid %4;
+    border-radius: 0px;
+}
+
+QTabWidget::pane {
+    border: 1px solid %4;
+    margin-top: -1px;
+}
+
+QToolTip {
+    color: %5;
+    background-color: rgb(28, 28, 28);
+    border: 1px solid rgb(90, 90, 90);
+    border-radius: 0px;
+    padding: 3px;
+}
+
+/* -- Tabs: flat, square, the selected one lighter with orange text -- */
+
+QTabBar::tab {
+    background: %4;
+    border: 0px;
+    border-right: 1px solid rgb(24, 24, 24);
     border-top-right-radius: 0px;
     border-top-left-radius: 0px;
-    padding-left: 8px;
-    padding-right: 8px;
+    min-width: 0px;
+    padding-left: 10px;
+    padding-right: 10px;
     padding-top: 3px;
     padding-bottom: 3px;
+    margin: 0px;
 }
 
 QTabBar::tab:selected {
-    background: %3;
+    background: %2;
     color: %1;
 }
 
 QTabBar::tab:hover {
-    background: %3;
+    background: rgb(70, 70, 70);
 }
+
+QTabBar::close-button {
+    image: url(@layer/ext/icons/qss/close_tab.png);
+    subcontrol-position: right;
+}
+
+QTabBar::close-button:hover {
+    image: url(@layer/ext/icons/qss/close_tab_hover.png);
+}
+
+/* The properties panel's own tabs (Controls, Node, Info): flat and close together. */
+QTabBar::tab#DockablePanelTabWidget,
+QTabBar::tab#Natron--DockablePanelTabWidget {
+    min-width: 0px;
+    padding-left: 12px;
+    padding-right: 12px;
+}
+
+/* -- Splitters: thin and flat -- */
 
 QSplitter::handle:horizontal,
 QSplitter::handle:vertical {
-    background-color: %4;
+    background-color: rgb(24, 24, 24);
     border: 0px;
 }
 
@@ -845,6 +906,129 @@ QSplitter::handle::vertical {
     height: 2px;
 }
 
+/* -- Buttons: square, a thin dark edge, lighter under the mouse -- */
+
+QPushButton {
+    background-color: %3;
+    color: %5;
+    border: 1px solid rgb(22, 22, 22);
+    border-radius: 1px;
+    padding: 2px 6px;
+}
+
+QPushButton:hover {
+    background-color: rgb(92, 92, 92);
+    border: 1px solid rgb(22, 22, 22);
+}
+
+QPushButton:pressed,
+QPushButton:checked {
+    background-color: rgb(38, 38, 38);
+}
+
+QPushButton:focus {
+    border: 1px solid rgb(22, 22, 22);
+}
+
+QPushButton:!enabled {
+    color: rgb(110, 110, 110);
+}
+
+/* Icon buttons in the viewer's bars, the playback bar and the pane headers: no frame until the mouse is over. */
+ViewerTab QPushButton,
+Natron--ViewerTab QPushButton,
+TabWidget QPushButton,
+Natron--TabWidget QPushButton,
+QToolBar QToolButton {
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 1px;
+    padding: 0px;
+}
+
+ViewerTab QPushButton:hover,
+Natron--ViewerTab QPushButton:hover,
+TabWidget QPushButton:hover,
+Natron--TabWidget QPushButton:hover,
+QToolBar QToolButton:hover {
+    background-color: rgb(80, 80, 80);
+    border: 1px solid rgb(30, 30, 30);
+}
+
+ViewerTab QPushButton:pressed,
+Natron--ViewerTab QPushButton:pressed,
+ViewerTab QPushButton:checked,
+Natron--ViewerTab QPushButton:checked,
+TabWidget QPushButton:pressed,
+Natron--TabWidget QPushButton:pressed,
+QToolBar QToolButton:pressed {
+    background-color: rgb(30, 30, 30);
+    border: 1px solid rgb(30, 30, 30);
+}
+
+/* The properties panels (inside a pane) keep raised text buttons ("Normalize", "Add...") like Nuke's knobs. */
+NodeSettingsPanel QPushButton,
+Natron--NodeSettingsPanel QPushButton,
+DockablePanel QPushButton,
+Natron--DockablePanel QPushButton {
+    background-color: %3;
+    border: 1px solid rgb(22, 22, 22);
+    border-radius: 1px;
+    padding: 1px 5px;
+}
+
+NodeSettingsPanel QPushButton:hover,
+Natron--NodeSettingsPanel QPushButton:hover,
+DockablePanel QPushButton:hover,
+Natron--DockablePanel QPushButton:hover {
+    background-color: rgb(92, 92, 92);
+}
+
+NodeSettingsPanel QPushButton:checked,
+Natron--NodeSettingsPanel QPushButton:checked,
+NodeSettingsPanel QPushButton:pressed,
+Natron--NodeSettingsPanel QPushButton:pressed,
+DockablePanel QPushButton:checked,
+Natron--DockablePanel QPushButton:checked,
+DockablePanel QPushButton:pressed,
+Natron--DockablePanel QPushButton:pressed {
+    background-color: rgb(38, 38, 38);
+}
+
+QToolButton {
+    background-color: %2;
+    color: %5;
+    border: 0px;
+}
+
+QToolButton:pressed,
+QToolButton:focus {
+    border: 0px;
+}
+
+QToolButton::menu-indicator {
+    image: none;
+    width: 0px;
+}
+
+ViewerToolButton[isSelected="true"],
+Natron--ViewerToolButton[isSelected="true"] {
+    border: 1px solid %1;
+    background-color: rgb(30, 30, 30);
+}
+
+/* -- The left toolbar: one narrow column of grey icons -- */
+
+QToolBar {
+    background-color: %2;
+    spacing: 1px;
+    padding: 2px 1px;
+    border: 0px;
+    border-right: 1px solid rgb(24, 24, 24);
+}
+
+/* -- Value fields: darker than the panel, square, a thin dark edge, orange when typing -- */
+
 QLineEdit,
 SpinBox[animation="0"],
 Natron--SpinBox[animation="0"],
@@ -854,13 +1038,279 @@ Natron--LineEdit[animation="0"] {
 }
 
 QLineEdit {
-    border: 1px solid %4;
+    border: 1px solid rgb(18, 18, 18);
+    border-radius: 0px;
+    padding: 1px 3px;
+    selection-color: rgb(20, 20, 20);
+    selection-background-color: %1;
+}
+
+QLineEdit:focus {
+    border: 1px solid %1;
+    border-radius: 0px;
+}
+
+QLineEdit:!enabled,
+QLineEdit:read-only {
+    color: rgb(120, 120, 120);
+    background-color: rgb(40, 40, 40);
+}
+
+SpinBox[animation="3"],
+Natron--SpinBox[animation="3"] {
+    color: rgb(20, 20, 20);
+}
+
+QTextEdit,
+QPlainTextEdit {
+    background-color: %4;
+    border: 1px solid rgb(18, 18, 18);
+    selection-color: rgb(20, 20, 20);
+    selection-background-color: %1;
+}
+
+QTextEdit:focus {
+    border: 1px solid %1;
+}
+
+/* -- Drop-down menus (choices) -- */
+
+ComboBox,
+Natron--ComboBox {
+    border-radius: 0px;
+    border: 1px solid rgb(22, 22, 22);
+}
+
+QComboBox {
+    background-color: %3;
+    border: 1px solid rgb(22, 22, 22);
+    border-radius: 1px;
+    padding: 1px 18px 1px 5px;
+    selection-color: rgb(20, 20, 20);
+    selection-background-color: %1;
+}
+
+QComboBox:hover {
+    background-color: rgb(92, 92, 92);
+}
+
+QComboBox::drop-down {
+    border: 0px;
+    width: 16px;
+}
+
+QComboBox::down-arrow {
+    image: url(@layer/ext/icons/qss/arrow_down.png);
+    width: 9px;
+    height: 9px;
+}
+
+QComboBox QAbstractItemView {
+    background-color: %2;
+    border: 1px solid rgb(90, 90, 90);
+    selection-color: rgb(20, 20, 20);
+    selection-background-color: %1;
+}
+
+/* -- Check boxes: a small dark square with a grey tick -- */
+
+QCheckBox::indicator {
+    width: 12px;
+    height: 12px;
+}
+
+QCheckBox::indicator:unchecked,
+QCheckBox::indicator:unchecked:hover,
+QCheckBox::indicator:unchecked:focus {
+    image: none;
+    background-color: %4;
+    border: 1px solid rgb(18, 18, 18);
+}
+
+QCheckBox::indicator:unchecked:hover {
+    border: 1px solid rgb(110, 110, 110);
+}
+
+QCheckBox::indicator:checked,
+QCheckBox::indicator:checked:focus {
+    image: url(@layer/ext/icons/qss/check.png);
+    background-color: %4;
+    border: 1px solid rgb(18, 18, 18);
+}
+
+QCheckBox::indicator:checked:hover {
+    image: url(@layer/ext/icons/qss/check_hover.png);
+    background-color: %4;
+    border: 1px solid rgb(110, 110, 110);
+}
+
+/* -- Group boxes -- */
+
+QGroupBox::indicator:unchecked {
+    image: url(@layer/ext/icons/qss/arrow_right.png);
+}
+
+QGroupBox::indicator:checked {
+    image: url(@layer/ext/icons/qss/arrow_down.png);
+}
+
+/* -- Scrollbars: thin, flat, no arrows -- */
+
+QScrollBar:vertical {
+    border: 0px;
+    background: %4;
+    width: 10px;
+    margin: 0px;
+}
+
+QScrollBar:horizontal {
+    border: 0px;
+    background: %4;
+    height: 10px;
+    margin: 0px;
+}
+
+QScrollBar::handle:vertical,
+QScrollBar::handle:horizontal {
+    image: none;
+    background: rgb(88, 88, 88);
+    border: 0px;
+    border-radius: 0px;
+    margin: 2px;
+}
+
+QScrollBar::handle:vertical {
+    min-height: 24px;
+}
+
+QScrollBar::handle:horizontal {
+    min-width: 24px;
+}
+
+QScrollBar::handle:vertical:hover,
+QScrollBar::handle:horizontal:hover {
+    background: rgb(125, 125, 125);
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical,
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal {
+    border: 0px;
+    background: none;
+    width: 0px;
+    height: 0px;
+}
+
+QScrollBar::up-arrow:vertical,
+QScrollBar::down-arrow:vertical,
+QScrollBar::left-arrow:horizontal,
+QScrollBar::right-arrow:horizontal {
+    image: none;
+    width: 0px;
+    height: 0px;
+}
+
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical,
+QScrollBar::add-page:horizontal,
+QScrollBar::sub-page:horizontal {
+    background: none;
+}
+
+/* -- Lists, trees, table headers -- */
+
+QTreeView,
+QListView,
+QTableView {
+    background-color: %4;
+    alternate-background-color: rgb(40, 40, 40);
+    selection-color: rgb(20, 20, 20);
+    selection-background-color: %1;
+    border: 1px solid rgb(18, 18, 18);
+}
+
+QHeaderView::section,
+QHeaderView:section {
+    background-color: %3;
+    color: %5;
+    border: 0px;
+    border-right: 1px solid rgb(22, 22, 22);
+    border-bottom: 1px solid rgb(22, 22, 22);
+    padding: 2px 5px;
+}
+
+/* -- Menus: tight rows, orange under the mouse with dark text -- */
+
+QMenuBar {
+    background-color: %2;
+    border-bottom: 1px solid rgb(24, 24, 24);
+}
+
+QMenuBar::item {
+    background-color: transparent;
+    padding: 3px 8px;
+}
+
+QMenuBar::item:selected {
+    background: %1;
+    color: rgb(20, 20, 20);
 }
 
 QMenu {
-    border: 1px solid %4;
+    background-color: %2;
+    border: 1px solid rgb(90, 90, 90);
+    padding: 2px 0px 2px 0px;
 }
 
-QToolTip {
-    border: 1px solid %4;
+QMenu::item {
+    background-color: transparent;
+    padding: 3px 26px 3px 24px;
+}
+
+QMenu::item:selected {
+    background-color: %1;
+    color: rgb(20, 20, 20);
+}
+
+QMenu::item:!enabled {
+    color: rgb(115, 115, 115);
+}
+
+QMenu::separator {
+    height: 1px;
+    background: rgb(70, 70, 70);
+    margin: 3px 6px;
+}
+
+QMenu::icon {
+    padding-left: 4px;
+}
+
+QMenu::right-arrow {
+    image: url(@layer/ext/icons/qss/arrow_right.png);
+    width: 9px;
+    height: 9px;
+    padding-right: 6px;
+}
+
+/* -- Dialogs, and Tab's node search -- */
+
+QDialog {
+    background-color: %2;
+}
+
+QDialogButtonBox {
+    background-color: %2;
+}
+
+NodeCreationDialog,
+Natron--NodeCreationDialog {
+    background-color: %2;
+    border: 1px solid %1;
+    border-radius: 0px;
+}
+
+QMessageBox {
+    background-color: %2;
 }

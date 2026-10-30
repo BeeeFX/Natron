@@ -1,35 +1,75 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # This file is part of the layer of this Natron fork (see FORK.md at the repository root).
 #
-# The Nuke look: the values this build gives Natron's preferences while the artist hasn't chosen their own.
+# The Nuke look: the values this build gives Natron's preferences while the artist hasn't chosen their own, and the
+# skin (icons, font) it draws Natron's interface with.
 #
-# Each key is a Natron preference by its script name (Natron's Preferences window shows the label; the names are
-# Natron's own, from Engine/Settings.cpp). Colours are [r, g, b] from 0 to 1. A value starting with "@layer/" is a
-# file inside the layer.
+# Each key under [settings] and [habits] is a Natron preference by its script name (Natron's Preferences window
+# shows the label; the names are Natron's own, from Engine/Settings.cpp). Colours are [r, g, b] from 0 to 1. A value
+# starting with "@layer/" is a file inside the layer.
 #
 # How it's applied (natron_layer/look.py): at every start, a preference the artist has stored in Natron's settings
 # (changed in Natron's Preferences window and saved) is left as it is; the others take the value below for the
-# session, without being written anywhere. The colours are approximations of Nuke's default theme by eye (Nuke's
-# exact values aren't published as a list); change them here.
+# session, without being written anywhere. [settings] is what Natron looks like, [habits] how it behaves: an artist
+# who chose Natron's own look (menu bar > Nuke > Look) keeps the habits only. The colours are approximations of
+# Nuke's default theme by eye, from Foundry's public pictures (Nuke's exact values aren't published as a list);
+# change them here.
 
 [look]
 name = "Nuke"
 
+[skin]
+# natron_layer/skin.py, set while Natron starts, before its window is built.
+# The interface font: DejaVu Sans (Bitstream Vera licence, shipped with its notice in ext/fonts/), a free font
+# drawn on Verdana-like proportions, standing in for Nuke's. Not used when the artist chose a font in Natron's
+# Preferences.
+font = "@layer/ext/fonts/DejaVuSans.ttf"
+# Its size in points (Natron's is 11); not used when the artist chose a size in Natron's Preferences.
+font_size = 10
+# Our own icons (ext/icons/, drawn by tools/make_icons.py) instead of Natron's pictures they stand for.
+icons = true
+# The left toolbar's icons, in pixels at 96 dpi.
+toolbar_icon = 20
+# The properties pane's share of the window's width in Natron's default layout (Natron gives it 0.35; Nuke's
+# properties bin is narrower). A layout the artist made keeps its sizes.
+properties_share = 0.30
+
 [settings]
-# Appearance › Stylesheet: Natron's own stylesheet with Nuke-like tabs, menus and fields (ext/qss/nuke.qss).
+# Appearance > Stylesheet: Natron's own stylesheet with a flat Nuke skin after it (ext/qss/nuke.qss).
 stylesheetFile = "@layer/ext/qss/nuke.qss"
 
-# Appearance › Main Window: the greys and the orange highlight of Nuke's interface.
-sunken = [0.157, 0.157, 0.157]
-base = [0.196, 0.196, 0.196]
-raised = [0.27, 0.27, 0.27]
+# Appearance > Main Window: Nuke's greys (lighter panels, darker value fields) and its orange highlight.
+sunken = [0.13, 0.13, 0.13]
+base = [0.22, 0.22, 0.22]
+raised = [0.30, 0.30, 0.30]
 selection = [0.97, 0.58, 0.12]
-text = [0.78, 0.78, 0.78]
+text = [0.84, 0.84, 0.84]
 
-# Appearance › Curve Editor: dark grey instead of black.
+# Appearance > Main Window: knob states. Nuke tints an animated value blue (brighter on a keyframe) and an
+# expression's value lavender.
+interpValue = [0.27, 0.42, 0.62]
+keyframe = [0.30, 0.55, 0.88]
+exprColor = [0.62, 0.62, 0.92]
+slider = [0.80, 0.80, 0.80]
+
+# Appearance > Main Window: the timeline: dark grey, orange current frame, a green line on cached frames.
+timelineBG = [0.16, 0.16, 0.16]
+timelinePlayhead = [0.97, 0.58, 0.12]
+timelineBound = [0.78, 0.62, 0.30]
+cachedFrame = [0.36, 0.72, 0.36]
+diskCachedFrame = [0.25, 0.45, 0.25]
+
+# Appearance > Curve Editor and Dope Sheet: dark grey, grey grid and scale instead of Natron's green.
 curveEditorBG = [0.13, 0.13, 0.13]
+curveditorGrid = [0.30, 0.30, 0.30]
+curveeditorScale = [0.55, 0.55, 0.55]
+dopesheetBackground = [0.16, 0.16, 0.16]
+dopesheetRootSectionBackground = [0.22, 0.22, 0.22]
+dopesheetKnobSectionBackground = [0.19, 0.19, 0.19]
+dopesheetScale = [0.55, 0.55, 0.55]
+dopesheetGrid = [0.30, 0.30, 0.30]
 
-# Appearance › Node Graph: node colours per class, like Nuke's defaults.
+# Appearance > Node Graph: node colours per class, like Nuke's defaults.
 usePluginIcons = false
 defaultNodeColor = [0.7, 0.7, 0.7]
 backdropColor = [0.557, 0.557, 0.22]
@@ -45,6 +85,7 @@ keyerNodesColor = [0.33, 0.72, 0.42]
 channelNodesColor = [0.58, 0.42, 0.72]
 defaultMergeColor = [0.29, 0.37, 0.78]
 
+[habits]
 # Nodegraph: Nuke's habits. Snap to node, a new Merge takes the selected node in its A input, mask inputs hidden
 # until needed (these three are Natron's defaults too, kept here so the look says what it relies on).
 enableSnapToNode = true
