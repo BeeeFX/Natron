@@ -27,6 +27,7 @@
 
 #include <cassert>
 #include <algorithm> // min, max
+#include <cmath> // ceil
 #include <stdexcept>
 
 CLANG_DIAG_OFF(deprecated)
@@ -907,7 +908,7 @@ NodeGui::isNearbyResizeHandle(const QPointF& pos) const
 }
 
 void
-NodeGui::adjustSizeToContent(int* /*w*/,
+NodeGui::adjustSizeToContent(int* w,
                              int *h,
                              bool adjustToTextSize)
 {
@@ -919,6 +920,16 @@ NodeGui::adjustSizeToContent(int* /*w*/,
     // label change — visible as the Read node growing while scrubbing). Only the
     // height is fit to content.
     QRectF labelBbox = _nameItem->boundingRect();
+
+    // Optionally (preference nodeFitLabel, off by default) a node grows to fit a longer label. Measured from the
+    // node's initial width, never from its current one, so the width can't creep. Backdrops size themselves.
+    KnobBool* fitLabel = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("nodeFitLabel").get() );
+    if ( w && fitLabel && fitLabel->getValue() && !dynamic_cast<BackdropGui*>(this) &&
+         !( _previewPixmap && _previewPixmap->isVisible() ) ) {
+        int initialW, initialH;
+        getInitialSize(&initialW, &initialH);
+        *w = std::max( initialW, (int)std::ceil( labelBbox.width() ) + TO_DPIX(8) );
+    }
 
     if (adjustToTextSize) {
         if ( _previewPixmap && _previewPixmap->isVisible() ) {

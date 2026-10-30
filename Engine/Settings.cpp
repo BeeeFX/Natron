@@ -999,6 +999,14 @@ Settings::initializeKnobsNodeGraphDrawing()
     KnobSeparatorPtr sep = AppManager::createKnob<KnobSeparator>( this, tr("Node and link drawing") );
     _nodegraphColorsTab->addKnob(sep);
 
+    // Read by NodeGui through its name (no member, so this header stays as it is).
+    KnobBoolPtr fitLabel = AppManager::createKnob<KnobBool>( this, tr("Nodes as wide as their label") );
+    fitLabel->setName("nodeFitLabel");
+    fitLabel->setHintToolTip( tr("When checked, a node whose label is longer than the node width grows to fit it; "
+                                 "otherwise every node keeps the same width and a long label spills over.") );
+    fitLabel->setDefaultValue(false);
+    _nodegraphColorsTab->addKnob(fitLabel);
+
     // Read by Node::makePreviewByDefault through its name (no member, so this header stays as it is).
     KnobBoolPtr readerPreview = AppManager::createKnob<KnobBool>( this, tr("Postage stamps on Read nodes") );
     readerPreview->setName("readerPreview");
