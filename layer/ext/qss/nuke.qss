@@ -1477,3 +1477,136 @@ ComboBox[flat="true"],
 Natron--ComboBox[flat="true"] {
     border: 0px;
 }
+
+/* -- Round 4 (.sng5): the timeline and the properties panels' widgets, measured on Foundry's guide pictures ("Using
+      the Viewer Controls", the timeline picture; "Using the Color Controls", a knob row): panels 50; fields a little
+      lighter than the panel (55 to 58) with a dark edge (30); buttons raised, a light-to-dark grey from top to
+      bottom (82 to 67) with a dark edge; the playback in and out points as tall rounded boxes at the ruler's ends,
+      their numbers dim. -- */
+
+/* The playback bar's buttons: small raised boxes, a little wider than tall (arrange.py sizes them). */
+QWidget#SngPlayerBar QPushButton {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 rgb(80, 80, 80), stop: 1 rgb(68, 68, 68));
+    border: 1px solid rgb(30, 30, 30);
+    border-radius: 3px;
+    margin: 0px 1px;
+    padding: 0px;
+}
+
+QWidget#SngPlayerBar QPushButton:hover {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 rgb(98, 98, 98), stop: 1 rgb(84, 84, 84));
+}
+
+QWidget#SngPlayerBar QPushButton:pressed,
+QWidget#SngPlayerBar QPushButton:checked {
+    background-color: rgb(34, 34, 34);
+    border: 1px solid rgb(30, 30, 30);
+}
+
+/* The bar's fields (frame rate, increment): Nuke's fields, a little lighter than the bar, a dark edge. */
+QWidget#SngPlayerBar QLineEdit {
+    background-color: rgb(58, 58, 58);
+    border: 1px solid rgb(30, 30, 30);
+    border-radius: 2px;
+}
+
+/* The current frame: an orange number in a flat field. */
+QLineEdit#SngCurrentFrame,
+#SngCurrentFrame {
+    color: %1;
+    background-color: rgb(58, 58, 58);
+    border: 0px;
+    border-radius: 2px;
+}
+
+/* The playback in and out points at the frame ruler's ends: tall flat boxes, the number dim and a little larger. */
+QLineEdit#SngInPoint,
+QLineEdit#SngOutPoint {
+    background-color: rgb(58, 58, 58);
+    color: rgb(150, 150, 150);
+    border: 0px;
+    border-radius: 3px;
+    font-size: 11pt;
+    padding: 0px;
+}
+
+QLineEdit#SngInPoint:focus,
+QLineEdit#SngOutPoint:focus {
+    border: 1px solid %1;
+}
+
+/* Properties panels: the value fields a little lighter than the panel with a dark edge (an animated or keyed value
+   keeps Natron's tint). */
+NodeSettingsPanel QLineEdit,
+Natron--NodeSettingsPanel QLineEdit {
+    border: 1px solid rgb(30, 30, 30);
+    border-top: 1px solid rgb(22, 22, 22);
+    border-radius: 2px;
+    padding: 0px 3px;
+}
+
+NodeSettingsPanel SpinBox[animation="0"],
+Natron--NodeSettingsPanel Natron--SpinBox[animation="0"],
+NodeSettingsPanel LineEdit[animation="0"],
+Natron--NodeSettingsPanel Natron--LineEdit[animation="0"] {
+    background-color: rgb(55, 55, 55);
+}
+
+NodeSettingsPanel QLineEdit:focus,
+Natron--NodeSettingsPanel QLineEdit:focus {
+    border: 1px solid %1;
+}
+
+/* Properties panels: buttons ("4", the colour wheel, Normalize, the animation button) raised, light to dark. */
+NodeSettingsPanel QPushButton,
+Natron--NodeSettingsPanel QPushButton,
+NodeSettingsPanel QToolButton#ColorSelectorButton,
+Natron--NodeSettingsPanel QToolButton#ColorSelectorButton,
+QPushButton#KnobAnimationButton {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 rgb(82, 82, 82), stop: 1 rgb(67, 67, 67));
+    border: 1px solid rgb(30, 30, 30);
+    border-radius: 2px;
+}
+
+NodeSettingsPanel QPushButton:hover,
+Natron--NodeSettingsPanel QPushButton:hover,
+NodeSettingsPanel QToolButton#ColorSelectorButton:hover,
+Natron--NodeSettingsPanel QToolButton#ColorSelectorButton:hover,
+QPushButton#KnobAnimationButton:hover {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 rgb(100, 100, 100), stop: 1 rgb(84, 84, 84));
+}
+
+NodeSettingsPanel QPushButton:checked,
+Natron--NodeSettingsPanel QPushButton:checked,
+NodeSettingsPanel QPushButton:pressed,
+Natron--NodeSettingsPanel QPushButton:pressed {
+    background-color: rgb(36, 36, 36);
+}
+
+/* The header keeps its small flat buttons (Nuke's header), after the rule above. */
+QFrame#DockablePanelHeader QPushButton {
+    background-color: transparent;
+    border: 1px solid transparent;
+}
+
+QFrame#DockablePanelHeader QPushButton:hover {
+    background-color: rgb(70, 70, 70);
+    border: 1px solid rgb(24, 24, 24);
+}
+
+QFrame#DockablePanelHeader QLineEdit {
+    background-color: rgb(55, 55, 55);
+    border: 1px solid rgb(30, 30, 30);
+    border-radius: 2px;
+}
+
+/* A node panel's own tabs (Grade, Node, Info): the current one white and bold on the panel's grey, the others grey
+   on a darker tab, as Nuke's (no orange: that is for the panes' tabs). */
+QTabBar#DockablePanelTabWidget::tab {
+    color: rgb(165, 165, 165);
+    font-weight: bold;
+}
+
+QTabBar#DockablePanelTabWidget::tab:selected {
+    color: rgb(232, 232, 232);
+}

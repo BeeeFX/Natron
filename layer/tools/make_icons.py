@@ -335,7 +335,9 @@ def _float(p: Pen, c: tuple) -> None:
 
 @icon("minimize.png")
 def _minimise(p: Pen, c: tuple) -> None:
-    p.line([(3.5, 11), (12.5, 11)], c, 1.2)
+    # Nuke folds a properties panel with a small downward triangle at the start of its header (the layer puts the
+    # button there, natron_layer/arrange.py).
+    p.poly([(3.5, 5.5), (12.5, 5.5), (8, 11.5)], c)
 
 
 @icon(["close.png", "closePanel.png"])

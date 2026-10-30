@@ -1,7 +1,7 @@
 # Core patches
 
-Changes to Natron's own files (its C++ code, its build), carried on top of Niik-l's releases. **Five**: three since
-`.sng3` (31 October 2026), two more since `.sng4` (1 November 2026); about 710 changed lines in all, all written so Niik-l can take them as they are: new preferences whose
+Changes to Natron's own files (its C++ code, its build), carried on top of Niik-l's releases. **Six**: three since
+`.sng3` (31 October 2026), two more since `.sng4`, one more since `.sng5` (1 November 2026); about 870 changed lines in all, all written so Niik-l can take them as they are: new preferences whose
 defaults are Natron's own behaviour (nothing changes for anyone who doesn't set them), and a name for the stylesheet.
 The layer sets the Nuke-like values for the session, like its other preferences.
 
@@ -14,7 +14,11 @@ The layer sets the Nuke-like values for the session, like its other preferences.
 | `0004-Properties-panel-rows.patch` | The properties rows as Nuke's, as preferences (Appearance > Main Window): `sliderHandleBar`, `knobDimensionButtonLast`, `knobAnimationButton`, `pageTabNodeName`; a drop-down whose `flat` property is set drawn without its box. | `Engine/Settings.cpp`, `Gui/KnobGui.cpp`, `Gui/KnobGuiValue.cpp`, `Gui/ScaleSliderQWidget.cpp`, `Gui/DockablePanel.cpp`, `Gui/ComboBox.cpp`; 104 lines added, 10 removed | not offered (kept private for now, Baptiste) |
 | `0005-Node-graph-viewer-labels-backdrops.patch` (on top of 0001 and 0003) | `linkLabelNearInput`, `viewerNodePointed`, `backdropLabelOnly`, `nodeBadgesFlat`, `nodeNameKeepsSize` (Appearance > Node Graph > Node and link drawing). | `Engine/Settings.cpp`, `Gui/Edge.cpp`, `Gui/NodeGraphRectItem.{h,cpp}`, `Gui/NodeGui.cpp`, `Gui/BackdropGui.cpp`; 139 lines added, 9 removed | not offered (kept private for now, Baptiste) |
 
-**The budget is now full** (5 of 5 patches, about 710 of 800 lines): a next core change replaces or grows one of these.
+| `0006-Timeline-ruler-and-knob-widgets.patch` (on top of 0004) | `timelineRulerNuke` (the timeline's frame ruler as Nuke's: no axis line, short ticks and taller numbered ones on one baseline, the cached line under them, the in and out points as upright lines, regular-weight numbers), `knobWidgetsShaded` (check boxes with a small cross in a darker square, drop-downs shaded light to dark), and `sliderHandleBar` drawing the scale as Nuke's (a dark groove, dark ticks and numbers). | `Engine/Settings.cpp`, `Gui/TimeLineGui.cpp`, `Gui/ScaleSliderQWidget.cpp`, `Gui/AnimatedCheckBox.cpp`, `Gui/ComboBox.cpp`; 126 lines added, 33 removed | not offered (kept private for now, Baptiste) |
+
+**The budget is now full again** (6 of 6 patches, about 870 of 900 lines). It grew for `.sng5` by one patch and 100
+lines: the timeline's ruler and the knobs' widgets (sliders, check boxes, drop-downs) are painted by Natron's C++ code,
+which a stylesheet can't reach. A next core change replaces or grows one of these.
 
 `fixes/` holds something else: **build fixes for the plug-ins' and Cycles' sources** (not Natron's), needed when the MSYS2
 packages of a release's day are newer than Niik-l's PC had, applied by `../tools/source_build.sh` after his own
@@ -27,7 +31,8 @@ the mutex is now made on first use), to offer to Niik-l's Cycles. They don't cou
 A core patch has to be redone or rebased every time Niik-l publishes a release (every one to three weeks), so each
 one is costly. The budget:
 
-- **At most 5 core patches**, and **about 800 changed lines in Natron's files in total**, none over 300 lines.
+- **At most 6 core patches**, and **about 900 changed lines in Natron's files in total**, none over 300 lines (5 and
+  800 until `.sng5`).
 - **None in the files the fork is busy rewriting** (the viewer's colour path, the 3D workspace, the properties panels
   of 3D nodes) unless Niik-l takes it.
 - When the budget is full, a new patch replaces an old one or waits.

@@ -560,6 +560,31 @@ read by name (Settings.h unchanged), the look setting the Nuke-like value for th
   (the E, P, V marks as flat discs), `nodeNameKeepsSize` (once a node's panel had been opened, Natron's label editor
   left an empty font tag of HTML size 6 in its label and the name was drawn about twice as large as the others').
 
+## The timeline and the knobs' widgets (core patch 0006, `.sng5`)
+
+Measured against Foundry's timeline pictures ("Using the Viewer Controls", and the timeline in "Nuke Studio
+Environments"' viewer_focus.png) and its knob row ("Using the Color Controls"):
+
+- **0006** (Appearance > Main Window), each defaulting to Natron's drawing and read by name: `timelineRulerNuke` (the
+  frame ruler without its axis line, short ticks on every step and taller ones where a number sits, all rising from
+  one baseline, the cached frames' line between the ticks and the numbers, the playback in and out points as upright
+  lines through the ruler, the numbers in the regular weight), `knobWidgetsShaded` (a ticked check box shows a small
+  cross inside a darker square; a drop-down at rest is shaded light to dark with a dark edge); and patch 0004's
+  `sliderHandleBar` now also draws the scale as Nuke's: a dark groove for a baseline, dark ticks rising from it, dark
+  numbers (the handle's khaki darkened in the look to Nuke's 98, 82, 39).
+- **`arrange.py`** puts the playback in and out fields at the ruler's two ends, tall (the ruler is given 54 px for the
+  current frame's number on top), and the playback bar in Nuke's order: frame rate and time format, the loop mode,
+  then set-in, first frame, previous keyframe, previous frame, play backward, the current frame, play, next frame,
+  next keyframe, last frame, set-out, the increment, and the viewers' lock at the right end. The ruler stays in the
+  viewer's layout (a row inside it), so the OpenGL widget keeps its parent. The properties panels' header goes in
+  Nuke's order too: the collapse button first (drawn as a small downward triangle), the name field taking the width,
+  the colour, undo, redo and revert buttons, then help, float and close.
+- **The stylesheet** (round 4 block at the end of `nuke.qss`): the playback buttons and the properties' buttons ("4",
+  the colour wheel, the animation button, Normalize) shaded light to dark (82 to 67) with a dark edge (30); the
+  properties' value fields and the playback bar's fields a little lighter than the panel (55 to 58) with a dark edge;
+  the in and out fields flat, rounded, their numbers dim; a node panel's tabs white and bold (no orange: that's for
+  the panes' tabs).
+
 ## Writing code here
 
 - Natron and Qt only through `compat` (the adapter): one place to fix when the fork's API moves.
