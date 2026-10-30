@@ -2,3 +2,4 @@
 # patch file name per line, from this folder). See README.md here for the budget and what each patch's header must say.
 0001-Node-graph-drawing-preferences.patch
 0002-Properties-panel-header-name.patch
+0003-Node-graph-errors-and-selection.patch

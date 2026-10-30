@@ -317,10 +317,12 @@ file shows what to add.
 ## The smoke test
 
 ```
-python layer/tests/smoke/run_smoke.py --renderer "<release>/bin/NatronRenderer.exe" [--gui] [--keep]
+python layer/tests/smoke/run_smoke.py --renderer "<release>/bin/NatronRenderer.exe" [--gui [--offscreen]] [--keep]
 ```
 
-With any Python 3.10+. It runs the Nuke reader's tests (`test_nuke_prefs.py`, no Natron), checks the layer's files
+With any Python 3.10+ (`--offscreen` moves the window out of sight as soon as it shows, for a PC someone is using; on a
+build from this fork the window checks also look at the node graph's drawing: a Read of a missing file drawn in the error
+colour, unlike a Grade, and saying why under the mouse). It runs the Nuke reader's tests (`test_nuke_prefs.py`, no Natron), checks the layer's files
 (the stylesheet still holds Natron's own unchanged, the patch series, ASCII files for Natron, one PyPlug per alias
 and gizmo, one file per studio ToolSet, every expression recipe valid Python), then `NatronRenderer -t
 smoke_checks.py` in a clean session: Natron's disk cache, home folder, TEMP and the layer's config in a temporary
@@ -512,7 +514,7 @@ written in its code, so neither the stylesheet nor Python reaches them. Patch 00
 (Appearance > Node Graph > Node and link drawing), **each defaulting to Natron's own drawing**, and the look sets
 Nuke-like values for the session in `nuke_look.toml`'s `[drawing]` table: compact 80 x 18 tiles with slightly
 rounded corners and a light shading, a thin dark outline, thin dark links with small open arrow heads, a selected
-node tinted orange-yellow (no halo; its links in the same colour), a disabled node crossed out in red, smaller Dots,
+node brightened in its own colour with an orange outline (no halo; its links in orange), a node in error red with a red outline and frame (its message under the mouse; patch 0003, which also makes a Read with a missing file say so at once, postage stamps being off), a disabled node crossed out in red, smaller Dots,
 no postage stamp on new Read nodes, a node as wide as its label (Read nodes with their file name, ColorCorrect1) as Nuke's are. Natron's colours per class (set by the look), its second label line (Merge's
 "(over)", a Read's file name) and its input labels (A, B, Mask) stay as they are and already read like Nuke's. On
 Niik-l's plain release the preferences don't exist: the look says so in its report ("the node graph drawn as

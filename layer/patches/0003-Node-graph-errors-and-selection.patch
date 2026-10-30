@@ -1,0 +1,349 @@
+From bfca4686c29201fe08c2852ad014394ee56889c7 Mon Sep 17 00:00:00 2001
+From: "Baptiste G." <70719480+BeeeFX@users.noreply.github.com>
+Date: Fri, 30 Oct 2026 13:08:27 +0000
+Subject: [PATCH] Node graph: a node in error drawn in the error colour; a
+ selected node keeps its colour
+
+- nodeErrorTint and nodeErrorColor (Appearance > Node Graph > Node and link drawing; 0 by default, Natron's dark
+  red frame and large ERROR as before): above 0, a node in error takes the error colour, with an outline and the
+  frame in it, and its message shows when the mouse is over it (the large ERROR doesn't fit a compact node).
+- nodeSelectedTint now brightens a selected node towards white, keeping its own colour, with an outline in the
+  selection colour, instead of mixing it with the selection colour (a selected blue Merge turned brown).
+- With postage stamps off (readerPreview), nothing renders an unconnected Read, so Natron never found a missing
+  file: the Read now looks for its file when it's named (any file of a sequence pattern in its folder) and says
+  "File not found" at once; the check waits for the node to be made (a node being made drops its messages).
+- A node's drawing shows a message the node got before the drawing existed.
+- Both new preferences are read by name, so Settings.h doesn't change.
+
+Core patch 0003 of the BeeeFX fork (layer/patches/), on top of 0001, written to be offered upstream as it is.
+
+Gap: layer/GAPS.md, "Nuke's look and habits" (the node graph's drawing: errors and selection).
+Size: 4 files, 166 lines added, 7 removed.
+upstream: not offered yet (to offer to Niik-l with 0001: github.com/Niik-l/Natron).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ Engine/ReadNode.cpp | 72 +++++++++++++++++++++++++++++++++++++++++++
+ Engine/Settings.cpp | 25 +++++++++++++--
+ Gui/NodeGui.cpp     | 74 ++++++++++++++++++++++++++++++++++++++++++---
+ Gui/NodeGui.h       |  2 ++
+ 4 files changed, 166 insertions(+), 7 deletions(-)
+
+diff --git a/Engine/ReadNode.cpp b/Engine/ReadNode.cpp
+index 2aba4c181..e54bb2990 100644
+--- a/Engine/ReadNode.cpp
++++ b/Engine/ReadNode.cpp
+@@ -52,6 +52,9 @@ CLANG_DIAG_OFF(uninitialized)
+ #include <QProcess>
+ #include <QFile>
+ #include <QFileInfo>
++#include <QDir>
++#include <QRegularExpression>
++#include <QTimer>
+ CLANG_DIAG_ON(deprecated)
+ CLANG_DIAG_ON(uninitialized)
+ 
+@@ -68,6 +71,7 @@ CLANG_DIAG_ON(uninitialized)
+ #include "Engine/KnobSerialization.h" // createDefaultValueForParam
+ #include "Engine/Plugin.h"
+ #include "Engine/Settings.h"
++#include "Engine/TimeLine.h"
+ 
+ //The plug-in that is instantiated whenever this node is created and doesn't point to any valid or known extension
+ #define READ_NODE_DEFAULT_READER PLUGINID_OFX_READOIIO
+@@ -253,6 +257,9 @@ public:
+ 
+     bool wasCreatedAsHiddenNode;
+ 
++    // The "File not found" message was set by knobChanged's own check (cleared by it once the file is there).
++    bool missingFileMessage;
++
+ 
+     ReadNodePrivate(ReadNode* publicInterface)
+     : _publicInterface(publicInterface)
+@@ -268,6 +275,7 @@ public:
+     , creatingReadNode(0)
+     , lastPluginIDCreated()
+     , wasCreatedAsHiddenNode(false)
++    , missingFileMessage(false)
+     {
+     }
+ 
+@@ -283,6 +291,8 @@ public:
+ 
+     void refreshPluginSelectorKnob();
+ 
++    void checkFileFound(const std::string& filename);
++
+     void refreshFileInfoVisibility(const std::string& pluginID);
+ 
+     void createDefaultReadNode();
+@@ -651,6 +661,67 @@ getFileNameFromSerialization(const std::list<KnobSerializationPtr>& serializatio
+     return filePattern;
+ }
+ 
++// Whether the file a Read names is there: the frame asked for, or, for a sequence pattern (#, @ or %0Nd), any file of
++// the pattern in its folder (the frame asked for may lie outside the sequence's range).
++static bool
++readerFileExists(const std::string& frameFile, const std::string& pattern)
++{
++    if ( !frameFile.empty() && QFile::exists( QString::fromUtf8( frameFile.c_str() ) ) ) {
++        return true;
++    }
++    QString pat = QString::fromUtf8( pattern.c_str() );
++    int token = pat.indexOf( QRegularExpression( QString::fromUtf8("#|@|%[0-9]*d") ) );
++    if (token < 0) {
++        return false;
++    }
++    QFileInfo info( pat.left(token) );
++    QString prefix = info.fileName();
++    QRegularExpressionMatch m = QRegularExpression( QString::fromUtf8("(#+|@+|%[0-9]*d)") ).match(pat, token);
++    QString suffix = pat.mid( token + m.capturedLength() );
++    if ( suffix.contains( QLatin1Char('/') ) || suffix.contains( QLatin1Char('\\') ) ) {
++        return true; // a frame number in a folder name: not checked here, rendering will say
++    }
++    QDir dir = info.dir();
++    if ( !dir.exists() ) {
++        return false;
++    }
++
++    return !dir.entryList( QStringList( prefix + QLatin1Char('*') + suffix ), QDir::Files ).isEmpty();
++}
++
++void
++ReadNodePrivate::checkFileFound(const std::string& filename)
++{
++    // Natron finds a missing file when it first renders the Read, its postage stamp included. With postage stamps
++    // off by preference (readerPreview) nothing renders an unconnected Read, so look for the file when it's named.
++    KnobBool* readerPreview = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("readerPreview").get() );
++    KnobFilePtr fileKnob = inputFileKnob.lock();
++    if ( !readerPreview || readerPreview->getValue() || filename.empty() || !fileKnob || !_publicInterface->getApp() ) {
++        return;
++    }
++    NodePtr node = _publicInterface->getNode();
++    if ( node && !node->isNodeCreated() ) {
++        // A node still being made drops its messages: look again once it's made (the next turn of the event loop).
++        std::string name = filename;
++        QTimer::singleShot( 0, _publicInterface, [this, name]() { checkFileFound(name); } );
++
++        return;
++    }
++    std::string frameFile = fileKnob->getFileName( (int)_publicInterface->getApp()->getTimeLine()->currentFrame(), ViewIdx(0) );
++    std::string pattern = filename;
++    _publicInterface->getApp()->getProject()->canonicalizePath(frameFile);
++    _publicInterface->getApp()->getProject()->canonicalizePath(pattern);
++    if ( readerFileExists(frameFile, pattern) ) {
++        if (missingFileMessage) {
++            _publicInterface->clearPersistentMessage(false);
++            missingFileMessage = false;
++        }
++    } else {
++        _publicInterface->setPersistentMessage( eMessageTypeError, tr("File not found: %1").arg( QString::fromUtf8( filename.c_str() ) ).toStdString() );
++        missingFileMessage = true;
++    }
++}
++
+ void
+ ReadNodePrivate::createReadNode(bool throwErrors,
+                                 const std::string& filename,
+@@ -823,6 +894,7 @@ ReadNodePrivate::createReadNode(bool throwErrors,
+     if (knob) {
+         inputFileKnob = std::dynamic_pointer_cast<KnobFile>(knob);
+     }
++    checkFileFound(filename);
+ } // ReadNodePrivate::createReadNode
+ 
+ void
+diff --git a/Engine/Settings.cpp b/Engine/Settings.cpp
+index 466c3194d..416c2fbc2 100644
+--- a/Engine/Settings.cpp
++++ b/Engine/Settings.cpp
+@@ -999,7 +999,26 @@ Settings::initializeKnobsNodeGraphDrawing()
+     KnobSeparatorPtr sep = AppManager::createKnob<KnobSeparator>( this, tr("Node and link drawing") );
+     _nodegraphColorsTab->addKnob(sep);
+ 
+-    // Read by NodeGui through its name (no member, so this header stays as it is).
++    // Read by NodeGui through their names (no member, so this header stays as it is).
++    KnobDoublePtr errorTint = AppManager::createKnob<KnobDouble>( this, tr("Node in error tint") );
++    errorTint->setName("nodeErrorTint");
++    errorTint->setHintToolTip( tr("How much a node in error takes the error colour, with an outline of that colour, instead "
++                                  "of a frame around it and a large ERROR over it (0: Natron's frame). Its message shows "
++                                  "when the mouse is over the node.") );
++    errorTint->disableSlider();
++    errorTint->setMinimum(0.);
++    errorTint->setMaximum(1.);
++    errorTint->setDefaultValue(0.);
++    _nodegraphColorsTab->addKnob(errorTint);
++    KnobColorPtr errorColor = AppManager::createKnob<KnobColor>(this, tr("Node in error"), 3);
++    errorColor->setName("nodeErrorColor");
++    errorColor->setSimplified(true);
++    errorColor->setHintToolTip( tr("The colour of a node in error, when the tint above is more than 0.") );
++    errorColor->setDefaultValue(0.85, 0);
++    errorColor->setDefaultValue(0.12, 1);
++    errorColor->setDefaultValue(0.10, 2);
++    _nodegraphColorsTab->addKnob(errorColor);
++
+     KnobBoolPtr fitLabel = AppManager::createKnob<KnobBool>( this, tr("Nodes as wide as their label") );
+     fitLabel->setName("nodeFitLabel");
+     fitLabel->setHintToolTip( tr("When checked, a node whose label is longer than the node width grows to fit it; "
+@@ -1035,7 +1054,7 @@ Settings::initializeKnobsNodeGraphDrawing()
+     struct DoubleDef { KnobDoublePtr* knob; const char* name; QString label; double def, min, max; QString hint; };
+     const DoubleDef doubles[] = {
+         { &_nodeShading, "nodeShading", tr("Node shading"), 1., 0., 2., tr("How strong the top-to-bottom shading of nodes is: 0 is a flat colour, 1 is Natron's shading.") },
+-        { &_nodeSelectedTint, "nodeSelectedTint", tr("Selected node tint"), 0., 0., 1., tr("How much a selected node takes the selection colour (0: a halo around it instead).") },
++        { &_nodeSelectedTint, "nodeSelectedTint", tr("Selected node tint"), 0., 0., 1., tr("How much a selected node brightens, keeping its own colour, with an outline in the selection colour (0: a halo around it instead).") },
+         { &_linkWidth, "linkWidth", tr("Link width"), 3., 0.5, 6., tr("The width of the links between nodes, in pixels.") },
+         { &_linkArrowLength, "linkArrowLength", tr("Link arrow length"), 14., 4., 40., tr("The length of the arrow heads of links, in pixels.") },
+         { &_linkArrowAngle, "linkArrowAngle", tr("Link arrow opening"), 24., 10., 90., tr("How wide the arrow heads of links open, in degrees.") },
+@@ -1055,7 +1074,7 @@ Settings::initializeKnobsNodeGraphDrawing()
+     struct ColorDef { KnobColorPtr* knob; const char* name; QString label; double r, g, b; QString hint; };
+     const ColorDef colors[] = {
+         { &_nodeOutlineColor, "nodeOutlineColor", tr("Node outline"), 0., 0., 0., tr("The colour of the thin line around nodes.") },
+-        { &_nodeSelectedColor, "nodeSelectedColor", tr("Selected node"), 1., 230. / 255., 128. / 255., tr("The colour that shows a node is selected.") },
++        { &_nodeSelectedColor, "nodeSelectedColor", tr("Selected node"), 1., 230. / 255., 128. / 255., tr("The colour of the halo, or of the outline, that shows a node is selected.") },
+         { &_linkColor, "linkColor", tr("Links"), 0., 0., 0., tr("The colour of the links between nodes.") },
+         { &_linkSelectedColor, "linkSelectedColor", tr("Links of selected nodes"), 1., 1., 1., tr("The colour of the links of selected nodes.") },
+         { &_disabledCrossColor, "disabledCrossColor", tr("Disabled node cross"), 0., 0., 0., tr("The colour of the cross drawn over a disabled node.") },
+diff --git a/Gui/NodeGui.cpp b/Gui/NodeGui.cpp
+index d087f3a04..2eea71209 100644
+--- a/Gui/NodeGui.cpp
++++ b/Gui/NodeGui.cpp
+@@ -136,6 +136,26 @@ settingsColor(void (Settings::*getter)(double*, double*, double*) const)
+     return c;
+ }
+ 
++static double
++nodeErrorTint()
++{
++    KnobDouble* k = dynamic_cast<KnobDouble*>( appPTR->getCurrentSettings()->getKnobByName("nodeErrorTint").get() );
++
++    return k ? k->getValue() : 0.;
++}
++
++static QColor
++nodeErrorColor()
++{
++    KnobColor* k = dynamic_cast<KnobColor*>( appPTR->getCurrentSettings()->getKnobByName("nodeErrorColor").get() );
++    QColor c(217, 31, 26);
++    if (k) {
++        c.setRgbF( Image::clamp(k->getValue(0), 0., 1.), Image::clamp(k->getValue(1), 0., 1.), Image::clamp(k->getValue(2), 0., 1.) );
++    }
++
++    return c;
++}
++
+ static QColor
+ mixColors(const QColor& a, const QColor& b, double t)
+ {
+@@ -334,6 +354,11 @@ NodeGui::initialize(NodeGraph* dag,
+ 
+     restoreStateAfterCreation();
+ 
++    // A message the node got before its drawing existed (a Read finding its file missing as it's made).
++    if ( internalNode->hasPersistentMessage() ) {
++        onPersistentMessageChanged();
++    }
++
+     ///Link the position of the node to the position of the parent multi-instance
+     const std::string parentMultiInstanceName = internalNode->getParentMultiInstanceName();
+     if ( !parentMultiInstanceName.empty() ) {
+@@ -1796,6 +1821,24 @@ NodeGui::applyBrush(const QBrush & brush)
+     }
+ }
+ 
++bool
++NodeGui::isErrorTinted() const
++{
++    // In error, and the error drawn as a tint (not Natron's frame and large ERROR).
++    if ( nodeErrorTint() <= 0. || dynamic_cast<const BackdropGui*>(this) ) {
++        return false;
++    }
++    NodePtr node = getNode();
++    if (!node) {
++        return false;
++    }
++    QString message;
++    int type = 0;
++    node->getPersistentMessage(&message, &type);
++
++    return !message.isEmpty() && type == 1;
++}
++
+ bool
+ NodeGui::isSelectionTinted() const
+ {
+@@ -1807,9 +1850,25 @@ void
+ NodeGui::refreshCurrentBrush()
+ {
+     QColor color = _slaveMasterLink ? _clonedColor : _currentColor;
+-    if ( isSelectionTinted() && getIsSelected() ) {
+-        color = mixColors( color, settingsColor(&Settings::getNodeSelectedColor),
+-                           appPTR->getCurrentSettings()->getNodeSelectedTint() );
++    // A selected node keeps its own colour, brightened (by nodeSelectedTint), with an outline in the selection
++    // colour, when the preference asks; otherwise Natron's halo shows it (refreshStateIndicator).
++    bool selected = isSelectionTinted() && getIsSelected();
++    if (selected) {
++        color = mixColors( color, Qt::white, appPTR->getCurrentSettings()->getNodeSelectedTint() * 0.5 );
++    }
++    // A node in error takes the error colour and an outline of it when the preference asks (nodeErrorTint).
++    bool inError = isErrorTinted();
++    if (inError) {
++        color = mixColors( color, nodeErrorColor(), nodeErrorTint() );
++    }
++    if ( _boundingBox && !dynamic_cast<BackdropGui*>(this) ) {
++        if (inError) {
++            _boundingBox->setPen( QPen(nodeErrorColor(), 2) );
++        } else if (selected) {
++            _boundingBox->setPen( QPen(settingsColor(&Settings::getNodeSelectedColor), 2) );
++        } else {
++            _boundingBox->setPen( QPen(settingsColor(&Settings::getNodeOutlineColor), 1) );
++        }
+     }
+     applyBrush(color);
+ }
+@@ -2249,6 +2308,9 @@ NodeGui::onPersistentMessageChanged()
+         }
+ 
+         setToolTip(message);
++        if ( type == 1 && isErrorTinted() ) {
++            _persistentMessage->setVisible(false); // the tint says it; the message shows on hover
++        }
+ 
+         refreshSize();
+     }
+@@ -2373,6 +2435,10 @@ NodeGui::refreshStateIndicator()
+         _stateIndicator->setBrush(Qt::green);
+     } else if ( isSelected && !isSelectionTinted() ) {
+         _stateIndicator->setBrush( settingsColor(&Settings::getNodeSelectedColor) ); // light yellow selection by default
++    } else if ( !message.isEmpty() && (type == 1) && isErrorTinted() ) {
++        // The node itself is drawn in the error colour (refreshCurrentBrush), framed in it too, as visible as
++        // Natron's dark red frame.
++        _stateIndicator->setBrush( nodeErrorColor() );
+     } else if ( !message.isEmpty() && ( (type == 1) || (type == 2) ) ) {
+         if (type == 1) {
+             _stateIndicator->setBrush( QColor(128, 0, 0, 255) ); //< error
+@@ -2391,7 +2457,7 @@ NodeGui::refreshStateIndicator()
+             (*it)->setUseSelected(isSelected);
+         }
+     }
+-    if ( isSelectionTinted() ) {
++    if ( isSelectionTinted() || nodeErrorTint() > 0. ) {
+         refreshCurrentBrush();
+     }
+     if ( showIndicator && !_stateIndicator->isVisible() ) {
+diff --git a/Gui/NodeGui.h b/Gui/NodeGui.h
+index f5f68d32b..08cfba839 100644
+--- a/Gui/NodeGui.h
++++ b/Gui/NodeGui.h
+@@ -585,6 +585,8 @@ protected:
+ 
+     bool isSelectionTinted() const;
+ 
++    bool isErrorTinted() const;
++
+ private:
+     void initializeInputsForInspector();
+ 
+-- 
+2.48.1.windows.1
+

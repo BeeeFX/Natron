@@ -42,7 +42,7 @@ can take it as it is.
   own look back (kept in the layer's own file). The window title, program icon and menu names stay Natron's.
 - **The node graph drawn like Nuke's, and the skin's second wave** (since `.sng3`, this fork's first build from
   source). Compact nodes (80 x 18) with slightly rounded corners and a light shading, thin dark links with small open
-  arrow heads, a selected node tinted orange-yellow with its links lit, a red cross on disabled nodes, small Dots, no
+  arrow heads, a selected node brightened in its own colour with an orange outline and its links lit, a node in error red with a red frame (a Read whose file is missing says so at once), a red cross on disabled nodes, small Dots, no
   postage stamps on new Read nodes: preferences added by core patch 0001 (their defaults are Natron's own drawing),
   set by the layer for the session. 112 more of our icons (the Merge operations, roto, paint and tracker tools, the
   curve editor's interpolation), the File menu's icons, flat properties-panel header buttons (core patch 0002) and
@@ -83,7 +83,7 @@ with Nuke, ranked: [`layer/GAPS.md`](layer/GAPS.md).
 
 ## Core patches
 
-Two (since `.sng3`, 31 October 2026), also carried as commits on `sng/main`, so our builds are made from source
+Three (since `.sng3`, 31 October 2026), also carried as commits on `sng/main`, so our builds are made from source
 (`layer/README.md`, "Building from source", with Niik-l's own build scripts):
 
 1. `layer/patches/0001-Node-graph-drawing-preferences.patch`: the node graph's drawing as preferences (node size,
@@ -93,6 +93,10 @@ Two (since `.sng3`, 31 October 2026), also carried as commits on `sng/main`, so 
    `Gui/NodeGraphRectItem.{h,cpp}`.
 2. `layer/patches/0002-Properties-panel-header-name.patch`: an object name on the properties panels' header, for
    stylesheets. Two lines in `Gui/DockablePanel.cpp`.
+3. `layer/patches/0003-Node-graph-errors-and-selection.patch` (on top of 0001): a node in error drawn in an error
+   colour (preferences, 0 keeps Natron's frame), a selected node keeping its own colour, a Read saying "File not
+   found" at once when postage stamps are off. About 170 lines in `Engine/Settings.cpp`, `Engine/ReadNode.cpp`,
+   `Gui/NodeGui.{h,cpp}`.
 
 Changing Natron's own code makes every one of Niik-l's releases (every one to three weeks) harder to take, so the
 budget is at most 5 small patches (about 800 lines), each offered to him first: [`layer/patches/`](layer/patches/README.md).

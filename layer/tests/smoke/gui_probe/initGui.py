@@ -169,10 +169,63 @@ def _layer_probe():
             skin_checks(app, window)
         except Exception:
             say(False, "the skin's checks in the window raised:\n" + traceback.format_exc())
+        try:
+            drawing_checks(app, natron_app)
+        except Exception:
+            say(False, "the node graph's drawing checks raised:\n" + traceback.format_exc())
         if out:
             picture = os.path.join(out, "natron_window.png")
             window.grab().save(picture)
             say(os.path.isfile(picture), "a picture of the window: " + picture)
+
+    def drawing_checks(app, natron_app):
+        """The node graph's drawing in this fork's builds (core patch 0001): a node in error is drawn in the error
+        colour, unlike a node without one, and says why under the mouse; a Read whose file is missing is in error at
+        once (postage stamps off, nothing renders it)."""
+        import NatronEngine
+        from qtpy import QtCore
+
+        settings = NatronEngine.natron.getSettings()
+        if settings.getParam("nodeErrorTint") is None:
+            return  # Niik-l's plain release: Natron's own drawing
+        graph = widgets_named(app, "NodeGraph")[0]
+        area = graph.mapToScene(graph.viewport().rect()).boundingRect()
+        missing = natron_app.createReader("C:/no/such/folder/smoke_missing.####.exr")
+        normal = natron_app.createNode("net.sf.openfx.GradePlugin")
+        for node, dx in ((missing, 0), (normal, 220)):
+            for i in range(node.getMaxInputCount()):
+                if node.getInput(i) is not None:
+                    node.disconnectInput(i)
+            node.setPosition(area.left() + 80 + dx, area.top() + 80)
+        app.processEvents()
+
+        def redness(node):
+            x, y = node.getPosition()
+            w, h = node.getSize()
+            top_left = graph.mapFromScene(QtCore.QPointF(x + w * 0.15, y + h * 0.2))
+            bottom_right = graph.mapFromScene(QtCore.QPointF(x + w * 0.85, y + h * 0.8))
+            image = graph.viewport().grab(QtCore.QRect(top_left, bottom_right)).toImage()
+            total, count = [0, 0, 0], 0
+            for i in range(image.width()):
+                for j in range(image.height()):
+                    c = image.pixelColor(i, j)
+                    total[0], total[1], total[2] = total[0] + c.red(), total[1] + c.green(), total[2] + c.blue()
+                    count += 1
+            if not count:
+                return 0.0
+            return total[0] / count - (total[1] + total[2]) / (2.0 * count)
+
+        red_missing, red_normal = redness(missing), redness(normal)
+        say(red_missing > 60 and red_normal < 30,
+            "a node in error is drawn in the error colour (a Read of a missing file: redness %d; a Grade: %d)"
+            % (red_missing, red_normal))
+        x, y = missing.getPosition()
+        w, h = missing.getSize()
+        point = graph.mapFromScene(QtCore.QPointF(x + w / 2.0, y + h / 2.0))
+        tips = [item.toolTip() for item in graph.items(point) if item.toolTip()]
+        say(any("not found" in t for t in tips), "and says why under the mouse: " + (tips[0][:80] if tips else "none"))
+        missing.destroy()
+        normal.destroy()
 
     def fingerprint(image, side=16):
         from qtpy import QtGui
@@ -410,6 +463,9 @@ def _layer_probe():
                 return
             if state["window_at"] is None:
                 state["window_at"] = now
+                if os.environ.get("NATRON_LAYER_PROBE_OFFSCREEN") == "1":
+                    # Someone is working at this PC: the window is moved out of sight (the checks grab it there).
+                    window.move(-6000, 0)
                 return
             if now - state["window_at"] < 6:  # time for the first-launch question (2 s after start)
                 return

@@ -303,6 +303,8 @@ def gui_checks(renderer: str, tmp: Path, say: Say) -> None:
     probe = str(HERE / "gui_probe")
     env["NATRON_PLUGIN_PATH"] = probe if packaged(renderer) else f"{LAYER / 'ext' / 'plugin'};{probe}"
     env["NATRON_LAYER_SMOKE_REFERENCES"] = str(tmp / "out" / "toolset_references.json")
+    if os.environ.get("NATRON_LAYER_PROBE_OFFSCREEN") == "1" or "--offscreen" in sys.argv:
+        env["NATRON_LAYER_PROBE_OFFSCREEN"] = "1"  # the probe moves the window out of sight (someone at the PC)
     code, _output = run([str(natron)], env, "Natron's window with the layer and the probe (about 40 s)", timeout=300)
     report = tmp / "gui" / "out" / "gui_probe.json"
     if not report.is_file():
@@ -345,6 +347,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--renderer", help="the release's NatronRenderer (default: NATRON_LAYER_RENDERER)")
     parser.add_argument("--gui", action="store_true", help="also open Natron's window briefly with the probe")
+    parser.add_argument("--offscreen", action="store_true", help="with --gui: move the window out of sight at once")
     parser.add_argument("--keep", action="store_true", help="keep the temporary folder")
     args = parser.parse_args()
     renderer = find_renderer(args.renderer)

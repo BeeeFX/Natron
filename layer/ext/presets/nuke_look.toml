@@ -87,10 +87,11 @@ defaultMergeColor = [0.29, 0.37, 0.78]
 
 [drawing]
 # Appearance > Node Graph > Node and link drawing: preferences this fork's own builds add (core patch 0001, every
-# default Natron's own drawing). Niik-l's plain release has none: there, the node graph keeps Natron's drawing.
-# Nuke's node graph by eye: compact tiles (about 80 x 18) with slightly rounded corners and a light top-to-bottom
-# shading, a thin dark outline; thin dark links with small, open arrow heads; a selected node takes an orange-yellow
-# tint (no halo) and its links light up the same colour; a disabled node is crossed out in red; small Dots.
+# default Natron's own drawing; 0003 for errors and selection). Niik-l's plain release has none: there, the node
+# graph keeps Natron's drawing. Nuke's node graph by eye: compact tiles (about 80 x 18) with slightly rounded corners
+# and a light top-to-bottom shading, a thin dark outline; thin dark links with small, open arrow heads; a selected
+# node keeps its own colour, brightened (nodeSelectedTint), with an orange outline (no halo) and its links lit; a
+# disabled node is crossed out in red; small Dots.
 nodeTileWidth = 80
 nodeTileHeight = 18
 # A node grows to fit a longer label (a Read's file name, ColorCorrect1), as Nuke's do; Natron keeps one width.
@@ -108,6 +109,11 @@ linkArrowLength = 10
 linkArrowAngle = 40
 disabledCrossColor = [0.86, 0.12, 0.10]
 disabledCrossWidth = 2.0
+# A node in error turns red with a red outline (Natron's frame and large ERROR don't fit the compact node); its
+# message shows when the mouse is over it. A Read whose file is missing says so at once (with postage stamps off,
+# nothing else would render it).
+nodeErrorTint = 0.7
+nodeErrorColor = [0.85, 0.12, 0.10]
 # No postage stamp on new Read nodes (Natron shows one by default); the node's Preview box (Node tab) shows it.
 readerPreview = false
 
