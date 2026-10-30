@@ -80,11 +80,16 @@ Python acting on Natron's live interface, nothing of Natron's changed.
   (a dropped picture would come back as Natron's, harmlessly). A picture we haven't drawn stays Natron's.
   `ext/icons/pixmaps.toml` lists each of ours with its number; `tools/natron_pixmaps.py` reads the numbers from the
   fork's source and the smoke test fails when they no longer match (re-run `make_icons.py` after a release).
-- **The icons themselves** (110 pictures + 6 for the stylesheet) are our own, drawn by `tools/make_icons.py` on a
+- **The icons themselves** (222 of Natron's pictures + 6 for the stylesheet + 8 for the menus) are our own, drawn by
+  `tools/make_icons.py` (the second wave, `.sng3`, in `tools/make_icons_wave2.py`: the Merge operations' pictures,
+  the roto, paint and tracker tools, the curve editor's interpolation buttons, the text style buttons) on a
   16-unit grid at 8x and reduced, at 18 px (viewer, playback, panels), 20 px (the left toolbar), 11 px (small
   headers), each at 1x and 2x: flat light grey lines, orange when a toggle is on (Natron's "enabled" picture), a
   dimmer grey when off or unavailable. In Nuke's spirit, never copied: the same everyday ideas (a play triangle, a
   padlock, a crop mark) drawn our way. The build has no Qt SVG plug-in, hence PNG.
+- **The File menu's icons.** Natron asks Qt for them by name (`QIcon::fromTheme("document-open", <its own
+  picture>)`), so the skin sets an icon theme of ours (`ext/icons/theme/natron-layer/`, 16 px at 1x and 2x) before
+  the window is built, and Qt answers those names with our pictures.
 - **Font.** Natron registers Droid Sans (compiled in) and names it everywhere, its stylesheet's first rule and the
   node graph's labels included. The skin registers DejaVu Sans (`ext/fonts/`, Bitstream Vera licence: a free font on
   Verdana-like proportions, standing in for Nuke's), takes Natron's registration out
@@ -101,7 +106,10 @@ Python acting on Natron's live interface, nothing of Natron's changed.
   icon buttons in the viewer, playback and pane bars without a frame until the mouse is over them, value fields
   darker than the panels, square fields with an orange edge while typing, thin flat scrollbars without arrows, flat
   tabs (the selected one lighter, orange text), tight menus with the orange highlight and dark text, small dark
-  check boxes with a grey tick, flat headers and lists. Our own rules, written for this layer.
+  check boxes with a grey tick, flat headers and lists; the properties panels' header buttons flat and small (they
+  can be told from the knobs' own buttons in this fork's builds, which name the header: core patch 0002); Tab's
+  node search as a compact dark box with the typed text large and the matches in a tight list with the orange
+  highlight. Our own rules, written for this layer.
 - **Once the window is up** (a second after it shows, when Natron has finished sizing it): the left toolbar's
   buttons show their icons at 20 px (Natron leaves Qt's 16), and, **only when the window still has Natron's default
   layout** (its properties pane `pane2` at Natron's 35 % of the width), the properties pane takes the look's share
@@ -112,8 +120,8 @@ Python acting on Natron's live interface, nothing of Natron's changed.
   "natron"` in the layer's own config.json: from the next start the skin stays out and the look sets only its habits
   (Natron's own stylesheet, colours, icons and font come back; the keys, Tab names, ToolSets stay). **Look › Nuke
   look for me…** takes it back. `NATRON_LAYER_SKIN=off` does the same for one session (the "before" pictures).
-- What the skin doesn't reach: the node graph's drawing (node shapes, links: a core patch, GAPS.md), Natron's own
-  custom-drawn widgets (its drop-downs, the knobs' check boxes, sliders), icons not drawn yet (GAPS.md lists them),
+- What the skin doesn't reach: the node graph's drawing (node shapes, links: core patch 0001, below, in this fork's
+  own builds), Natron's own custom-drawn widgets (its drop-downs, the knobs' check boxes, sliders), icons not drawn yet (GAPS.md lists them),
   the window title and program icon (kept: it's Natron, and its licence is happy with that), the menu names (kept
   as Natron's so its help pages match).
 
@@ -408,6 +416,105 @@ folder inside. Its version is **`2.6.0+2026.10.02.sng1`** (`2.6.0+<release date>
 manager reads fork builds as `2.6.0+<build>`, so `2.6.x`, `2.6.0` and the exact build match it, `.sng2` sorts after
 `.sng1`, and both after Niik-l's plain `2.6.0+2026.10.02`. The archive's name has `-` for `+` (Singerie's build list
 takes no `+` in file names). Nothing is uploaded.
+
+Since `.sng3` the builds come from **this fork's own source build** (next section), because the core patches change
+Natron's code: `package_build.py --source-build <NATRON_ROOT>/Natron-install --tag natron-2.6-2026.10.02 --number 3
+--msys2-lock <NATRON_ROOT>/mingw64-2026-10-02.lock` lays the source build out as Niik-l's portable releases are
+(`bin/` with both programs and their DLLs, `lib/`, `Plugins/`, `Resources/`, `etc/`), adds the layer the same way,
+writes a `THIRD-PARTY.txt`, keeps the MSYS2 package list (`Resources/layer/MSYS2-PACKAGES.lock`) and says in
+`SOURCE.txt` which commit it was built from.
+
+## Building from source
+
+Niik-l builds his releases on his PC with his own scripts (`tools/win-build/`, written from `BUILDING.md`, both in his
+source); this fork follows them, with two differences that keep a build repeatable and out of the way:
+
+1. **MSYS2 as it stood on the release's day**, not the newest. MSYS2 only lists its newest packages, and packages
+   Natron needs leave the MINGW64 list from time to time (by late October 2026 PySide6, OpenImageIO, OpenColorIO,
+   Embree and OpenImageDenoise had left it, and Qt had moved to 6.12): Niik-l's `00-deps.sh` (`pacman -Syu`, then the
+   newest) would no longer build 2026.10.02. MSYS2's server keeps every package file with its date, so
+   `tools/msys2_snapshot.py` picks the newest file of each package published on or before the release's day, follows
+   their dependencies, downloads them from MSYS2's own server with their signatures, and writes a lock file (name,
+   version, SHA-256, file); `tools/msys2_install.sh` installs exactly that set (SHA-256 checked, pacman checking each
+   signature).
+2. **MSYS2 in its own folder** (`%USERPROFILE%\.singerie\tools\natron-build\msys64`, not `C:\msys64`) and a limited
+   number of jobs: `tools/source_build.sh` runs Niik-l's phases 02 to 06 unchanged except for those two (a copy of
+   his scripts with the folder and `JOBS` replaced). Phases 00 (packages) and 01 (clone) are the two steps above and
+   below instead; 07 (verify) is left out because it starts NatronRenderer with the PC user's own home and Natron
+   settings: the smoke test checks the packaged build instead, with a throwaway home. Two steps of ours come in
+   between: **fixes** after 02 applies `patches/fixes/*.patch`, build fixes for packages of that day newer than his
+   PC had, each named after the source it fixes (not core patches: they don't touch Natron's code). For 2026.10.02,
+   two: openfx-io's FFmpeg writer used a field FFmpeg 8 removed (MSYS2 had FFmpeg 9 on 2 October, his release has
+   FFmpeg 8), and Cycles' node types locked a static mutex that another file's static values can reach before it
+   is made, which GCC 16's MinGW `std::mutex` doesn't forgive (the program stopped at start with
+   "std::system_error: Invalid argument"; the fix makes the mutex on first use). **strip**
+   after 06 takes the debug information out of the staged programs and plug-ins as `BUILDING.md` advises for
+   handing a build on (Natron.exe from 1.9 GB to 56 MB, the size of Niik-l's release), the copies in
+   `Natron/build-qt6` keeping theirs for backtraces (`gdb` is in the package list for that).
+
+Everything lives in one folder, `%USERPROFILE%\.singerie\tools\natron-build\` (call it `B`): `msys64/` (the
+toolchain), `pkgcache/` (the packages), `mingw64-<day>.lock`, the sources side by side (`Natron/`, a git worktree of
+this repository on the branch to build; `cycles/`, `openfx-misc/`, `openfx-io/`, `openfx-arena/`, `natron-plugins/`;
+`wgpu/`), and the results (`Natron/build-qt6/`, `Natron-install/`, `logs/`).
+
+**Once per PC** (about 10 minutes; MSYS2 takes 5.2 GB once its packages are in):
+
+```
+# 1. MSYS2's base archive from its own server, unpacked into B (PowerShell):
+#    https://repo.msys2.org/distrib/x86_64/msys2-base-x86_64-20260927.sfx.exe  ->  ...sfx.exe -y -o<B>
+# 2. Its first start and an update of its own tools (MSYS2's shell, MSYSTEM=MINGW64):
+pacman -Syu --noconfirm; pacman -Syu --noconfirm; pacman -S --noconfirm --needed git patch
+# 3. In B/msys64/etc/pacman.conf: LocalFileSigLevel = Required (pacman then checks every package file's signature)
+```
+
+**At each of Niik-l's releases** (`<day>` the release's tag day; the refs of `tools/win-build/config.sh`):
+
+```
+python -I layer/tools/msys2_snapshot.py --date <day> --cache B/pkgcache --bsdtar B/msys64/usr/bin/bsdtar.exe \
+    --lock B/mingw64-<day>.lock --provider fc-libs=libgfortran \
+    mingw-w64-x86_64-{gcc,binutils,make,pkgconf,cmake,ninja,clang,gdb,qt6-base,pyside6,shiboken6,python,python-qtpy} \
+    mingw-w64-x86_64-{boost,cairo,expat,openvdb,alembic,openimageio,openexr,opencolorio,ffmpeg,libraw,libpng} \
+    mingw-w64-x86_64-{imagemagick,libzip,poppler,librevenge,libcdr,librsvg,pango,lcms2,fontconfig} \
+    mingw-w64-x86_64-{embree,openimagedenoise,openpgl,opensubdiv,pugixml,libepoxy,tbb}
+bash layer/tools/msys2_install.sh B/mingw64-<day>.lock B/pkgcache          # in MSYS2's shell
+git worktree add B/Natron <branch>; git -C B/Natron submodule update --init --recursive
+# cycles (Niik-l/cycles, feature/cycles-deep), openfx-misc, openfx-io, openfx-arena at config.sh's commits and
+# natron-plugins at its "built-with" commit, beside B/Natron; wgpu-native v27.0.4.0's GNU release
+# (github.com/gfx-rs/wgpu-native) unpacked as B/wgpu/{webgpu.h,wgpu.h,wgpu_native.dll}
+MSYS2_ROOT=B/msys64 NATRON_ROOT=B JOBS=6 bash layer/tools/source_build.sh   # in MSYS2's shell
+python layer/tools/package_build.py --source-build B/Natron-install --tag natron-2.6-<day> --number <n> \
+    --msys2-lock B/mingw64-<day>.lock
+```
+
+`clang` isn't in Niik-l's package list: shiboken (which writes Natron's Python bindings) needs clang's own headers,
+which his PC had from elsewhere. `--provider fc-libs=libgfortran` names the package that stood for a virtual name on
+that day.
+
+**What 2026.10.02 took** (31 October 2026, a 16-core PC shared with other work, 6 jobs): the packages of 2 October
+(252: GCC 16.2.0, CMake 4.4.3, Qt 6.11.2, PySide6 6.11.2, Python 3.14.8, Boost 1.92.0, OpenImageIO 3.1.17,
+OpenColorIO 2.5.2; Niik-l's own release has Qt and PySide6 6.11.1 and FFmpeg 8, from his PC's older state), 780 MB
+downloaded in about 2 minutes and installed in 4; the clones 70 s; Cycles 4 minutes; Natron BUILD_NATRON_TIME; the
+plug-ins BUILD_PLUGINS_TIME; staging and checking (06, 07) BUILD_INSTALL_TIME; packaging BUILD_PACKAGE_TIME. The
+folder then holds about BUILD_DISK_TOTAL. **A rebuild after a change** to the patches (`mingw32-make` in
+`B/Natron/build-qt6`, then 06 and the packaging) takes REBUILD_TIME; a change to `Engine/Settings.h` (included almost
+everywhere) rebuilds most of Natron.
+
+The source build passes the same checks as Niik-l's release: the smoke test (`run_smoke.py --gui` on the packaged
+build) and Singerie's Natron suite.
+
+## The node graph's drawing (core patch 0001)
+
+Natron draws its nodes and links itself (`Gui/NodeGui.cpp`, `Edge.cpp`, `DotGui.cpp`), with sizes and colours
+written in its code, so neither the stylesheet nor Python reaches them. Patch 0001 turns them into preferences
+(Appearance > Node Graph > Node and link drawing), **each defaulting to Natron's own drawing**, and the look sets
+Nuke-like values for the session in `nuke_look.toml`'s `[drawing]` table: compact 80 x 18 tiles with slightly
+rounded corners and a light shading, a thin dark outline, thin dark links with small open arrow heads, a selected
+node tinted orange-yellow (no halo; its links in the same colour), a disabled node crossed out in red, smaller Dots,
+no postage stamp on new Read nodes. Natron's colours per class (set by the look), its second label line (Merge's
+"(over)", a Read's file name) and its input labels (A, B, Mask) stay as they are and already read like Nuke's. On
+Niik-l's plain release the preferences don't exist: the look says so in its report ("the node graph drawn as
+Natron's") and the smoke test accepts it. Backdrops keep a halo when selected (a tinted backdrop would colour half
+the graph).
 
 ## Writing code here
 

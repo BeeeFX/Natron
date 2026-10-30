@@ -85,6 +85,30 @@ keyerNodesColor = [0.33, 0.72, 0.42]
 channelNodesColor = [0.58, 0.42, 0.72]
 defaultMergeColor = [0.29, 0.37, 0.78]
 
+[drawing]
+# Appearance > Node Graph > Node and link drawing: preferences this fork's own builds add (core patch 0001, every
+# default Natron's own drawing). Niik-l's plain release has none: there, the node graph keeps Natron's drawing.
+# Nuke's node graph by eye: compact tiles (about 80 x 18) with slightly rounded corners and a light top-to-bottom
+# shading, a thin dark outline; thin dark links with small, open arrow heads; a selected node takes an orange-yellow
+# tint (no halo) and its links light up the same colour; a disabled node is crossed out in red; small Dots.
+nodeTileWidth = 80
+nodeTileHeight = 18
+nodeCornerRadius = 3
+nodeShading = 0.35
+nodeOutlineColor = [0.08, 0.08, 0.08]
+nodeSelectedColor = [0.98, 0.72, 0.32]
+nodeSelectedTint = 0.6
+dotDiameter = 11
+linkWidth = 1.3
+linkColor = [0.06, 0.06, 0.06]
+linkSelectedColor = [0.98, 0.76, 0.36]
+linkArrowLength = 10
+linkArrowAngle = 40
+disabledCrossColor = [0.86, 0.12, 0.10]
+disabledCrossWidth = 2.0
+# No postage stamp on new Read nodes (Natron shows one by default); the node's Preview box (Node tab) shows it.
+readerPreview = false
+
 [habits]
 # Nodegraph: Nuke's habits. Snap to node, a new Merge takes the selected node in its A input, mask inputs hidden
 # until needed (these three are Natron's defaults too, kept here so the look says what it relies on).

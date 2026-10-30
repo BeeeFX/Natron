@@ -14,8 +14,9 @@ Values from 2 and 3 are set for the session only: Natron doesn't write a prefere
 also turns Natron's hidden "Save settings on change" off while it sets them (``compat.unsaved``). So the artist's
 Natron settings never change by themselves, and Natron's Preferences window saves only what the artist changes in it.
 
-The look has two tables: ``[settings]``, what it looks like (the stylesheet, the colours), and ``[habits]``, how it
-behaves (snap, Merge to A, panels). When the artist chose Natron's own look (``skin.natron_look_chosen``), only the
+The look has three tables: ``[settings]``, what it looks like (the stylesheet, the colours), ``[drawing]``, how the
+node graph draws nodes and links (preferences only this fork's own builds have: core patch 0001; a Natron without
+them keeps its own drawing, which isn't an error), and ``[habits]``, how it behaves (snap, Merge to A, panels). When the artist chose Natron's own look (``skin.natron_look_chosen``), only the
 habits apply. In a session with a window, the stylesheet is the skin's session copy of nuke.qss
 (``skin.session_stylesheet``: the layer's pictures' paths filled in, the skin's font size).
 
@@ -40,6 +41,7 @@ class Report:
     imported: list[str] = dataclasses.field(default_factory=list)  # set for the session from the Nuke import
     kept: list[str] = dataclasses.field(default_factory=list)  # the artist's own (stored), left alone
     missing: list[str] = dataclasses.field(default_factory=list)  # this Natron has no such preference
+    unpatched: list[str] = dataclasses.field(default_factory=list)  # [drawing] preferences this Natron lacks
     failed: list[str] = dataclasses.field(default_factory=list)  # the value didn't fit
 
     def summary(self) -> str:
@@ -50,6 +52,8 @@ class Report:
             parts.append(f"{len(self.kept)} of your own kept ({', '.join(self.kept)})")
         if self.missing:
             parts.append(f"{len(self.missing)} this Natron doesn't have ({', '.join(self.missing)})")
+        if self.unpatched:
+            parts.append("the node graph drawn as Natron's (this Natron has no drawing preferences)")
         if self.failed:
             parts.append(f"{len(self.failed)} that didn't fit ({', '.join(self.failed)})")
         return "Nuke look: " + "; ".join(parts) + "."
@@ -63,12 +67,22 @@ def load_look(visual: bool = True) -> dict[str, Any]:
     with open(paths.preset("nuke_look.toml"), "rb") as file:
         data = tomllib.load(file)
     values = dict(data.get("settings", {})) if visual else {}
+    if visual:
+        values.update(data.get("drawing", {}))
     values.update(data.get("habits", {}))
     root = paths.layer_root()
     for name, value in values.items():
         if isinstance(value, str) and value.startswith(LAYER_PREFIX):
             values[name] = (root / value[len(LAYER_PREFIX) :]).as_posix()
     return values
+
+
+def drawing_names() -> set[str]:
+    """The look's ``[drawing]`` preferences (the node graph's drawing, in this fork's own builds only)."""
+    import tomllib  # noqa: PLC0415
+
+    with open(paths.preset("nuke_look.toml"), "rb") as file:
+        return set(tomllib.load(file).get("drawing", {}))
 
 
 def is_own(name: str, stored: compat.StoredSettings, param: Any = None) -> bool:
@@ -92,11 +106,12 @@ def apply(stored: compat.StoredSettings | None = None, imported: dict[str, Any] 
     """Set the look (and the imported Nuke preferences) for this session, leaving the artist's own preferences."""
     stored = compat.StoredSettings.of_natron() if stored is None else stored
     report = Report()
+    drawing = drawing_names()
     with compat.unsaved():
         for name, (source, value) in wanted_values(imported).items():
             param = compat.setting(name)
             if param is None:
-                report.missing.append(name)
+                (report.unpatched if name in drawing else report.missing).append(name)
                 continue
             if is_own(name, stored, param):
                 report.kept.append(name)
