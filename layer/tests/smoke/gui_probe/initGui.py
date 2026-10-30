@@ -256,7 +256,9 @@ def _layer_probe():
         # The File menu's icons come from the skin's icon theme (Natron asks Qt for them by name).
         say(report is not None and report.theme == skin.THEME and QtGui.QIcon.themeName() == skin.THEME,
             "the skin's icon theme is Qt's: " + QtGui.QIcon.themeName())
-        menus = [a.menu() for a in window.menuBar().actions() if a.text().replace("&", "") == "File" and a.menu()]
+        # The menu by its title among the window's own children (a QAction's menu() can hand back a wrapper whose
+        # C++ object Qt has already replaced).
+        menus = [m for m in window.findChildren(QtWidgets.QMenu) if m.title().replace("&", "") == "File"]
         named = [a.icon().name() for a in (menus[0].actions() if menus else []) if not a.icon().isNull()]
         say("document-open" in named and "document-save" in named,
             "the File menu's actions take their icons from the theme by name (" + ", ".join(sorted(set(named))) + ")")

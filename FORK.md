@@ -88,7 +88,7 @@ Two (since `.sng3`, 31 October 2026), also carried as commits on `sng/main`, so 
 
 1. `layer/patches/0001-Node-graph-drawing-preferences.patch`: the node graph's drawing as preferences (node size,
    corners, shading, outline, selection colour and tint, Dots, link width, colours and arrow heads, the disabled
-   cross, postage stamps on Read nodes), each defaulting to Natron's own drawing. About 260 lines in
+   cross, postage stamps on Read nodes, nodes as wide as their label), each defaulting to Natron's own drawing. About 280 lines in
    `Engine/Settings.{h,cpp}`, `Engine/Node.cpp`, `Gui/NodeGui.{h,cpp}`, `Gui/Edge.cpp`, `Gui/DotGui.cpp`,
    `Gui/NodeGraphRectItem.{h,cpp}`.
 2. `layer/patches/0002-Properties-panel-header-name.patch`: an object name on the properties panels' header, for

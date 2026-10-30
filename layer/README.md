@@ -490,14 +490,17 @@ python layer/tools/package_build.py --source-build B/Natron-install --tag natron
 which his PC had from elsewhere. `--provider fc-libs=libgfortran` names the package that stood for a virtual name on
 that day.
 
-**What 2026.10.02 took** (31 October 2026, a 16-core PC shared with other work, 6 jobs): the packages of 2 October
-(252: GCC 16.2.0, CMake 4.4.3, Qt 6.11.2, PySide6 6.11.2, Python 3.14.8, Boost 1.92.0, OpenImageIO 3.1.17,
-OpenColorIO 2.5.2; Niik-l's own release has Qt and PySide6 6.11.1 and FFmpeg 8, from his PC's older state), 780 MB
-downloaded in about 2 minutes and installed in 4; the clones 70 s; Cycles 4 minutes; Natron BUILD_NATRON_TIME; the
-plug-ins BUILD_PLUGINS_TIME; staging and checking (06, 07) BUILD_INSTALL_TIME; packaging BUILD_PACKAGE_TIME. The
-folder then holds about BUILD_DISK_TOTAL. **A rebuild after a change** to the patches (`mingw32-make` in
-`B/Natron/build-qt6`, then 06 and the packaging) takes REBUILD_TIME; a change to `Engine/Settings.h` (included almost
-everywhere) rebuilds most of Natron.
+**What 2026.10.02 took** (31 October 2026, a 32-thread PC shared with other work, 6 jobs): the packages of 2 October
+(257 with clang and gdb: GCC 16.2.0, CMake 4.4.3, Qt 6.11.2, PySide6 6.11.2, Python 3.14.8, Boost 1.92.0,
+OpenImageIO 3.1.17, OpenColorIO 2.5.2, FFmpeg 9.0.2; Niik-l's own release has Qt and PySide6 6.11.1 and FFmpeg 8,
+from his PC's older state), about 800 MB downloaded in about 2 minutes and installed in 4; the clones 70 s; Cycles
+4 minutes (2.5 again after a change to its headers); Natron about 25 minutes from scratch; the plug-ins about 5
+minutes; staging (06) 1 to 1.5 minutes; strip a second; packaging 2 minutes (a 667 MB archive). The folder then
+holds about 25 GB (MSYS2 5.2 GB, Natron's build tree 8 GB, the staged and packaged copies 2 GB each, the sources and
+packages the rest). **A rebuild after a change** to the patches (`mingw32-make` in `B/Natron/build-qt6` through
+`source_build.sh 04-natron 06-install strip`, then the packaging) takes about 5 minutes; a change to
+`Engine/Settings.h` (included almost everywhere) rebuilds most of Natron (10 to 15 minutes), which is why the later
+preferences of patch 0001 are read by name instead.
 
 The source build passes the same checks as Niik-l's release: the smoke test (`run_smoke.py --gui` on the packaged
 build) and Singerie's Natron suite.
@@ -510,7 +513,7 @@ written in its code, so neither the stylesheet nor Python reaches them. Patch 00
 Nuke-like values for the session in `nuke_look.toml`'s `[drawing]` table: compact 80 x 18 tiles with slightly
 rounded corners and a light shading, a thin dark outline, thin dark links with small open arrow heads, a selected
 node tinted orange-yellow (no halo; its links in the same colour), a disabled node crossed out in red, smaller Dots,
-no postage stamp on new Read nodes. Natron's colours per class (set by the look), its second label line (Merge's
+no postage stamp on new Read nodes, a node as wide as its label (Read nodes with their file name, ColorCorrect1) as Nuke's are. Natron's colours per class (set by the look), its second label line (Merge's
 "(over)", a Read's file name) and its input labels (A, B, Mask) stay as they are and already read like Nuke's. On
 Niik-l's plain release the preferences don't exist: the look says so in its report ("the node graph drawn as
 Natron's") and the smoke test accepts it. Backdrops keep a halo when selected (a tinted backdrop would colour half

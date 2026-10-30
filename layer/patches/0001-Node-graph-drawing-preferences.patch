@@ -1,7 +1,5 @@
-From 3104345bf450b2451218932e63323aed3fcc8493 Mon Sep 17 00:00:00 2001
 From: "Baptiste G." <70719480+BeeeFX@users.noreply.github.com>
-Date: Fri, 30 Oct 2026 11:32:41 +0000
-Subject: [PATCH 1/2] Node graph: the drawing of nodes and links as preferences
+Subject: [PATCH] Node graph: the drawing of nodes and links as preferences
 
 The node graph drew its nodes and links with sizes and colours written in the code (NODE_WIDTH and
 NODE_HEIGHT, a 5 px corner radius, Natron's shading, a 3 px black link pen with 14 px, 24 degree arrow
@@ -21,22 +19,28 @@ Values are read when a node is made and when a link is drawn, so a script can se
 
 Core patch 0001 of the BeeeFX fork (layer/patches/), written to be offered upstream as it is.
 
+Also (second commit on sng/main): A new preference, nodeFitLabel (Appearance > Node Graph > Node and link drawing, off by default: every node
+keeps the same width, as before), lets a node whose label is longer than the node width grow to fit it. The
+width is measured from the node's initial width plus the label, never from its current width, so it can't
+creep (the reason the width was left alone); backdrops and nodes showing a postage stamp size themselves as
+before. Read by name from the settings, so Settings.h doesn't change.
+
 Gap: layer/GAPS.md, "Nuke's look and habits" (the node graph's drawing).
-Size: 9 files, 235 lines added, 24 removed.
+Size: 9 files changed, 255 insertions(+), 25 deletions(-).
 upstream: not offered yet (to offer to Niik-l: github.com/Niik-l/Natron).
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
- Engine/Node.cpp           |  8 ++++
- Engine/Settings.cpp       | 98 +++++++++++++++++++++++++++++++++++++++
- Engine/Settings.h         | 33 +++++++++++++
- Gui/DotGui.cpp            |  8 +++-
- Gui/Edge.cpp              | 26 +++++++++--
- Gui/NodeGraphRectItem.cpp |  7 +--
- Gui/NodeGraphRectItem.h   |  7 +++
- Gui/NodeGui.cpp           | 67 ++++++++++++++++++++------
- Gui/NodeGui.h             |  5 ++
- 9 files changed, 235 insertions(+), 24 deletions(-)
+ Engine/Node.cpp           |   8 ++++
+ Engine/Settings.cpp       | 106 ++++++++++++++++++++++++++++++++++++++++++++++
+ Engine/Settings.h         |  33 +++++++++++++++
+ Gui/DotGui.cpp            |   8 +++-
+ Gui/Edge.cpp              |  26 +++++++++---
+ Gui/NodeGraphRectItem.cpp |   7 +--
+ Gui/NodeGraphRectItem.h   |   7 +++
+ Gui/NodeGui.cpp           |  80 +++++++++++++++++++++++++++-------
+ Gui/NodeGui.h             |   5 +++
+ 9 files changed, 255 insertions(+), 25 deletions(-)
 
 diff --git a/Engine/Node.cpp b/Engine/Node.cpp
 index a6a4eae3..1442a65a 100644
@@ -58,7 +62,7 @@ index a6a4eae3..1442a65a 100644
  }
  
 diff --git a/Engine/Settings.cpp b/Engine/Settings.cpp
-index 07a79aaf..86fb9260 100644
+index 07a79aaf..466c3194 100644
 --- a/Engine/Settings.cpp
 +++ b/Engine/Settings.cpp
 @@ -131,6 +131,7 @@ Settings::initializeKnobs()
@@ -69,7 +73,7 @@ index 07a79aaf..86fb9260 100644
      initializeKnobsScriptEditorColors();
  
      setDefaultValues();
-@@ -991,6 +992,78 @@ Settings::initializeKnobsNodeGraphColors()
+@@ -991,6 +992,86 @@ Settings::initializeKnobsNodeGraphColors()
      _nodegraphColorsTab->addKnob(_defaultDeepGroupColor);
  } // Settings::initializeKnobsNodeGraphColors
  
@@ -79,6 +83,14 @@ index 07a79aaf..86fb9260 100644
 +    // How nodes and links are drawn. Every default is Natron's own drawing, so nothing changes unless a value is set.
 +    KnobSeparatorPtr sep = AppManager::createKnob<KnobSeparator>( this, tr("Node and link drawing") );
 +    _nodegraphColorsTab->addKnob(sep);
++
++    // Read by NodeGui through its name (no member, so this header stays as it is).
++    KnobBoolPtr fitLabel = AppManager::createKnob<KnobBool>( this, tr("Nodes as wide as their label") );
++    fitLabel->setName("nodeFitLabel");
++    fitLabel->setHintToolTip( tr("When checked, a node whose label is longer than the node width grows to fit it; "
++                                 "otherwise every node keeps the same width and a long label spills over.") );
++    fitLabel->setDefaultValue(false);
++    _nodegraphColorsTab->addKnob(fitLabel);
 +
 +    // Read by Node::makePreviewByDefault through its name (no member, so this header stays as it is).
 +    KnobBoolPtr readerPreview = AppManager::createKnob<KnobBool>( this, tr("Postage stamps on Read nodes") );
@@ -148,7 +160,7 @@ index 07a79aaf..86fb9260 100644
  void
  Settings::initializeKnobsScriptEditorColors()
  {
-@@ -3336,6 +3409,31 @@ Settings::getDisconnectedArrowLength() const
+@@ -3336,6 +3417,31 @@ Settings::getDisconnectedArrowLength() const
      return _disconnectedArrowLength->getValue();
  }
  
@@ -393,10 +405,18 @@ index 4fdcc9bb..aec75178 100644
  };
  
 diff --git a/Gui/NodeGui.cpp b/Gui/NodeGui.cpp
-index 2dc3afa8..35a59a77 100644
+index 2dc3afa8..d087f3a0 100644
 --- a/Gui/NodeGui.cpp
 +++ b/Gui/NodeGui.cpp
-@@ -120,6 +120,28 @@ NATRON_NAMESPACE_ENTER
+@@ -27,6 +27,7 @@
+ 
+ #include <cassert>
+ #include <algorithm> // min, max
++#include <cmath> // ceil
+ #include <stdexcept>
+ 
+ CLANG_DIAG_OFF(deprecated)
+@@ -120,6 +121,28 @@ NATRON_NAMESPACE_ENTER
  
  using std::make_pair;
  
@@ -425,7 +445,7 @@ index 2dc3afa8..35a59a77 100644
  #ifndef M_PI
  #define M_PI        3.14159265358979323846264338327950288   /* pi             */
  #define M_PI_2      1.57079632679489661923132169163975144   /* pi/2           */
-@@ -571,7 +593,7 @@ NodeGui::getSizeWithPreview(int *w,
+@@ -571,7 +594,7 @@ NodeGui::getSizeWithPreview(int *w,
                              int *h) const
  {
      getInitialSize(w, h);
@@ -434,7 +454,7 @@ index 2dc3afa8..35a59a77 100644
      *h = *h + TO_DPIY(NATRON_PREVIEW_HEIGHT) + 10;
  }
  
-@@ -581,18 +603,18 @@ NodeGui::getInitialSize(int *w,
+@@ -581,18 +604,18 @@ NodeGui::getInitialSize(int *w,
  {
      NodePtr internalNode = getNode();
      if (!internalNode) {
@@ -458,7 +478,7 @@ index 2dc3afa8..35a59a77 100644
  }
  
  void
-@@ -605,9 +627,12 @@ NodeGui::createGui()
+@@ -605,9 +628,12 @@ NodeGui::createGui()
      if (!node) {
          return; // throw exception instead?
      }
@@ -472,7 +492,7 @@ index 2dc3afa8..35a59a77 100644
  
      if ( mustFrameName() ) {
          _nameFrame = new QGraphicsRectItem(this);
-@@ -718,10 +743,13 @@ NodeGui::createGui()
+@@ -718,10 +744,13 @@ NodeGui::createGui()
          _passThroughIndicator->setActive(false);
      }
  
@@ -486,7 +506,33 @@ index 2dc3afa8..35a59a77 100644
      _disabledTopLeftBtmRight->hide();
      _disabledTopLeftBtmRight->setZValue(depth + 1);
  } // NodeGui::createGui
-@@ -1757,14 +1785,22 @@ NodeGui::applyBrush(const QBrush & brush)
+@@ -879,7 +908,7 @@ NodeGui::isNearbyResizeHandle(const QPointF& pos) const
+ }
+ 
+ void
+-NodeGui::adjustSizeToContent(int* /*w*/,
++NodeGui::adjustSizeToContent(int* w,
+                              int *h,
+                              bool adjustToTextSize)
+ {
+@@ -892,6 +921,16 @@ NodeGui::adjustSizeToContent(int* /*w*/,
+     // height is fit to content.
+     QRectF labelBbox = _nameItem->boundingRect();
+ 
++    // Optionally (preference nodeFitLabel, off by default) a node grows to fit a longer label. Measured from the
++    // node's initial width, never from its current one, so the width can't creep. Backdrops size themselves.
++    KnobBool* fitLabel = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("nodeFitLabel").get() );
++    if ( w && fitLabel && fitLabel->getValue() && !dynamic_cast<BackdropGui*>(this) &&
++         !( _previewPixmap && _previewPixmap->isVisible() ) ) {
++        int initialW, initialH;
++        getInitialSize(&initialW, &initialH);
++        *w = std::max( initialW, (int)std::ceil( labelBbox.width() ) + TO_DPIX(8) );
++    }
++
+     if (adjustToTextSize) {
+         if ( _previewPixmap && _previewPixmap->isVisible() ) {
+             int pw, ph;
+@@ -1757,14 +1796,22 @@ NodeGui::applyBrush(const QBrush & brush)
      }
  }
  
@@ -513,7 +559,7 @@ index 2dc3afa8..35a59a77 100644
  }
  
  bool
-@@ -2324,8 +2360,8 @@ NodeGui::refreshStateIndicator()
+@@ -2324,8 +2371,8 @@ NodeGui::refreshStateIndicator()
          _stateIndicator->setBrush(Qt::yellow);
      } else if (_mergeHintActive) {
          _stateIndicator->setBrush(Qt::green);
@@ -524,7 +570,7 @@ index 2dc3afa8..35a59a77 100644
      } else if ( !message.isEmpty() && ( (type == 1) || (type == 2) ) ) {
          if (type == 1) {
              _stateIndicator->setBrush( QColor(128, 0, 0, 255) ); //< error
-@@ -2344,6 +2380,9 @@ NodeGui::refreshStateIndicator()
+@@ -2344,6 +2391,9 @@ NodeGui::refreshStateIndicator()
              (*it)->setUseSelected(isSelected);
          }
      }
@@ -534,7 +580,7 @@ index 2dc3afa8..35a59a77 100644
      if ( showIndicator && !_stateIndicator->isVisible() ) {
          _stateIndicator->show();
      } else if ( !showIndicator && _stateIndicator->isVisible() ) {
-@@ -3825,7 +3864,7 @@ NodeGui::setPluginIDAndVersion(const std::list<std::string>& /*grouping*/,
+@@ -3825,7 +3875,7 @@ NodeGui::setPluginIDAndVersion(const std::list<std::string>& /*grouping*/,
          }
          double w, h;
          getSize(&w, &h);
@@ -561,6 +607,3 @@ index 49e2fc10..f5f68d32 100644
      void initializeInputsForInspector();
  
  
--- 
-2.48.1.windows.1
-

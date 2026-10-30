@@ -93,6 +93,8 @@ defaultMergeColor = [0.29, 0.37, 0.78]
 # tint (no halo) and its links light up the same colour; a disabled node is crossed out in red; small Dots.
 nodeTileWidth = 80
 nodeTileHeight = 18
+# A node grows to fit a longer label (a Read's file name, ColorCorrect1), as Nuke's do; Natron keeps one width.
+nodeFitLabel = true
 nodeCornerRadius = 3
 nodeShading = 0.35
 nodeOutlineColor = [0.08, 0.08, 0.08]

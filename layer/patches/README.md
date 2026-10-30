@@ -7,7 +7,7 @@ Nuke-like values for the session, like its other preferences.
 
 | Patch | What | Files, lines | Upstream |
 |---|---|---|---|
-| `0001-Node-graph-drawing-preferences.patch` | The node graph's drawing as preferences (Appearance > Node Graph > Node and link drawing): node width and height, corner radius, shading strength, outline colour, selected colour and tint (instead of the halo), Dot diameter, link width and colours, arrow head length and opening, the disabled cross's colour and width, and whether new Read nodes show a postage stamp. GAPS.md, "Nuke's look". | `Engine/Settings.{h,cpp}`, `Engine/Node.cpp`, `Gui/NodeGui.{h,cpp}`, `Gui/Edge.cpp`, `Gui/DotGui.cpp`, `Gui/NodeGraphRectItem.{h,cpp}`; see the patch's header | to offer |
+| `0001-Node-graph-drawing-preferences.patch` | The node graph's drawing as preferences (Appearance > Node Graph > Node and link drawing): node width and height, corner radius, shading strength, outline colour, selected colour and tint (instead of the halo), Dot diameter, link width and colours, arrow head length and opening, the disabled cross's colour and width, whether new Read nodes show a postage stamp, and whether a node grows to fit a longer label. GAPS.md, "Nuke's look". | `Engine/Settings.{h,cpp}`, `Engine/Node.cpp`, `Gui/NodeGui.{h,cpp}`, `Gui/Edge.cpp`, `Gui/DotGui.cpp`, `Gui/NodeGraphRectItem.{h,cpp}`; see the patch's header | to offer |
 | `0002-Properties-panel-header-name.patch` | The properties panels' header gets an object name (`DockablePanelHeader`) so a stylesheet can draw its buttons apart from the knobs' own (flat, as Nuke's). | `Gui/DockablePanel.cpp`, 2 lines | to offer |
 
 `fixes/` holds something else: **build fixes for the plug-ins' and Cycles' sources** (not Natron's), needed when the MSYS2

@@ -1379,7 +1379,7 @@ QListView#nodeCreationDialogList {
 
 #nodeCreationDialog QListView::item,
 QListView#nodeCreationDialogList::item {
-    padding: 2px 6px;
+    padding: 0px 6px;
     border: 0px;
 }
 
