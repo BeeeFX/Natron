@@ -188,7 +188,9 @@ def _layer_probe():
         settings = NatronEngine.natron.getSettings()
         if settings.getParam("nodeErrorTint") is None:
             return  # Niik-l's plain release: Natron's own drawing
-        graph = widgets_named(app, "NodeGraph")[0]
+        # The main node graph: the largest one on screen (a Group's own graph can come first in Qt's list).
+        graphs = [g for g in widgets_named(app, "NodeGraph") if g.isVisible()] or widgets_named(app, "NodeGraph")
+        graph = max(graphs, key=lambda g: g.viewport().width() * g.viewport().height())
         area = graph.mapToScene(graph.viewport().rect()).boundingRect()
         missing = natron_app.createReader("C:/no/such/folder/smoke_missing.####.exr")
         normal = natron_app.createNode("net.sf.openfx.GradePlugin")
@@ -359,7 +361,7 @@ def _layer_probe():
                       "timelineRulerNuke", "knobWidgetsShaded")
             missing = [n for n in wanted if settings.getParam(n) is None]
             off = [n for n in wanted if n not in missing and not settings.getParam(n).get()]
-            say(not missing and not off, "the Nuke drawing preferences of patches 0004 and 0005 are on for the session"
+            say(not missing and not off, "the Nuke drawing preferences of patches 0004 to 0006 are on for the session"
                 + (" (missing: " + ", ".join(missing) + ")" if missing else "") + (" (off: " + ", ".join(off) + ")" if off else ""))
 
     def tools(app, natron_app):

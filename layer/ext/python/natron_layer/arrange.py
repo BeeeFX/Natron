@@ -248,7 +248,7 @@ def arrange_player(viewer: Any, bar: Any, qt: Any) -> bool:
         field.setFixedWidth(POINT_WIDTH)
         field.setMinimumHeight(0)
         field.setMaximumHeight(16777215)
-        field.setSizePolicy(qt.QtWidgets.QSizePolicy.Policy.Fixed, qt.QtWidgets.QSizePolicy.Policy.Expanding)
+        field.setSizePolicy(qt.QtWidgets.QSizePolicy.Policy.Fixed, qt.QtWidgets.QSizePolicy.Policy.Preferred)
         field.setHidden(hidden)
     row.addWidget(widgets["in_point"])
     row.addWidget(ruler, 1)
