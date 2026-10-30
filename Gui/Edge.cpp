@@ -40,6 +40,7 @@
 #include "Gui/GuiApplicationManager.h"
 #include "Engine/Node.h"
 #include "Engine/Image.h"
+#include "Engine/KnobTypes.h"
 #include "Engine/Settings.h"
 #include "Engine/ViewerInstance.h"
 
@@ -65,6 +66,23 @@
 #define kGraphicalContainerOffset 10
 
 NATRON_NAMESPACE_ENTER
+
+// Whether input inputNb of the node is its only input that isn't a mask (a single input needs no label).
+static bool
+isOnlyMainInput(const NodeGuiPtr& nodeGui,
+                int inputNb)
+{
+    NodePtr node = nodeGui ? nodeGui->getNode() : NodePtr();
+    if ( !node || node->getEffectInstance()->isInputMask(inputNb) ) {
+        return false;
+    }
+    int mainInputs = 0;
+    for (int i = 0; i < node->getNInputs(); ++i) {
+        mainInputs += node->getEffectInstance()->isInputMask(i) ? 0 : 1;
+    }
+
+    return mainInputs <= 1;
+}
 
 struct EdgePrivate
 {
@@ -531,13 +549,22 @@ Edge::initLine()
 
             if (_imp->label) {
                 QPointF pos( _imp->middlePoint + QPointF(-5, -10) );
-                //qDebug() << pos;
-                _imp->label->setPos(pos);
                 QFontMetrics fm( _imp->label->font() );
                 int fontHeight = fm.height();
+                // Optionally (preference linkLabelNearInput, read by name) beside the link close to the node it feeds,
+                // and only on nodes with several inputs (A, B, Mask): a single input needs no name.
+                KnobBool* nearInput = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("linkLabelNearInput").get() );
+                const bool labelNear = nearInput && nearInput->getValue() && (visibleLength > 0);
+                if (labelNear) {
+                    const double along = std::min( 0.5, TO_DPIY(6) / visibleLength );
+                    pos = dstIntersection + (srcInteresect - dstIntersection) * along + QPointF( TO_DPIX(3), -fontHeight );
+                }
+                //qDebug() << pos;
+                _imp->label->setPos(pos);
                 double txtWidth = fm.horizontalAdvance( _imp->label->text() );
 
-                if ( (visibleLength < fontHeight * 2) || (visibleLength < txtWidth) ) {
+                const bool single = labelNear && isOnlyMainInput(_imp->dest.lock(), _imp->inputNb);
+                if ( single || (visibleLength < fontHeight * 2) || (visibleLength < txtWidth) ) {
                     _imp->label->hide();
                     _imp->enoughSpaceToShowLabel = false;
                 } else {
@@ -588,6 +615,9 @@ Edge::initLine()
                 QPointF labelDst = dstIntersection; //QPointF( destBBOX.x(),destBBOX.y() ) + QPointF(dstNodeSize.width() / 2.,0);
 
                 _imp->label->setPos( ( ( labelDst.x() + srcpt.x() ) / 2. ) + yOffset, ( labelDst.y() + srcpt.y() ) / 2. - 20 );
+                // With linkLabelNearInput, an unconnected single input needs no name either.
+                KnobBool* nearInput = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("linkLabelNearInput").get() );
+                _imp->label->setVisible( !( nearInput && nearInput->getValue() && isOnlyMainInput(_imp->dest.lock(), _imp->inputNb) ) );
             }
         }
     }

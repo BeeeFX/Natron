@@ -1059,6 +1059,39 @@ Settings::initializeKnobsNodeGraphDrawing()
     readerPreview->setDefaultValue(true);
     _nodegraphColorsTab->addKnob(readerPreview);
 
+    // Read by Edge, NodeGui and BackdropGui through their names (no member, so this header stays as it is).
+    KnobBoolPtr labelNearInput = AppManager::createKnob<KnobBool>( this, tr("Input labels near the node") );
+    labelNearInput->setName("linkLabelNearInput");
+    labelNearInput->setHintToolTip( tr("When checked, a link's input label (A, B, Mask) sits beside the link close to the "
+                                       "node it feeds; otherwise in the middle of the link.") );
+    labelNearInput->setDefaultValue(false);
+    _nodegraphColorsTab->addKnob(labelNearInput);
+    KnobBoolPtr viewerPointed = AppManager::createKnob<KnobBool>( this, tr("Viewer nodes with pointed ends") );
+    viewerPointed->setName("viewerNodePointed");
+    viewerPointed->setHintToolTip( tr("When checked, Viewer nodes are drawn with pointed left and right ends, so they stand "
+                                      "out from the nodes that process images.") );
+    viewerPointed->setDefaultValue(false);
+    _nodegraphColorsTab->addKnob(viewerPointed);
+    KnobBoolPtr backdropLabelOnly = AppManager::createKnob<KnobBool>( this, tr("Backdrops show their label only") );
+    backdropLabelOnly->setName("backdropLabelOnly");
+    backdropLabelOnly->setHintToolTip( tr("When checked, a backdrop shows no name strip, only its label, large, at its top "
+                                          "left; otherwise its name in a strip and the label under it.") );
+    backdropLabelOnly->setDefaultValue(false);
+    _nodegraphColorsTab->addKnob(backdropLabelOnly);
+    KnobBoolPtr flatBadges = AppManager::createKnob<KnobBool>( this, tr("Flat node badges") );
+    flatBadges->setName("nodeBadgesFlat");
+    flatBadges->setHintToolTip( tr("When checked, the small round marks on a node's corners (E for an expression, P for "
+                                   "the input passed through, V for views) are flat discs; otherwise shaded.") );
+    flatBadges->setDefaultValue(false);
+    _nodegraphColorsTab->addKnob(flatBadges);
+    KnobBoolPtr keepSize = AppManager::createKnob<KnobBool>( this, tr("Node names keep their size") );
+    keepSize->setName("nodeNameKeepsSize");
+    keepSize->setHintToolTip( tr("When checked, a node whose label has no text of its own draws its name like every other "
+                                 "node's; otherwise the name grows once the node's panel has been opened (the label editor "
+                                 "leaves an empty font in the label).") );
+    keepSize->setDefaultValue(false);
+    _nodegraphColorsTab->addKnob(keepSize);
+
     struct IntDef { KnobIntPtr* knob; const char* name; QString label; int def, min, max; QString hint; };
     const IntDef ints[] = {
         { &_nodeTileWidth, "nodeTileWidth", tr("Node width"), 100, 20, 400, tr("The width of a new node in the node graph, in pixels.") },

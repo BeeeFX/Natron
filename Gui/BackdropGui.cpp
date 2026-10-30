@@ -51,6 +51,15 @@ CLANG_DIAG_ON(uninitialized)
 
 NATRON_NAMESPACE_ENTER
 
+// Preference backdropLabelOnly (read by name): no name strip, the label large at the top left.
+static bool
+backdropLabelOnly()
+{
+    KnobBool* k = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("backdropLabelOnly").get() );
+
+    return k && k->getValue();
+}
+
 struct BackdropGuiPrivate
 {
     BackdropGui* _publicInterface;
@@ -145,7 +154,7 @@ BackdropGui::resizeExtraContent(int /*w*/,
     QPointF thisItemPos = mapFromParent(p);
     int nameHeight = getFrameNameHeight();
 
-    _imp->label->setPos( thisItemPos.x(), thisItemPos.y() + nameHeight + TO_DPIY(10) );
+    _imp->label->setPos( thisItemPos.x(), thisItemPos.y() + ( backdropLabelOnly() ? TO_DPIY(2) : nameHeight + TO_DPIY(10) ) );
     if (!forceResize) {
         _imp->label->adjustSize();
     }
@@ -175,6 +184,9 @@ BackdropGuiPrivate::refreshLabelText(int nameHeight,
         bool antialias = appPTR->getCurrentSettings()->isNodeGraphAntiAliasingEnabled();
         if (!antialias) {
             f.setStyleStrategy(QFont::NoAntialias);
+        }
+        if ( backdropLabelOnly() && !text.contains( QString::fromUtf8("size=") ) ) {
+            f.setPointSizeF(f.pointSizeF() * 2.);
         }
         label->setFont(f);
     }

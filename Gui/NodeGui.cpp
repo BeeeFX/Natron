@@ -42,6 +42,7 @@ CLANG_DIAG_OFF(uninitialized)
 #include <QGridLayout>
 #include <QCursor>
 #include <QFile>
+#include <QRegularExpression>
 #include <QApplication>
 CLANG_DIAG_ON(deprecated)
 CLANG_DIAG_ON(uninitialized)
@@ -679,6 +680,20 @@ NodeGui::createGui()
         _boundingBox->setFlat(true);
     }
 
+    // Optionally (preference backdropLabelOnly, read by name) a backdrop without its name strip (BackdropGui draws the
+    // label large at the top); the strip stays where it is, unseen, to drag the backdrop by.
+    KnobBool* labelOnly = dynamic_cast<KnobBool*>( settings->getKnobByName("backdropLabelOnly").get() );
+    if ( isBd && labelOnly && labelOnly->getValue() && _nameFrame ) {
+        _nameFrame->setPen(Qt::NoPen);
+        _nameFrame->setData(kNodeGraphRectPointedEnds + 1, true); // the name is hidden once made, below
+    }
+
+    // Optionally (preference viewerNodePointed, read by name) a Viewer node with pointed ends, its outline too.
+    KnobBool* pointed = dynamic_cast<KnobBool*>( settings->getKnobByName("viewerNodePointed").get() );
+    if ( pointed && pointed->getValue() && (node->getPluginID() == PLUGINID_NATRON_VIEWER) ) {
+        _boundingBox->setData(kNodeGraphRectPointedEnds, true);
+    }
+
     if ( !isBd && !iconFilePath.isEmpty() && appPTR->getCurrentSettings()->isPluginIconActivatedOnNodeGraph() ) {
         _pluginIcon = new NodeGraphPixmapItem(getDagGui(), this);
         _pluginIcon->setZValue(depth + 1);
@@ -713,6 +728,9 @@ NodeGui::createGui()
     _nameItem->setDefaultTextColor( QColor(0, 0, 0, 255) );
     //_nameItem->setFont( QFont(appFont,appFontSize) );
     _nameItem->setZValue(depth + 1);
+    if ( _nameFrame && _nameFrame->data(kNodeGraphRectPointedEnds + 1).toBool() ) {
+        _nameItem->hide();
+    }
 
     _persistentMessage = new NodeGraphSimpleTextItem(getDagGui(), this, false);
     _persistentMessage->setZValue(depth + 3);
@@ -727,6 +745,7 @@ NodeGui::createGui()
 
     _stateIndicator = new NodeGraphRectItem(this, cornerRadiusPx);
     _stateIndicator->setZValue(depth - 1);
+    _stateIndicator->setData( kNodeGraphRectPointedEnds, _boundingBox->data(kNodeGraphRectPointedEnds) );
     _stateIndicator->hide();
 
     QRectF bbox = boundingRect();
@@ -3028,9 +3047,16 @@ struct NodeGuiIndicatorPrivate
         ellipse->setZValue(depth);
 
         QPointF ellipseCenter = ellipseRect.center();
-        QRadialGradient radialGrad(ellipseCenter, ellipseRad);
-        radialGrad.setStops(gradStops);
-        ellipse->setBrush(radialGrad);
+        // Optionally (preference nodeBadgesFlat, read by name) a flat disc in the badge's main colour, thin dark edge.
+        KnobBool* flat = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("nodeBadgesFlat").get() );
+        if ( flat && flat->getValue() && !gradStops.isEmpty() ) {
+            ellipse->setBrush( gradStops[gradStops.size() / 2].second );
+            ellipse->setPen( QPen(QColor(20, 20, 20), 1) );
+        } else {
+            QRadialGradient radialGrad(ellipseCenter, ellipseRad);
+            radialGrad.setStops(gradStops);
+            ellipse->setBrush(radialGrad);
+        }
 
 
         textItem = new NodeGraphSimpleTextItem(graph, parent, false);
@@ -3180,8 +3206,21 @@ NodeGui::setNameItemHtml(const QString & name,
     }
     QString textLabel;
 
-    if ( !label.isEmpty() ) {
-        QString labelCopy = label;
+    // Optionally (preference nodeNameKeepsSize, read by name) a label with no text of its own doesn't change the name's
+    // font: once a node's panel has been opened, Natron's label editor leaves an empty font tag in the label (HTML size
+    // 6), which drew the name much larger than the other nodes'.
+    QString labelText = label;
+    KnobBool* keepSize = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("nodeNameKeepsSize").get() );
+    if ( keepSize && keepSize->getValue() ) {
+        QString plain = label;
+        plain.remove( QRegularExpression( QString::fromUtf8("<[^>]*>") ) );
+        if ( plain.trimmed().isEmpty() ) {
+            labelText.clear();
+        }
+    }
+
+    if ( !labelText.isEmpty() ) {
+        QString labelCopy = labelText;
 
         ///remove any custom data tag natron might have added
         QString startCustomTag = QString::fromUtf8(NATRON_CUSTOM_HTML_TAG_START);
