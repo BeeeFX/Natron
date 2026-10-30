@@ -35,4 +35,4 @@ budget_lines = 800
 
 [build]
 # How a packaged build is named (tools/package_build.py): 2.6.0+<release date>.sng<n>.
-version = "2.6.0+2026.10.02.sng1"
+version = "2.6.0+2026.10.02.sng2"
