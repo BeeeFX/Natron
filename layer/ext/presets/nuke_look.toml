@@ -53,13 +53,16 @@ text = [0.78, 0.78, 0.78]
 interpValue = [0.27, 0.42, 0.62]
 keyframe = [0.30, 0.55, 0.88]
 exprColor = [0.62, 0.62, 0.92]
-slider = [0.62, 0.55, 0.32]
+# The slider's handle: Nuke's dark khaki (98, 82, 39 on Foundry's "Using the Color Controls" picture).
+slider = [0.38, 0.32, 0.15]
 
-# Appearance > Main Window: the timeline: dark grey, orange current frame, a green line on cached frames.
-timelineBG = [0.12, 0.12, 0.12]
+# Appearance > Main Window: the timeline, measured on Foundry's timeline pictures ("Using the Viewer Controls",
+# viewer_focus.png): outside the frame range 34, inside it the panels' grey; the current frame orange; the in and
+# out points red (232, 0, 0); a muted green line on cached frames (66, 98, 72).
+timelineBG = [0.133, 0.133, 0.133]
 timelinePlayhead = [0.97, 0.58, 0.12]
-timelineBound = [0.78, 0.62, 0.30]
-cachedFrame = [0.36, 0.72, 0.36]
+timelineBound = [0.86, 0.10, 0.08]
+cachedFrame = [0.26, 0.38, 0.28]
 diskCachedFrame = [0.25, 0.45, 0.25]
 
 # Appearance > Curve Editor and Dope Sheet: dark grey, grey grid and scale instead of Natron's green.
@@ -137,6 +140,12 @@ sliderHandleBar = true
 knobDimensionButtonLast = true
 knobAnimationButton = true
 pageTabNodeName = true
+# Round 4 (.sng5), core patch 0004 too: the timeline's frame ruler as Nuke's (no axis line, short ticks and taller
+# numbered ones rising from one baseline, the cached frames' line under them, the in and out points as upright lines,
+# the numbers in the regular weight); check boxes with a small cross inside a darker square, and drop-downs shaded
+# from light to dark with a dark edge.
+timelineRulerNuke = true
+knobWidgetsShaded = true
 
 [habits]
 # Nodegraph: Nuke's habits. Snap to node, a new Merge takes the selected node in its A input, mask inputs hidden

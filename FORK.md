@@ -83,7 +83,7 @@ with Nuke, ranked: [`layer/GAPS.md`](layer/GAPS.md).
 
 ## Core patches
 
-Five (three since `.sng3`, 31 October 2026, two more since `.sng4`), also carried as commits on `sng/main`, so our
+Six (three since `.sng3`, 31 October 2026, two more since `.sng4`, one more since `.sng5`), also carried as commits on `sng/main`, so our
 builds are made from source
 (`layer/README.md`, "Building from source", with Niik-l's own build scripts):
 
@@ -107,9 +107,13 @@ builds are made from source
    node and none on a single input, pointed Viewer nodes, backdrops showing their label only, flat node badges, node
    names keeping their size, as preferences. About 150 lines in `Engine/Settings.cpp`, `Gui/Edge.cpp`,
    `Gui/NodeGraphRectItem.{h,cpp}`, `Gui/NodeGui.cpp`, `Gui/BackdropGui.cpp`.
+6. `layer/patches/0006-Timeline-ruler-and-knob-widgets.patch` (on top of 0004): the timeline's frame ruler as
+   Nuke's, the sliders' scale as a dark groove with dark ticks, check boxes with a small cross and drop-downs shaded,
+   as preferences. About 160 lines in `Engine/Settings.cpp`, `Gui/TimeLineGui.cpp`, `Gui/ScaleSliderQWidget.cpp`,
+   `Gui/AnimatedCheckBox.cpp`, `Gui/ComboBox.cpp`.
 
 Changing Natron's own code makes every one of Niik-l's releases (every one to three weeks) harder to take, so the
-budget is at most 5 small patches (about 800 lines), each offered to him first: [`layer/patches/`](layer/patches/README.md).
+budget is at most 6 small patches (about 900 lines; 5 and 800 until `.sng5`), each offered to him first: [`layer/patches/`](layer/patches/README.md).
 
 The corresponding source of a build (GPL): this repository at the commit its `Resources/layer/SOURCE.txt` names,
 Niik-l's build scripts in it (`tools/win-build/`), the plug-ins at the commits those scripts pin, and the MSYS2

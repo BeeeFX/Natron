@@ -95,9 +95,15 @@ font, the default layout's 58 % viewer and empty properties pane, Workspace for 
 graph's input labels near the node and none on a single input, pointed Viewer nodes, backdrops with their label
 only, flat badges, node names keeping their size (patch 0005).
 
-Still Natron's (next): the info bar's content and order (Natron's labels, "RoD" for Nuke's "bbox"), the timeline's
-ruler (numbers above the ticks, no in and out boxes at its ends), the properties header's buttons and order, the
-knobs' check boxes, Natron's drop-downs in the properties (boxed, as Nuke's are too, but Natron's shape), the curve
+Done in `.sng5` (1 November 2026, measured against Foundry's timeline and knob-row pictures): the timeline's ruler
+as Nuke's (patch 0006: no axis line, short and tall ticks on one baseline, the cached line under them, red in and out
+lines, regular numbers), the in and out points as tall fields at the ruler's ends and the playback bar in Nuke's
+order (`arrange.py`), the playback buttons shaded light to dark; the properties panels' header in Nuke's order (the
+collapse triangle first, the name field wide), the sliders' scale as a dark groove with dark ticks and numbers and a
+dark khaki handle, fields a little lighter than the panel with a dark edge, shaded buttons, check boxes with a small
+cross, shaded drop-downs, the panel's tabs white and bold.
+
+Still Natron's (next): the info bar's content and order (Natron's labels, "RoD" for Nuke's "bbox"), the curve
 editor's curve colours (Nuke draws r, g, b in red, green, blue) and its own drawing, the selected node (tinted, not
 Nuke's selection colour), the node's channel marks Nuke draws under its name, the Tab menu's favourites and weights,
 a few icons (combo box arrows, cursors, the application's).

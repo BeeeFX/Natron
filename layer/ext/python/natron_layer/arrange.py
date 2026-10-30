@@ -14,6 +14,15 @@ it expects (a release that changed them): nothing breaks, that part just stays N
   the info bar's switch last. Thin separators between groups. Viewers made later are arranged too (``watch``).
 - **Object names** on the rows and the playback bar (``SngViewerBar1``, ``SngViewerBar2``, ``SngPlayerBar``), so
   the look's stylesheet draws them as Nuke's (flat bars; playback buttons in small raised boxes).
+- **The timeline and playback bar in Nuke's order** (Foundry's "Using the Viewer Controls", the timeline picture):
+  the playback in and out points as two tall fields at the ends of the frame ruler (``SngInPoint``, ``SngOutPoint``);
+  under it the frame rate and time format on the left, the loop mode, then in the middle the set-in button, first
+  frame, previous keyframe, previous frame, play backward, the current frame, play, next frame, next keyframe, last
+  frame and the set-out button, then the frame increment; the viewers' lock on the right. The ruler itself is drawn
+  by Natron (core patch 0004's ``timelineRulerNuke``).
+- **The properties panels' header in Nuke's order**: the collapse button first, the name field taking the width,
+  the colour, undo, redo and revert buttons after it, help, float and close at the right end. Panels opened later
+  are arranged too (``watch``).
 - **Nuke's default workspace**: in Natron's default layout the viewer takes a little more of the height (58 %), and
   the properties pane starts empty (Natron opens the project's settings there at start).
 - **The menu bar's Layout menu is called Workspace**, Nuke's name for the same thing (saved layouts); Natron's other
@@ -178,13 +187,126 @@ def arrange_viewer(viewer: Any, qt: Any) -> bool:
     if bar is not None:
         bar.setObjectName("SngPlayerBar")
         found = row_widgets(bar)
-        if tuple(kind(w) for w in found[: len(PLAYER)]) == PLAYER:
+        if not arrange_player(viewer, bar, qt) and tuple(kind(w) for w in found[: len(PLAYER)]) == PLAYER:
             found[len(PLAYER) - 1].setObjectName("SngCurrentFrame")  # Nuke shows the current frame in orange
         repolish(qt, bar)
+        for name in ("SngInPoint", "SngOutPoint"):
+            for field in viewer.findChildren(qt.QtWidgets.QWidget, name):
+                repolish(qt, field)
     repolish(qt, first)
     repolish(qt, second)
     viewer.setProperty(ARRANGED, True)
     return True
+
+
+# The playback bar's widgets, in Natron's order (Gui/ViewerTab.cpp, 2.6), and Nuke's order for them: "|" a separator,
+# "~" the stretch, a number a spacing in pixels. The in and out fields go beside the frame ruler instead.
+PLAYER_ALL = PLAYER + ("QPushButton", "QPushButton", "QPushButton", "QPushButton", "QPushButton", "QPushButton",
+                       "QPushButton", "SpinBox", "QPushButton", "SpinBox", "QPushButton")
+PLAYER_NAMES = ("in_button", "in_point", "fps_switch", "fps_label", "fps", "time_format", "turbo", "loop", "sync",
+                "first", "play_back", "current", "play", "last", "prev_frame", "next_frame", "prev_key", "next_key",
+                "prev_incr", "incr", "next_incr", "out_point", "out_button")
+NUKE_PLAYER = ("fps_switch", 3, "fps_label", "fps", "time_format", "|", "loop", "turbo", "~", "in_button", "first",
+               "prev_key", "prev_frame", "play_back", "current", "play", "next_frame", "next_key", "last",
+               "out_button", 8, "prev_incr", "incr", "next_incr", "~", "sync")
+PLAYER_BUTTON = (26, 20)  # Nuke's playback buttons: a little wider than tall
+POINT_WIDTH = 46  # the in and out fields at the ruler's ends
+RULER_HEIGHT = 54  # Nuke's ruler: the current frame's number, its marker, the ticks, the cached line, the numbers
+
+
+def arrange_player(viewer: Any, bar: Any, qt: Any) -> bool:
+    """The playback bar in Nuke's order and the in and out fields beside the frame ruler. False (nothing moved) when
+    the bar or the viewer's layout isn't the one this module knows."""
+    found = row_widgets(bar)
+    if tuple(kind(w) for w in found) != PLAYER_ALL:
+        return False
+    timeline = [w for w in viewer.findChildren(qt.QtWidgets.QWidget) if kind(w) == "TimeLineGui"]
+    layout = viewer.layout()
+    if len(timeline) != 1 or layout is None or layout.indexOf(timeline[0]) < 0:
+        return False
+    widgets = dict(zip(PLAYER_NAMES, found))
+    relayout(qt, bar, NUKE_PLAYER, widgets)
+    for name in NUKE_PLAYER:
+        if isinstance(name, str) and kind(widgets.get(name)) == "QPushButton":
+            widgets[name].setFixedSize(*PLAYER_BUTTON)
+    widgets["current"].setObjectName("SngCurrentFrame")
+    # The ruler's row: [in] ruler [out], a layout inside the viewer's own, so the ruler (an OpenGL widget) keeps its
+    # parent; only the two fields move to the viewer.
+    ruler = timeline[0]
+    ruler.setMinimumHeight(max(ruler.minimumHeight(), RULER_HEIGHT))  # room for the current frame's number on top
+    index = layout.indexOf(ruler)
+    layout.removeWidget(ruler)
+    row = qt.QtWidgets.QHBoxLayout()
+    row.setContentsMargins(2, 2, 2, 0)
+    row.setSpacing(2)
+    for name, object_name in (("in_point", "SngInPoint"), ("out_point", "SngOutPoint")):
+        field = widgets[name]
+        hidden = field.isHidden()
+        field.setParent(viewer)
+        field.setObjectName(object_name)
+        field.setAlignment(qt.QtCore.Qt.AlignmentFlag.AlignCenter)
+        field.setFixedWidth(POINT_WIDTH)
+        field.setMinimumHeight(0)
+        field.setMaximumHeight(16777215)
+        field.setSizePolicy(qt.QtWidgets.QSizePolicy.Policy.Fixed, qt.QtWidgets.QSizePolicy.Policy.Preferred)
+        field.setHidden(hidden)
+    row.addWidget(widgets["in_point"])
+    row.addWidget(ruler, 1)
+    row.addWidget(widgets["out_point"])
+    layout.insertLayout(index, row)
+    return True
+
+
+HEADER = "DockablePanelHeader"  # the properties panels' header (core patch 0002 names it)
+HEADER_ARRANGED = "sngHeaderArranged"
+
+
+def arrange_header(header: Any, qt: Any) -> bool:
+    """A properties panel's header in Nuke's order: the collapse button first, the name field taking the width, the
+    colour, undo, redo and revert buttons after it, then help, float and close at the right end. Natron's header is
+    [icon, centre, name] ~ [colour, (overlay), undo, redo, revert] ~ [(group), help, hide unmodified, collapse, float,
+    close]; anything else is left as it is."""
+    if header.property(HEADER_ARRANGED):
+        return True
+    header.setProperty(HEADER_ARRANGED, True)
+    layout = header.layout()
+    if layout is None:
+        return False
+    items = [layout.itemAt(i) for i in range(layout.count())]
+    spacers = [i for i, item in enumerate(items) if item.spacerItem() is not None]
+    widgets = [item.widget() for item in items if item.widget() is not None]
+    if len(spacers) != 2 or len(widgets) < 8 or not all(kind(w) == "QPushButton" for w in widgets[-3:]):
+        return False
+    collapse = widgets[-3]
+    first, second = spacers
+
+    def part(start: int, stop: int) -> list[Any]:
+        return [items[i].widget() for i in range(start, stop)
+                if items[i].widget() is not None and items[i].widget() is not collapse]
+
+    left, middle, right = part(0, first), part(first + 1, second), part(second + 1, len(items))
+    names = [w for w in left if kind(w) in ("LineEdit", "QLineEdit")]
+    while layout.count():
+        layout.takeAt(0)
+    layout.addWidget(collapse)
+    for w in left:
+        layout.addWidget(w, 1 if names and w is names[0] else 0)
+    if not names:
+        layout.addStretch(1)
+    for w in middle:
+        layout.addWidget(w)
+    layout.addSpacing(8)
+    for w in right:
+        layout.addWidget(w)
+    return True
+
+
+def arrange_headers(window: Any, qt: Any) -> int:
+    done = 0
+    for header in window.findChildren(qt.QtWidgets.QFrame, HEADER):
+        if not header.property(HEADER_ARRANGED) and arrange_header(header, qt):
+            done += 1
+    return done
 
 
 def viewers(window: Any, qt: Any) -> list[Any]:
@@ -279,7 +401,7 @@ def watch(window: Any, qt: Any, every_ms: int = 3000) -> None:
     """Viewers made later (a new viewer, a pane split, a floating viewer) arranged within a few seconds."""
     timer = qt.QtCore.QTimer(window)
     timer.setInterval(every_ms)
-    timer.timeout.connect(lambda: arrange_all(window, qt))
+    timer.timeout.connect(lambda: (arrange_all(window, qt), arrange_headers(window, qt)))
     timer.start()
     _watchers.append(timer)
 
@@ -294,5 +416,6 @@ def install(window: Any) -> dict[str, int]:
     done["viewer share"] = int(viewer_share(window, qt))
     done["project settings closed"] = close_project_settings(window, qt)
     done["panel count field"] = widen_panel_count(window, qt)
+    done["panel headers"] = arrange_headers(window, qt)
     watch(window, qt)
     return done

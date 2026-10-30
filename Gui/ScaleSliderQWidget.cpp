@@ -494,8 +494,17 @@ ScaleSliderQWidget::paintEvent(QPaintEvent* /*e*/)
     }
 
     /*drawing X axis*/
+    const bool bar = sliderHandleBar();
     double lineYpos = height() - 1 - fontM.height()  - TO_DPIY(TICK_HEIGHT) / 2;
-    p.drawLine(0, lineYpos, width() - 1, lineYpos);
+    if (bar) {
+        // A groove for a baseline (dark, lighter in its middle), the ticks rising from it.
+        lineYpos = std::floor(height() - 1 - fontM.height() - TO_DPIY(2)) + 0.5;
+        p.setPen( QColor(0, 0, 0) );
+        p.drawLine(QPointF(0, lineYpos - 1), QPointF(width() - 1, lineYpos - 1));
+        p.drawLine(QPointF(0, lineYpos + 1), QPointF(width() - 1, lineYpos + 1));
+        p.setPen( QColor(75, 75, 75) );
+    }
+    p.drawLine(QPointF(0, lineYpos), QPointF(width() - 1, lineYpos));
 
     double tickBottom = _imp->zoomCtx.toZoomCoordinates( 0, height() - 1 - fontM.height() ).y();
     double tickTop = _imp->zoomCtx.toZoomCoordinates( 0, height() - 1 - fontM.height()  - TO_DPIY(TICK_HEIGHT) ).y();
@@ -522,13 +531,12 @@ ScaleSliderQWidget::paintEvent(QPaintEvent* /*e*/)
     const double largestTickSize = range * largestTickSizePixel / rangePixel;
     const double minTickSizeTextPixel = fontM.horizontalAdvance( QLatin1String("00") ); // AXIS-SPECIFIC
     const double minTickSizeText = range * minTickSizeTextPixel / rangePixel;
-    const bool bar = sliderHandleBar();
     for (int i = m1; i <= m2; ++i) {
         double value = i * smallTickSize + offset;
         const double tickSize = ticks[i - m1] * smallTickSize;
         const double alpha = ticks_alpha(smallestTickSize, largestTickSize, tickSize);
-        QColor color(textColor);
-        color.setAlphaF(alpha);
+        QColor color = bar ? QColor(0, 0, 0) : textColor;
+        color.setAlphaF(bar ? 0.25 + 0.2 * alpha : alpha);
         QPen pen(color);
         pen.setWidthF(bar ? 1. : 1.9);
         p.setPen(pen);
@@ -541,6 +549,10 @@ ScaleSliderQWidget::paintEvent(QPaintEvent* /*e*/)
         if (renderFloating) {
             QPointF tickBottomPos = _imp->zoomCtx.toWidgetCoordinates(value, tickBottom);
             QPointF tickTopPos = _imp->zoomCtx.toWidgetCoordinates(value, tickTop);
+            if (bar) {
+                tickBottomPos.setY(lineYpos - 1);
+                tickTopPos.setY( lineYpos - 1 - TO_DPIY(TICK_HEIGHT) * (tickSize > minTickSizeText ? 1. : 0.5) );
+            }
 
             p.drawLine(tickBottomPos, tickTopPos);
         }
@@ -558,8 +570,8 @@ ScaleSliderQWidget::paintEvent(QPaintEvent* /*e*/)
                     alphaText *= (tickSizePixel - sSizePixel) / (double)minTickSizeTextPixel;
                 }
                 //alphaText = std::min(alphaText, alpha); // don't draw more opaque than ticks
-                QColor c = _imp->readOnly || !isEnabled() ? Qt::black : textColor;
-                c.setAlphaF(alphaText);
+                QColor c = _imp->readOnly || !isEnabled() || bar ? Qt::black : textColor;
+                c.setAlphaF(bar ? 0.55 * alphaText : alphaText);
                 p.setFont(_imp->font);
                 p.setPen(c);
 

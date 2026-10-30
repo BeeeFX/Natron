@@ -1,0 +1,342 @@
+From a8cbc4a614aad2baf3867f97245f704f1503da9f Mon Sep 17 00:00:00 2001
+From: "Baptiste G." <70719480+BeeeFX@users.noreply.github.com>
+Date: Fri, 30 Oct 2026 15:55:30 +0000
+Subject: [PATCH] Timeline ruler, sliders, check boxes and drop-downs
+ optionally drawn like Nuke's
+
+- timelineRulerNuke (Appearance > Main Window; off by default, Natron's ruler as before): the timeline's frame ruler
+  without its axis line, with short ticks on every step and taller ones where a number can sit, all rising from one
+  baseline, the cached frames' line between the ticks and the numbers, the playback in and out points as upright
+  lines through the ruler, and the numbers in the regular weight.
+- sliderHandleBar (patch 0004's preference) now also draws the scale as Nuke's: a dark groove for a baseline, dark
+  ticks rising from it, dark numbers.
+- knobWidgetsShaded (off by default): a ticked check box shows a small cross inside its square and a plain one is
+  darker; a drop-down at rest is shaded from light to dark with a dark edge.
+- Every new preference is read by name, so Settings.h doesn't change.
+
+Core patch 0006 of the BeeeFX fork (layer/patches/).
+
+Gap: layer/GAPS.md, "Nuke's look and habits" (the timeline and the properties panels' widgets).
+Size: 5 files, 126 lines added, 33 removed.
+upstream: not offered (Baptiste: keep the fork private for now).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ Engine/Settings.cpp        | 14 ++++++
+ Gui/AnimatedCheckBox.cpp   | 17 ++++++-
+ Gui/ComboBox.cpp           | 14 +++++-
+ Gui/ScaleSliderQWidget.cpp | 24 +++++++---
+ Gui/TimeLineGui.cpp        | 90 ++++++++++++++++++++++++++++----------
+ 5 files changed, 126 insertions(+), 33 deletions(-)
+
+diff --git a/Engine/Settings.cpp b/Engine/Settings.cpp
+index 868f4b58e..93bd09d38 100644
+--- a/Engine/Settings.cpp
++++ b/Engine/Settings.cpp
+@@ -798,6 +798,14 @@ Settings::initializeKnobsGuiColors()
+     _diskCachedFrameColor->setName("diskCachedFrame");
+     _diskCachedFrameColor->setSimplified(true);
+     _guiColorsTab->addKnob(_diskCachedFrameColor);
++    // Read by the timeline through its name (no member, so Settings.h stays as it is).
++    KnobBoolPtr nukeRuler = AppManager::createKnob<KnobBool>( this, tr("Timeline ruler as Nuke's") );
++    nukeRuler->setName("timelineRulerNuke");
++    nukeRuler->setHintToolTip( tr("When checked, the timeline's frame ruler has no axis line, short ticks with taller ones where "
++                                  "a number sits, the cached frames' line under the ticks and the in and out points as upright "
++                                  "lines; otherwise Natron's ruler.") );
++    nukeRuler->setDefaultValue(false);
++    _guiColorsTab->addKnob(nukeRuler);
+ 
+     _interpolatedColor =  AppManager::createKnob<KnobColor>(this, tr("Interpolated value"), 3);
+     _interpolatedColor->setName("interpValue");
+@@ -849,6 +857,12 @@ Settings::initializeKnobsGuiColors()
+                                  "shows the node's kind instead (Grade, Blur).") );
+     pageName->setDefaultValue(false);
+     _guiColorsTab->addKnob(pageName);
++    KnobBoolPtr insetCross = AppManager::createKnob<KnobBool>( this, tr("Check boxes and drop-downs shaded") );
++    insetCross->setName("knobWidgetsShaded");
++    insetCross->setHintToolTip( tr("When checked, a ticked check box shows a small cross inside a darker square, and a drop-down "
++                                   "is shaded from light to dark with a dark edge; otherwise Natron's flat ones.") );
++    insetCross->setDefaultValue(false);
++    _guiColorsTab->addKnob(insetCross);
+ } // Settings::initializeKnobsGuiColors
+ 
+ void
+diff --git a/Gui/AnimatedCheckBox.cpp b/Gui/AnimatedCheckBox.cpp
+index c2c560641..bd1811f6e 100644
+--- a/Gui/AnimatedCheckBox.cpp
++++ b/Gui/AnimatedCheckBox.cpp
+@@ -41,6 +41,7 @@ CLANG_DIAG_ON(deprecated-register)
+ // clang-format on
+ 
+ #include "Gui/GuiApplicationManager.h"
++#include "Engine/KnobTypes.h"
+ #include "Engine/Settings.h"
+ 
+ NATRON_NAMESPACE_ENTER
+@@ -158,6 +159,11 @@ AnimatedCheckBox::paintEvent(QPaintEvent* e)
+     } else if (animation == 3) {
+         appPTR->getCurrentSettings()->getExprColor(&bgR, &bgG, &bgB);
+     }
++    KnobBool* insetPref = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("knobWidgetsShaded").get() );
++    const bool inset = insetPref && insetPref->getValue();
++    if ( inset && (animation == 0) && (bgR == bgG) && (bgG == bgB) ) {
++        bgR = bgG = bgB = bgR * 0.6; // a plain box (not a channel's colour) darker than the panel
++    }
+     activeColor.setRgbF(bgR, bgG, bgB);
+     pen.setColor(activeColor);
+     p.setPen(pen);
+@@ -186,8 +192,15 @@ AnimatedCheckBox::paintEvent(QPaintEvent* e)
+         pen.setColor(activeColor);
+         p.setRenderHint(QPainter::Antialiasing);
+         p.setPen(pen);
+-        p.drawLine( bRect.topLeft(), bRect.bottomRight() );
+-        p.drawLine( bRect.bottomLeft(), bRect.topRight() );
++        const QRectF cross = inset ? bRect.adjusted(bRect.width() * 0.25, bRect.height() * 0.25,
++                                                    -bRect.width() * 0.25, -bRect.height() * 0.25) : bRect;
++        if (inset) {
++            pen.setWidthF(1.6);
++            p.setPen(pen);
++        }
++        p.drawLine( cross.topLeft(), cross.bottomRight() );
++        p.drawLine( cross.bottomLeft(), cross.topRight() );
++        pen.setWidthF(1.);
+     }
+ 
+ 
+diff --git a/Gui/ComboBox.cpp b/Gui/ComboBox.cpp
+index 9a4bfe01a..64644a6bc 100644
+--- a/Gui/ComboBox.cpp
++++ b/Gui/ComboBox.cpp
+@@ -328,7 +328,19 @@ ComboBox::paintEvent(QPaintEvent* /*e*/)
+ 
+         QRectF roundedRect = bRect.adjusted(fw / 2., fw / 2., -fw, -fw);
+         bRect.adjust(fw, fw, -fw, -fw);
+-        p.fillRect(bRect, fillColor);
++        // Optionally (preference knobWidgetsShaded, read by name) shaded from light to dark with a dark edge, as Nuke's.
++        KnobBool* shaded = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("knobWidgetsShaded").get() );
++        if ( shaded && shaded->getValue() && !_clicked && !_dirty && (_animation == 0) ) {
++            QLinearGradient gradient( bRect.topLeft(), bRect.bottomLeft() );
++            gradient.setColorAt( 0, fillColor.lighter(119) );
++            gradient.setColorAt( 1, fillColor.darker(103) );
++            p.fillRect(bRect, gradient);
++            if ( !hasFocus() ) {
++                p.setPen( QColor(30, 30, 30) );
++            }
++        } else {
++            p.fillRect(bRect, fillColor);
++        }
+         double roundPixels = 3;
+         QPainterPath path;
+         path.addRoundedRect(roundedRect, roundPixels, roundPixels);
+diff --git a/Gui/ScaleSliderQWidget.cpp b/Gui/ScaleSliderQWidget.cpp
+index 1bc50072f..883602dd1 100644
+--- a/Gui/ScaleSliderQWidget.cpp
++++ b/Gui/ScaleSliderQWidget.cpp
+@@ -494,8 +494,17 @@ ScaleSliderQWidget::paintEvent(QPaintEvent* /*e*/)
+     }
+ 
+     /*drawing X axis*/
++    const bool bar = sliderHandleBar();
+     double lineYpos = height() - 1 - fontM.height()  - TO_DPIY(TICK_HEIGHT) / 2;
+-    p.drawLine(0, lineYpos, width() - 1, lineYpos);
++    if (bar) {
++        // A groove for a baseline (dark, lighter in its middle), the ticks rising from it.
++        lineYpos = std::floor(height() - 1 - fontM.height() - TO_DPIY(2)) + 0.5;
++        p.setPen( QColor(0, 0, 0) );
++        p.drawLine(QPointF(0, lineYpos - 1), QPointF(width() - 1, lineYpos - 1));
++        p.drawLine(QPointF(0, lineYpos + 1), QPointF(width() - 1, lineYpos + 1));
++        p.setPen( QColor(75, 75, 75) );
++    }
++    p.drawLine(QPointF(0, lineYpos), QPointF(width() - 1, lineYpos));
+ 
+     double tickBottom = _imp->zoomCtx.toZoomCoordinates( 0, height() - 1 - fontM.height() ).y();
+     double tickTop = _imp->zoomCtx.toZoomCoordinates( 0, height() - 1 - fontM.height()  - TO_DPIY(TICK_HEIGHT) ).y();
+@@ -522,13 +531,12 @@ ScaleSliderQWidget::paintEvent(QPaintEvent* /*e*/)
+     const double largestTickSize = range * largestTickSizePixel / rangePixel;
+     const double minTickSizeTextPixel = fontM.horizontalAdvance( QLatin1String("00") ); // AXIS-SPECIFIC
+     const double minTickSizeText = range * minTickSizeTextPixel / rangePixel;
+-    const bool bar = sliderHandleBar();
+     for (int i = m1; i <= m2; ++i) {
+         double value = i * smallTickSize + offset;
+         const double tickSize = ticks[i - m1] * smallTickSize;
+         const double alpha = ticks_alpha(smallestTickSize, largestTickSize, tickSize);
+-        QColor color(textColor);
+-        color.setAlphaF(alpha);
++        QColor color = bar ? QColor(0, 0, 0) : textColor;
++        color.setAlphaF(bar ? 0.25 + 0.2 * alpha : alpha);
+         QPen pen(color);
+         pen.setWidthF(bar ? 1. : 1.9);
+         p.setPen(pen);
+@@ -541,6 +549,10 @@ ScaleSliderQWidget::paintEvent(QPaintEvent* /*e*/)
+         if (renderFloating) {
+             QPointF tickBottomPos = _imp->zoomCtx.toWidgetCoordinates(value, tickBottom);
+             QPointF tickTopPos = _imp->zoomCtx.toWidgetCoordinates(value, tickTop);
++            if (bar) {
++                tickBottomPos.setY(lineYpos - 1);
++                tickTopPos.setY( lineYpos - 1 - TO_DPIY(TICK_HEIGHT) * (tickSize > minTickSizeText ? 1. : 0.5) );
++            }
+ 
+             p.drawLine(tickBottomPos, tickTopPos);
+         }
+@@ -558,8 +570,8 @@ ScaleSliderQWidget::paintEvent(QPaintEvent* /*e*/)
+                     alphaText *= (tickSizePixel - sSizePixel) / (double)minTickSizeTextPixel;
+                 }
+                 //alphaText = std::min(alphaText, alpha); // don't draw more opaque than ticks
+-                QColor c = _imp->readOnly || !isEnabled() ? Qt::black : textColor;
+-                c.setAlphaF(alphaText);
++                QColor c = _imp->readOnly || !isEnabled() || bar ? Qt::black : textColor;
++                c.setAlphaF(bar ? 0.55 * alphaText : alphaText);
+                 p.setFont(_imp->font);
+                 p.setPen(c);
+ 
+diff --git a/Gui/TimeLineGui.cpp b/Gui/TimeLineGui.cpp
+index 19825f6f5..bb9fba629 100644
+--- a/Gui/TimeLineGui.cpp
++++ b/Gui/TimeLineGui.cpp
+@@ -67,6 +67,17 @@ GCC_DIAG_UNUSED_PRIVATE_FIELD_ON
+ 
+ NATRON_NAMESPACE_ENTER
+ 
++// Preference timelineRulerNuke (off by default): the frame ruler drawn as Nuke's: no axis line, short ticks on every
++// step and taller ones where a number sits, rising from one baseline; the cached frames' line under the ticks; the
++// playback in and out points as upright lines; the numbers in the regular weight. Read by name (Settings.h unchanged).
++static bool
++timelineRulerNuke()
++{
++    KnobBool* k = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("timelineRulerNuke").get() );
++
++    return k && k->getValue();
++}
++
+ #define TICK_HEIGHT 7
+ #define CURSOR_WIDTH 15
+ #define CURSOR_HEIGHT 8
+@@ -358,11 +369,13 @@ TimeLineGui::paintGL()
+ 
+     glCheckError();
+ 
++    const bool nukeRuler = timelineRulerNuke();
+     {
+         double screenPixelRatio = (_imp->viewerTab && _imp->viewerTab->getViewer()) ? _imp->viewerTab->getViewer()->getScreenPixelRatio() : 1.0;
+-        if (screenPixelRatio != _imp->_screenPixelRatio) {
++        const QFont::Weight weight = nukeRuler ? QFont::Normal : QFont::Bold;
++        if ( (screenPixelRatio != _imp->_screenPixelRatio) || !_imp->_textFont || (_imp->_textFont->weight() != weight) ) {
+             _imp->_screenPixelRatio = screenPixelRatio;
+-            _imp->_textFont.reset(new QFont(appFont, appFontSize * screenPixelRatio, QFont::Bold));
++            _imp->_textFont.reset(new QFont(appFont, appFontSize * screenPixelRatio, weight));
+         }
+     }
+     assert(_imp->_textFont);
+@@ -483,9 +496,11 @@ TimeLineGui::paintGL()
+ 
+         QFontMetrics fm(*_imp->_textFont, 0);
+         double fmHeight = fm.height() / _imp->_screenPixelRatio;
+-        double lineYPosWidget = height() - 1 - fmHeight  - TO_DPIY(TICK_HEIGHT) / 2.;
++        // Nuke's ruler: the ticks' baseline a little above the numbers, the cached frames' line between them.
++        const double nukeGap = nukeRuler ? TO_DPIY(5) : 0.;
++        double lineYPosWidget = nukeRuler ? height() - 1 - fmHeight - nukeGap : height() - 1 - fmHeight  - TO_DPIY(TICK_HEIGHT) / 2.;
+         double lineYpos = toTimeLineCoordinates(0, lineYPosWidget).y();
+-        double cachedLineYPos = toTimeLineCoordinates(0, lineYPosWidget + 1).y();
++        double cachedLineYPos = toTimeLineCoordinates(0, lineYPosWidget + (nukeRuler ? nukeGap / 2. : 1.)).y();
+ 
+         /*draw the horizontal axis*/
+         double txtR, txtG, txtB;
+@@ -510,12 +525,14 @@ TimeLineGui::paintGL()
+         settings->getDiskCachedColor(&dcR, &dcG, &dcB);
+ 
+ 
+-        glColor4f(txtR / 2., txtG / 2., txtB / 2., 1.);
+-        glLineWidth(1.5 * _imp->_screenPixelRatio);
+-        glBegin(GL_LINES);
+-        glVertex2f(btmLeft.x(), lineYpos);
+-        glVertex2f(topRight.x(), lineYpos);
+-        glEnd();
++        if (!nukeRuler) {
++            glColor4f(txtR / 2., txtG / 2., txtB / 2., 1.);
++            glLineWidth(1.5 * _imp->_screenPixelRatio);
++            glBegin(GL_LINES);
++            glVertex2f(btmLeft.x(), lineYpos);
++            glVertex2f(topRight.x(), lineYpos);
++            glEnd();
++        }
+         glCheckErrorIgnoreOSXBug();
+ 
+ #if (__GNUC__ == 8 && __GNUC_MINOR__ >= 1 && __GNUC_MINOR__ < 3) && !defined(ENFORCE_GCC8)
+@@ -558,11 +575,18 @@ TimeLineGui::paintGL()
+             if (isFloating) {
+                 continue;
+             }
+-            glColor4f(txtR, txtG, txtB, alpha);
+-            glLineWidth(1.5 * _imp->_screenPixelRatio);
++            glColor4f(txtR, txtG, txtB, nukeRuler ? 0.5 + 0.35 * alpha : alpha); // Nuke: every step's tick visible
++            glLineWidth( (nukeRuler ? 1. : 1.5) * _imp->_screenPixelRatio );
+             glBegin(GL_LINES);
+-            glVertex2f(value, tickBottom);
+-            glVertex2f(value, tickTop);
++            if (nukeRuler) {
++                // Short ticks, taller where a number can sit, all rising from the baseline.
++                const double tall = TO_DPIY(TICK_HEIGHT) * (tickSize > minTickSizeText ? 1.3 : 0.5);
++                glVertex2f(value, lineYpos);
++                glVertex2f( value, toTimeLineCoordinates(0, lineYPosWidget - tall).y() );
++            } else {
++                glVertex2f(value, tickBottom);
++                glVertex2f(value, tickTop);
++            }
+             glEnd();
+             glCheckErrorIgnoreOSXBug();
+ 
+@@ -732,11 +756,20 @@ TimeLineGui::paintGL()
+                                leftBoundStr, boundsColor, *_imp->_textFont, Qt::AlignHCenter);
+                 }
+                 glColor4f(boundsR, boundsG, boundsB, 1.);
+-                glBegin(GL_POLYGON);
+-                glVertex2f( leftBoundBtm.x(), leftBoundBtm.y() );
+-                glVertex2f( leftBoundBtmRight.x(), leftBoundBtmRight.y() );
+-                glVertex2f( leftBoundTop.x(), leftBoundTop.y() );
+-                glEnd();
++                if (nukeRuler) {
++                    // An upright line through the whole ruler, as Nuke marks its in and out points.
++                    glLineWidth(2 * _imp->_screenPixelRatio);
++                    glBegin(GL_LINES);
++                    glVertex2f( leftBoundBtm.x(), btmLeft.y() );
++                    glVertex2f( leftBoundBtm.x(), topRight.y() );
++                    glEnd();
++                } else {
++                    glBegin(GL_POLYGON);
++                    glVertex2f( leftBoundBtm.x(), leftBoundBtm.y() );
++                    glVertex2f( leftBoundBtmRight.x(), leftBoundBtmRight.y() );
++                    glVertex2f( leftBoundTop.x(), leftBoundTop.y() );
++                    glEnd();
++                }
+                 glCheckErrorIgnoreOSXBug();
+             }
+ 
+@@ -750,11 +783,20 @@ TimeLineGui::paintGL()
+                 }
+                 glColor4f(boundsR, boundsG, boundsB, 1.);
+                 glCheckError();
+-                glBegin(GL_POLYGON);
+-                glVertex2f( rightBoundBtm.x(), rightBoundBtm.y() );
+-                glVertex2f( rightBoundBtmLeft.x(), rightBoundBtmLeft.y() );
+-                glVertex2f( rightBoundTop.x(), rightBoundTop.y() );
+-                glEnd();
++                if (nukeRuler) {
++                    // An upright line through the whole ruler, as Nuke marks its in and out points.
++                    glLineWidth(2 * _imp->_screenPixelRatio);
++                    glBegin(GL_LINES);
++                    glVertex2f( rightBoundBtm.x(), btmLeft.y() );
++                    glVertex2f( rightBoundBtm.x(), topRight.y() );
++                    glEnd();
++                } else {
++                    glBegin(GL_POLYGON);
++                    glVertex2f( rightBoundBtm.x(), rightBoundBtm.y() );
++                    glVertex2f( rightBoundBtmLeft.x(), rightBoundBtmLeft.y() );
++                    glVertex2f( rightBoundTop.x(), rightBoundTop.y() );
++                    glEnd();
++                }
+                 glCheckErrorIgnoreOSXBug();
+             }
+         }
+-- 
+2.48.1.windows.1
+

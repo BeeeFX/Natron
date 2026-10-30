@@ -798,6 +798,14 @@ Settings::initializeKnobsGuiColors()
     _diskCachedFrameColor->setName("diskCachedFrame");
     _diskCachedFrameColor->setSimplified(true);
     _guiColorsTab->addKnob(_diskCachedFrameColor);
+    // Read by the timeline through its name (no member, so Settings.h stays as it is).
+    KnobBoolPtr nukeRuler = AppManager::createKnob<KnobBool>( this, tr("Timeline ruler as Nuke's") );
+    nukeRuler->setName("timelineRulerNuke");
+    nukeRuler->setHintToolTip( tr("When checked, the timeline's frame ruler has no axis line, short ticks with taller ones where "
+                                  "a number sits, the cached frames' line under the ticks and the in and out points as upright "
+                                  "lines; otherwise Natron's ruler.") );
+    nukeRuler->setDefaultValue(false);
+    _guiColorsTab->addKnob(nukeRuler);
 
     _interpolatedColor =  AppManager::createKnob<KnobColor>(this, tr("Interpolated value"), 3);
     _interpolatedColor->setName("interpValue");
@@ -849,6 +857,12 @@ Settings::initializeKnobsGuiColors()
                                  "shows the node's kind instead (Grade, Blur).") );
     pageName->setDefaultValue(false);
     _guiColorsTab->addKnob(pageName);
+    KnobBoolPtr insetCross = AppManager::createKnob<KnobBool>( this, tr("Check boxes and drop-downs shaded") );
+    insetCross->setName("knobWidgetsShaded");
+    insetCross->setHintToolTip( tr("When checked, a ticked check box shows a small cross inside a darker square, and a drop-down "
+                                   "is shaded from light to dark with a dark edge; otherwise Natron's flat ones.") );
+    insetCross->setDefaultValue(false);
+    _guiColorsTab->addKnob(insetCross);
 } // Settings::initializeKnobsGuiColors
 
 void

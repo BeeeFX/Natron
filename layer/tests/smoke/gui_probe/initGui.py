@@ -188,7 +188,9 @@ def _layer_probe():
         settings = NatronEngine.natron.getSettings()
         if settings.getParam("nodeErrorTint") is None:
             return  # Niik-l's plain release: Natron's own drawing
-        graph = widgets_named(app, "NodeGraph")[0]
+        # The main node graph: the largest one on screen (a Group's own graph can come first in Qt's list).
+        graphs = [g for g in widgets_named(app, "NodeGraph") if g.isVisible()] or widgets_named(app, "NodeGraph")
+        graph = max(graphs, key=lambda g: g.viewport().width() * g.viewport().height())
         area = graph.mapToScene(graph.viewport().rect()).boundingRect()
         missing = natron_app.createReader("C:/no/such/folder/smoke_missing.####.exr")
         normal = natron_app.createNode("net.sf.openfx.GradePlugin")
@@ -344,14 +346,22 @@ def _layer_probe():
         say(len(set(bars)) == 4, "the viewer's bars, playback bar and current frame are named for the stylesheet ("
             + ", ".join(sorted(set(bars))) + ")")
         say(any(a.text() == "Workspace" for a in window.menuBar().actions()), "Natron's Layout menu reads Workspace")
+        # Round 4: the in and out points beside the frame ruler, the playback bar in Nuke's order.
+        points = [w for w in window.findChildren(QtWidgets.QWidget) if w.objectName() in ("SngInPoint", "SngOutPoint")]
+        rulers = [w for w in window.findChildren(QtWidgets.QWidget) if str(w.metaObject().className()).endswith("TimeLineGui")]
+        beside = len(points) == 2 and rulers and all(abs(p.mapTo(window, QtCore.QPoint(0, 0)).y()
+                                                         - rulers[0].mapTo(window, QtCore.QPoint(0, 0)).y()) <= 4
+                                                     for p in points)
+        say(bool(beside), "the playback in and out points sit at the frame ruler's ends (" + str(len(points)) + " fields)")
         # This fork's builds draw the properties rows and parts of the node graph like Nuke's (core patches 0004, 0005).
         if patched:
             settings = NatronEngine.natron.getSettings()
             wanted = ("sliderHandleBar", "knobDimensionButtonLast", "knobAnimationButton", "pageTabNodeName",
-                      "linkLabelNearInput", "viewerNodePointed", "backdropLabelOnly", "nodeBadgesFlat", "nodeNameKeepsSize")
+                      "linkLabelNearInput", "viewerNodePointed", "backdropLabelOnly", "nodeBadgesFlat", "nodeNameKeepsSize",
+                      "timelineRulerNuke", "knobWidgetsShaded")
             missing = [n for n in wanted if settings.getParam(n) is None]
             off = [n for n in wanted if n not in missing and not settings.getParam(n).get()]
-            say(not missing and not off, "the Nuke drawing preferences of patches 0004 and 0005 are on for the session"
+            say(not missing and not off, "the Nuke drawing preferences of patches 0004 to 0006 are on for the session"
                 + (" (missing: " + ", ".join(missing) + ")" if missing else "") + (" (off: " + ", ".join(off) + ")" if off else ""))
 
     def tools(app, natron_app):
