@@ -823,6 +823,32 @@ Settings::initializeKnobsGuiColors()
     _sliderColor->setName("slider");
     _sliderColor->setSimplified(true);
     _guiColorsTab->addKnob(_sliderColor);
+
+    // The properties panels' rows: read by the panels through their names (no member, so Settings.h stays as it is).
+    KnobBoolPtr sliderBar = AppManager::createKnob<KnobBool>( this, tr("Slider handle as a bar") );
+    sliderBar->setName("sliderHandleBar");
+    sliderBar->setHintToolTip( tr("When checked, a slider's handle is a small upright bar in the slider colour over a scale "
+                                  "of thin ticks; otherwise a round handle.") );
+    sliderBar->setDefaultValue(false);
+    _guiColorsTab->addKnob(sliderBar);
+    KnobBoolPtr animButton = AppManager::createKnob<KnobBool>( this, tr("Animation button on value rows") );
+    animButton->setName("knobAnimationButton");
+    animButton->setHintToolTip( tr("When checked, each row of an animatable value ends with a button opening its animation "
+                                   "menu (the menu a right-click on the value opens).") );
+    animButton->setDefaultValue(false);
+    _guiColorsTab->addKnob(animButton);
+    KnobBoolPtr dimensionsLast = AppManager::createKnob<KnobBool>( this, tr("Dimensions button last") );
+    dimensionsLast->setName("knobDimensionButtonLast");
+    dimensionsLast->setHintToolTip( tr("When checked, the button splitting a value into its dimensions (\"4\" on a colour) "
+                                       "comes after the colour buttons; otherwise before them.") );
+    dimensionsLast->setDefaultValue(false);
+    _guiColorsTab->addKnob(dimensionsLast);
+    KnobBoolPtr pageName = AppManager::createKnob<KnobBool>( this, tr("First tab named after the node") );
+    pageName->setName("pageTabNodeName");
+    pageName->setHintToolTip( tr("When checked, a node's first tab of controls, when its plug-in calls it \"Controls\", "
+                                 "shows the node's kind instead (Grade, Blur).") );
+    pageName->setDefaultValue(false);
+    _guiColorsTab->addKnob(pageName);
 } // Settings::initializeKnobsGuiColors
 
 void

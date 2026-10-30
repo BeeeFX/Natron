@@ -35,6 +35,9 @@
 #include "Engine/EffectInstance.h"
 #include "Engine/ViewIdx.h"
 
+#include "Engine/Settings.h"
+
+#include "Gui/Button.h"
 #include "Gui/KnobGuiPrivate.h"
 #include "Gui/GuiDefines.h"
 #include "Gui/GuiApplicationManager.h"
@@ -238,6 +241,24 @@ KnobGui::createGUI(QWidget* fieldContainer,
         createWidget(layout);
         onHasModificationsChanged();
         updateToolTip();
+
+        // Optionally (preference knobAnimationButton, read by name) a row of an animatable value ends with a button
+        // opening its animation menu, the one a right-click on the value opens.
+        KnobBool* animButton = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("knobAnimationButton").get() );
+        const bool isValue = dynamic_cast<KnobDoubleBase*>( knob.get() ) || dynamic_cast<KnobInt*>( knob.get() );
+        if ( animButton && animButton->getValue() && isValue && knob->isAnimationEnabled() && knob->isNewLineActivated() &&
+             !_imp->container->isInViewerUIKnob() ) {
+            QPixmap pix;
+            appPTR->getIcon(NATRON_PIXMAP_CURVE, TO_DPIX(NATRON_MEDIUM_BUTTON_ICON_SIZE), &pix);
+            Button* button = new Button(QIcon(pix), QString(), fieldContainer);
+            button->setObjectName( QString::fromUtf8("KnobAnimationButton") );
+            button->setFixedSize( TO_DPIX(NATRON_MEDIUM_BUTTON_SIZE), TO_DPIY(NATRON_MEDIUM_BUTTON_SIZE) );
+            button->setIconSize( QSize( TO_DPIX(NATRON_MEDIUM_BUTTON_ICON_SIZE), TO_DPIY(NATRON_MEDIUM_BUTTON_ICON_SIZE) ) );
+            button->setFocusPolicy(Qt::NoFocus);
+            button->setToolTip( tr("Animation menu") );
+            QObject::connect( button, &QAbstractButton::clicked, this, [this]() { showRightClickMenuForDimension(QPoint(), -1); } );
+            layout->addWidget(button);
+        }
     }
 
 
