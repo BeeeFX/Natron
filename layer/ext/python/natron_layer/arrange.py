@@ -1,0 +1,298 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# This file is part of the layer of this Natron fork (see FORK.md at the repository root).
+"""Natron's window arranged like Nuke's, once it's up: Natron's own widgets moved, nothing of Natron's changed.
+
+Route P (GAPS.md): Python acting on Natron's live interface. Each part looks for Natron's widgets by their kind and
+order (the way Natron builds them, ``Gui/ViewerTab.cpp``) and leaves a part as Natron made it when they aren't what
+it expects (a release that changed them): nothing breaks, that part just stays Natron's.
+
+- **The viewer's two toolbars** in Nuke's order (Foundry's "Using the Viewer Controls" page names each control):
+  the first row has the layer, alpha channel and channels, the viewer process (Natron keeps it in the second row),
+  the A and B inputs with the compare operation between them, then on the right the proxy and full-frame switches,
+  the zoom and the proxy level; the second row has gain then gamma, each a switch, a field and a slider, then on the
+  right refresh, region of interest and pause, the clip-to-format and checkerboard switches, the viewers' lock, and
+  the info bar's switch last. Thin separators between groups. Viewers made later are arranged too (``watch``).
+- **Object names** on the rows and the playback bar (``SngViewerBar1``, ``SngViewerBar2``, ``SngPlayerBar``), so
+  the look's stylesheet draws them as Nuke's (flat bars; playback buttons in small raised boxes).
+- **Nuke's default workspace**: in Natron's default layout the viewer takes a little more of the height (58 %), and
+  the properties pane starts empty (Natron opens the project's settings there at start).
+- **The menu bar's Layout menu is called Workspace**, Nuke's name for the same thing (saved layouts); Natron's other
+  menu names stay (its help pages use them).
+
+Nothing here writes Natron's settings or changes a comp; the artist's way back is Natron's own look (Nuke > Look),
+which keeps this module out.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from . import compat
+
+ARRANGED = "sngArranged"  # dynamic property on a viewer once its bars are arranged
+SEPARATOR = "SngViewerSeparator"
+
+# Natron's two viewer rows, widget by widget (Gui/ViewerTab.cpp, 2.6): the kind of each widget in its layout, in order
+# (Natron's Button has no class name of its own, so it reads as QPushButton; its channels drop-down as ComboBox).
+ROW1 = ("ComboBox", "ComboBox", "ComboBox", "QFrame", "ComboBox", "QPushButton", "QPushButton", "QFrame",
+        "QPushButton", "QPushButton", "QPushButton", "QPushButton", "ComboBox", "QFrame", "QPushButton", "QPushButton",
+        "QFrame", "Label", "ComboBox", "Label", "ComboBox", "Label", "ComboBox")
+ROW2 = ("QPushButton", "SpinBox", "ScaleSliderQWidget", "QPushButton", "QPushButton", "SpinBox", "ScaleSliderQWidget",
+        "ComboBox", "QPushButton", "ComboBox", "QPushButton")
+ROW1_NAMES = ("layer", "alpha", "channels", "-", "zoom", "sync", "centre", "-", "clip", "full_frame", "roi", "proxy",
+              "proxy_level", "-", "refresh", "pause", "-", "a_label", "a_input", "op_icon", "operation", "b_label",
+              "b_input")
+ROW2_NAMES = ("gain_switch", "gain", "gain_slider", "auto_contrast", "gamma_switch", "gamma", "gamma_slider",
+              "process", "checkerboard", "views", "info_bar")
+
+# Nuke's order: "|" a separator, "~" the stretch, a number a spacing in pixels.
+NUKE_ROW1 = ("layer", "alpha", "channels", "|", "process", "|", "a_label", "a_input", 2, "operation", 2, "b_label",
+             "b_input", "~", "clip", "full_frame", "proxy", "|", "zoom", "|", "proxy_level")
+NUKE_ROW2 = ("gain_switch", "gain", "gain_slider", "|", "gamma_switch", "gamma", "gamma_slider", "auto_contrast",
+             "~", "refresh", "roi", "pause", "|", "checkerboard", "sync", "centre", "|", "views", "info_bar")
+HIDDEN = ("op_icon",)  # Nuke has no picture before the compare operation; its drop-down keeps the tooltip
+# Drop-downs drawn flat, text and arrow only, as Nuke's viewer bar draws them (Natron's ComboBox reads the "flat"
+# property in this fork's builds, core patch 0004; elsewhere the property does nothing). The A and B inputs keep their
+# box, as Nuke's do.
+FLAT = ("layer", "alpha", "channels", "process", "operation", "zoom", "proxy_level")
+
+
+def kind(widget: Any) -> str:
+    try:
+        return str(widget.metaObject().className()).rsplit(":", 1)[-1]
+    except Exception:  # noqa: BLE001  (a widget Qt already deleted)
+        return ""
+
+
+def row_widgets(row: Any) -> list[Any]:
+    layout = row.layout()
+    if layout is None:
+        return []
+    found = []
+    for i in range(layout.count()):
+        widget = layout.itemAt(i).widget()
+        if widget is not None:
+            found.append(widget)
+    return found
+
+
+def find_rows(viewer: Any, qt: Any) -> tuple[Any, Any] | None:
+    """Natron's two toolbar rows of a viewer, or None when they aren't laid out as this module knows them."""
+    first = second = None
+    for child in viewer.findChildren(qt.QtWidgets.QWidget, options=qt.QtCore.Qt.FindChildOption.FindDirectChildrenOnly):
+        kinds = tuple(kind(w) for w in row_widgets(child))
+        if kinds == ROW1:
+            first = child
+        elif kinds == ROW2:
+            second = child
+    if first is None or second is None:
+        return None
+    return first, second
+
+
+def player_bar(viewer: Any, qt: Any) -> Any:
+    """The playback bar: the viewer's last row, a line of buttons and fields."""
+    layout = viewer.layout()
+    if layout is None:
+        return None
+    for i in range(layout.count() - 1, -1, -1):
+        widget = layout.itemAt(i).widget()
+        if widget is None:
+            continue
+        kinds = [kind(w) for w in row_widgets(widget)]
+        if kinds.count("QPushButton") >= 8 and "SpinBox" in kinds:
+            return widget
+        return None
+    return None
+
+
+PLAYER = ("QPushButton", "SpinBox", "QCheckBox", "ClickableLabel", "SpinBox", "ComboBox", "QPushButton", "QPushButton",
+          "QPushButton", "QPushButton", "QPushButton", "SpinBox")  # the playback bar's start, to its current frame
+
+
+def repolish(qt: Any, widget: Any) -> None:
+    """Qt applies a stylesheet's rules for object names when a widget is first drawn: after naming a widget, its
+    style is applied again to it and to everything inside it."""
+    for w in [widget, *widget.findChildren(qt.QtWidgets.QWidget)]:
+        style = w.style()
+        style.unpolish(w)
+        style.polish(w)
+        w.update()
+
+
+def separator(qt: Any, parent: Any) -> Any:
+    line = qt.QtWidgets.QFrame(parent)
+    line.setObjectName(SEPARATOR)
+    line.setFrameShape(qt.QtWidgets.QFrame.Shape.NoFrame)  # the stylesheet paints it: one dark pixel
+    line.setFixedWidth(1)
+    return line
+
+
+def relayout(qt: Any, row: Any, order: tuple, widgets: dict[str, Any]) -> None:
+    """Empty ``row``'s layout and fill it again in ``order``; widgets left out are hidden."""
+    layout = row.layout()
+    while layout.count():
+        item = layout.takeAt(0)
+        widget = item.widget() if item is not None else None
+        if widget is not None and widget.objectName() != SEPARATOR and kind(widget) == "QFrame":
+            widget.hide()  # Natron's own separators: ours take their place
+    for entry in order:
+        if entry == "|":
+            layout.addSpacing(4)
+            layout.addWidget(separator(qt, row))
+            layout.addSpacing(4)
+        elif entry == "~":
+            layout.addStretch(1)
+        elif isinstance(entry, int):
+            layout.addSpacing(entry)
+        else:
+            widget = widgets[entry]
+            hidden = widget.isHidden()
+            if widget.parentWidget() is not row:
+                widget.setParent(row)
+            layout.addWidget(widget)
+            widget.setHidden(hidden)
+
+
+def arrange_viewer(viewer: Any, qt: Any) -> bool:
+    """One viewer's toolbars in Nuke's order. False when its rows aren't the ones this module knows."""
+    if viewer.property(ARRANGED):
+        return True
+    rows = find_rows(viewer, qt)
+    if rows is None:
+        return False
+    first, second = rows
+    widgets = dict(zip(ROW1_NAMES, row_widgets(first)))
+    widgets.update(zip(ROW2_NAMES, row_widgets(second)))
+    widgets.pop("-", None)
+    for name in HIDDEN:
+        widgets[name].hide()
+    for name in FLAT:
+        widgets[name].setProperty("flat", True)
+        widgets[name].update()
+    relayout(qt, first, NUKE_ROW1, widgets)
+    relayout(qt, second, NUKE_ROW2, widgets)
+    first.setObjectName("SngViewerBar1")
+    second.setObjectName("SngViewerBar2")
+    bar = player_bar(viewer, qt)
+    if bar is not None:
+        bar.setObjectName("SngPlayerBar")
+        found = row_widgets(bar)
+        if tuple(kind(w) for w in found[: len(PLAYER)]) == PLAYER:
+            found[len(PLAYER) - 1].setObjectName("SngCurrentFrame")  # Nuke shows the current frame in orange
+        repolish(qt, bar)
+    repolish(qt, first)
+    repolish(qt, second)
+    viewer.setProperty(ARRANGED, True)
+    return True
+
+
+def viewers(window: Any, qt: Any) -> list[Any]:
+    """Natron's viewers (ViewerTab), found through the panes (``pane1``...) so the search stays small."""
+    found = []
+    expr = qt.QtCore.QRegularExpression("^pane[0-9]+$")
+    for pane in window.findChildren(qt.QtWidgets.QWidget, expr):
+        for child in pane.findChildren(qt.QtWidgets.QWidget, options=qt.QtCore.Qt.FindChildOption.FindDirectChildrenOnly):
+            if kind(child) == "ViewerTab":
+                found.append(child)
+    # A floating viewer lives in its own window.
+    app = compat.application()
+    for top in app.topLevelWidgets() if app is not None else []:
+        if top is window or not top.isVisible():
+            continue
+        for child in top.findChildren(qt.QtWidgets.QWidget):
+            if kind(child) == "ViewerTab":
+                found.append(child)
+    return found
+
+
+def arrange_all(window: Any, qt: Any) -> dict[str, int]:
+    done = {"viewers": 0, "viewers left as Natron's": 0}
+    for viewer in viewers(window, qt):
+        if viewer.property(ARRANGED):
+            continue
+        if arrange_viewer(viewer, qt):
+            done["viewers"] += 1
+        else:
+            done["viewers left as Natron's"] += 1
+            viewer.setProperty(ARRANGED, True)  # don't look at it again
+    return done
+
+
+def rename_menus(window: Any) -> int:
+    """Natron's Layout menu as Nuke's Workspace (saved layouts, the default one, the panes' tabs)."""
+    renamed = 0
+    for action in window.menuBar().actions():
+        if action.text().replace("&", "") == "Layout":
+            action.setText("Workspace")
+            renamed += 1
+    return renamed
+
+
+def close_project_settings(window: Any, qt: Any) -> int:
+    """Natron opens the project's settings in the properties pane at start; Nuke's properties bin starts empty (its
+    project settings open with S). Closed once, at start; Display > Project Settings opens them again."""
+    closed = 0
+    for panel in window.findChildren(qt.QtWidgets.QWidget):
+        if kind(panel) == "DockablePanel" and panel.isVisible():
+            if qt.QtCore.QMetaObject.invokeMethod(panel, "closePanel"):
+                closed += 1
+    return closed
+
+
+def widen_panel_count(window: Any, qt: Any) -> int:
+    """The properties pane's "how many panels" field (Natron sizes it for its own larger font, so "10" showed as
+    "1(" in ours): wide enough for two digits. Found by its tooltip; left alone when it isn't found."""
+    for field in window.findChildren(qt.QtWidgets.QLineEdit):
+        if kind(field) == "SpinBox" and "maximum of panels" in field.toolTip():
+            field.setFixedWidth(max(field.width(), field.fontMetrics().horizontalAdvance("100") + 6))
+            return 1
+    return 0
+
+
+VIEWER_SHARE = 0.58  # Nuke's default workspace: the viewer takes a little more than half the height
+NATRON_VIEWER_SHARE = 0.5  # Natron's default layout (Gui10.cpp): viewer and node graph half and half
+
+
+def viewer_share(window: Any, qt: Any) -> bool:
+    """In Natron's default layout (the viewer's pane ``pane1`` over the node graph's ``pane3``, half and half), the
+    viewer takes Nuke's larger share. A layout the artist made keeps its sizes."""
+    for splitter in window.findChildren(qt.QtWidgets.QSplitter):
+        if splitter.orientation() != qt.QtCore.Qt.Orientation.Vertical or splitter.count() != 2:
+            continue
+        if [splitter.widget(0).objectName(), splitter.widget(1).objectName()] != ["pane1", "pane3"]:
+            continue
+        sizes = list(splitter.sizes())
+        total = sum(sizes)
+        if total <= 0 or abs(sizes[0] / total - NATRON_VIEWER_SHARE) > 0.03:
+            return False
+        top = int(total * VIEWER_SHARE)
+        splitter.setSizes([top, total - top])
+        return True
+    return False
+
+
+_watchers: list[Any] = []
+
+
+def watch(window: Any, qt: Any, every_ms: int = 3000) -> None:
+    """Viewers made later (a new viewer, a pane split, a floating viewer) arranged within a few seconds."""
+    timer = qt.QtCore.QTimer(window)
+    timer.setInterval(every_ms)
+    timer.timeout.connect(lambda: arrange_all(window, qt))
+    timer.start()
+    _watchers.append(timer)
+
+
+def install(window: Any) -> dict[str, int]:
+    """Once the window is up (skin.polish): the viewers' bars, the Workspace menu, and the watch for new viewers."""
+    qt = compat.qt_modules()
+    if qt is None:
+        return {}
+    done = arrange_all(window, qt)
+    done["menus renamed"] = rename_menus(window)
+    done["viewer share"] = int(viewer_share(window, qt))
+    done["project settings closed"] = close_project_settings(window, qt)
+    done["panel count field"] = widen_panel_count(window, qt)
+    watch(window, qt)
+    return done

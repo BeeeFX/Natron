@@ -283,7 +283,7 @@ Natron--ClickableLabel[readOnly="true"][dirty="true"] {
 
 TabWidget,
 Natron--TabWidget {
-    background-color: %4;
+    background-color: rgb(33, 33, 33);
 }
 
 NodeSettingsPanel,
@@ -848,29 +848,34 @@ QToolTip {
     padding: 3px;
 }
 
-/* -- Tabs: flat, square, the selected one lighter with orange text -- */
+/* -- Tabs: Nuke's pane tabs (Foundry's guide pictures): on a dark strip, small tabs with rounded top corners and a
+      dark edge, grey text; the current one lighter, standing a little higher, its name orange. -- */
 
 QTabBar::tab {
-    background: %4;
-    border: 0px;
-    border-right: 1px solid rgb(24, 24, 24);
-    border-top-right-radius: 0px;
-    border-top-left-radius: 0px;
+    background: rgb(39, 39, 39);
+    color: rgb(170, 170, 170);
+    border: 1px solid rgb(20, 20, 20);
+    border-bottom: 0px;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
     min-width: 0px;
-    padding-left: 10px;
-    padding-right: 10px;
-    padding-top: 3px;
-    padding-bottom: 3px;
-    margin: 0px;
+    padding-left: 9px;
+    padding-right: 9px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    margin: 2px 1px 0px 0px;
 }
 
 QTabBar::tab:selected {
     background: %2;
+    border-top: 1px solid rgb(77, 77, 77);
     color: %1;
+    margin-top: 0px;
+    padding-bottom: 3px;
 }
 
-QTabBar::tab:hover {
-    background: rgb(70, 70, 70);
+QTabBar::tab:hover:!selected {
+    background: rgb(56, 56, 56);
 }
 
 QTabBar::close-button {
@@ -899,11 +904,11 @@ QSplitter::handle:vertical {
 }
 
 QSplitter::handle::horizontal {
-    width: 2px;
+    width: 3px;
 }
 
 QSplitter::handle::vertical {
-    height: 2px;
+    height: 3px;
 }
 
 /* -- Buttons: square, a thin dark edge, lighter under the mouse -- */
@@ -1017,14 +1022,34 @@ Natron--ViewerToolButton[isSelected="true"] {
     background-color: rgb(30, 30, 30);
 }
 
-/* -- The left toolbar: one narrow column of grey icons -- */
+/* -- The left toolbar: Nuke's column of node menus, each grey icon on its own small dark tile -- */
 
 QToolBar {
     background-color: %2;
-    spacing: 1px;
-    padding: 2px 1px;
+    spacing: 2px;
+    padding: 3px 2px;
     border: 0px;
     border-right: 1px solid rgb(24, 24, 24);
+}
+
+QToolBar QToolButton {
+    background-color: rgb(44, 44, 44);
+    border: 1px solid rgb(22, 22, 22);
+    border-radius: 2px;
+    min-width: 28px;
+    min-height: 28px;
+    padding: 1px;
+}
+
+QToolBar QToolButton:hover {
+    background-color: rgb(74, 74, 74);
+    border: 1px solid rgb(22, 22, 22);
+}
+
+QToolBar QToolButton:pressed,
+QToolBar QToolButton:checked {
+    background-color: rgb(28, 28, 28);
+    border: 1px solid %1;
 }
 
 /* -- Value fields: darker than the panel, square, a thin dark edge, orange when typing -- */
@@ -1360,12 +1385,12 @@ Natron--NodeCreationDialog#nodeCreationDialog {
 }
 
 #nodeCreationDialog QLineEdit {
-    background-color: rgb(24, 24, 24);
+    background-color: rgb(30, 30, 30);
     color: rgb(236, 236, 236);
-    border: 1px solid %1;
-    border-radius: 0px;
-    padding: 3px 6px;
-    min-height: 18px;
+    border: 1px solid rgb(205, 205, 205);
+    border-radius: 3px;
+    padding: 2px 5px;
+    min-height: 16px;
 }
 
 #nodeCreationDialog QListView,
@@ -1389,4 +1414,66 @@ QListView#nodeCreationDialogList::item:selected,
 QListView#nodeCreationDialogList::item:hover {
     background-color: %1;
     color: rgb(20, 20, 20);
+}
+
+/* -- The viewer's bars, arranged in Nuke's order by natron_layer/arrange.py, which names them: flat rows with thin
+      dark separators between the groups of controls (Foundry's "Using the Viewer Controls" pictures). -- */
+
+QWidget#SngViewerBar1,
+QWidget#SngViewerBar2 {
+    background-color: %2;
+}
+
+QFrame#SngViewerSeparator {
+    background-color: rgb(26, 26, 26);
+    border: 0px;
+    margin: 3px 0px;
+}
+
+QWidget#SngViewerBar1 QLabel,
+QWidget#SngViewerBar2 QLabel {
+    font-weight: bold;
+    padding: 0px 2px 0px 4px;
+}
+
+/* The playback bar: Nuke draws its buttons as small raised boxes side by side, the current frame in orange. */
+QWidget#SngPlayerBar QPushButton {
+    background-color: rgb(66, 66, 66);
+    border: 1px solid rgb(22, 22, 22);
+    border-radius: 2px;
+    margin: 0px 1px;
+}
+
+QWidget#SngPlayerBar QPushButton:hover {
+    background-color: rgb(88, 88, 88);
+}
+
+#SngCurrentFrame {
+    color: %1;
+}
+
+QWidget#SngPlayerBar QPushButton:pressed,
+QWidget#SngPlayerBar QPushButton:checked {
+    background-color: rgb(30, 30, 30);
+    border: 1px solid rgb(22, 22, 22);
+}
+
+/* -- The properties panels' rows (core patch 0004, this fork's builds): the animation button at the end of a value's
+      row, flat until the mouse is over it, as Nuke's. -- */
+
+QPushButton#KnobAnimationButton {
+    background-color: transparent;
+    border: 1px solid rgb(30, 30, 30);
+    border-radius: 2px;
+    padding: 0px;
+}
+
+QPushButton#KnobAnimationButton:hover {
+    background-color: rgb(80, 80, 80);
+}
+
+/* The viewer bar's flat drop-downs (arrange.py sets their "flat" property): no edge either. */
+ComboBox[flat="true"],
+Natron--ComboBox[flat="true"] {
+    border: 0px;
 }
