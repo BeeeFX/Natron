@@ -18,12 +18,15 @@ commit = "82d765f04c998b479261f80a40f6eaab00a46245"
 # (plugins/natron/tests/run_tests.py, 615 checks) passed on it the same day.
 release = "natron-2.6-2026.10.02"
 commit = "82d765f04c998b479261f80a40f6eaab00a46245"
-date = "2026-10-30"
+date = "2026-10-31"
 natron = "2.6.0"
 python = "3.14.6"
 qt_binding = "PySide6 6.11 through qtpy 2.4.3 (both bundled with the release)"
-# run_smoke.py --gui (30 October 2026, with the skin): 258 checks with the repository's layer, 259 on the .sng2 build.
-checks = 258
+# run_smoke.py --gui (31 October 2026, the second wave): 261 checks with the repository's layer on this release (its
+# node graph drawn as Natron's: no drawing preferences), 279 on the .sng3 source build (built from this branch with
+# core patches 0001 and 0002, MSYS2 packages of 2026-10-02; Python 3.14.8, PySide6 6.11.2).
+checks = 261
+source_build_checks = 279
 # Earlier releases the layer passed on (before the skin, 5 October 2026).
 also_passed = ["natron-2.6-2026.09.20"]
 
