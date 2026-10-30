@@ -283,7 +283,7 @@ Natron--ClickableLabel[readOnly="true"][dirty="true"] {
 
 TabWidget,
 Natron--TabWidget {
-    background-color: rgb(33, 33, 33);
+    background-color: %4;
 }
 
 NodeSettingsPanel,
@@ -820,7 +820,7 @@ QToolButton#ColorSelectorButton:pressed {
 
 TabWidget,
 Natron--TabWidget {
-    background-color: %4;
+    background-color: rgb(33, 33, 33);
 }
 
 NodeSettingsPanel[_selected="true"],

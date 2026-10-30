@@ -104,8 +104,9 @@ Python acting on Natron's live interface, nothing of Natron's changed.
   the plain `nuke.qss` (no window, nothing to draw).
 - **The stylesheet's Nuke section** is a complete flat skin over Natron's: square buttons with a thin dark edge,
   icon buttons in the viewer, playback and pane bars without a frame until the mouse is over them, value fields
-  darker than the panels, square fields with an orange edge while typing, thin flat scrollbars without arrows, flat
-  tabs (the selected one lighter, orange text), tight menus with the orange highlight and dark text, small dark
+  darker than the panels, square fields with an orange edge while typing, thin flat scrollbars without arrows, Nuke's
+  pane tabs (since `.sng4`: a dark strip, small tabs with rounded top corners and a dark edge, the current one
+  lighter with orange text), the left toolbar's icons on small dark tiles, tight menus with the orange highlight and dark text, small dark
   check boxes with a grey tick, flat headers and lists; the properties panels' header buttons flat and small (they
   can be told from the knobs' own buttons in this fork's builds, which name the header: core patch 0002); Tab's
   node search as a compact dark box with the typed text large and the matches in a tight list with the orange
@@ -113,17 +114,34 @@ Python acting on Natron's live interface, nothing of Natron's changed.
 - **Once the window is up** (a second after it shows, when Natron has finished sizing it): the left toolbar's
   buttons show their icons at 20 px (Natron leaves Qt's 16), and, **only when the window still has Natron's default
   layout** (its properties pane `pane2` at Natron's 35 % of the width), the properties pane takes the look's share
-  (30 %, Nuke's properties bin being narrower). Natron's default layout is already Nuke's arrangement (viewer top
-  left, node graph under it, properties on the right, toolbar on the left), so nothing else moves. Layout files
-  (Natron's `defaultLayout` preference) weren't needed.
+  (30 %, Nuke's properties bin being narrower). Then **`arrange.py`** (`.sng4`) moves Natron's own widgets into
+  Nuke's places, looking for them by kind and order (the way `Gui/ViewerTab.cpp` builds them) and leaving a part as
+  Natron's when they aren't what it expects:
+  - **the viewer's two bars in Nuke's order** (Foundry's "Using the Viewer Controls" page): first row layer, alpha
+    channel, channels, the viewer process (Natron keeps it in the second row), A input, compare operation, B input,
+    then on the right clip to format, full frame, proxy, zoom and the proxy level; second row gain then gamma (each a
+    switch, a field, a slider), auto contrast, then refresh, region of interest, pause, checkerboard, the viewers'
+    lock and centre, views and the info bar's switch. The layer, channels, viewer process, operation, zoom and proxy
+    level drop-downs are drawn flat (their `flat` property, read by Natron's drop-down in this fork's builds: core
+    patch 0004), thin dark separators between groups (ours), Natron's compare picture hidden. Viewers made later
+    (a new viewer, a split, a floating one) are arranged within 3 seconds (a timer that looks through the panes);
+  - the rows and the playback bar get object names (`SngViewerBar1`, `SngViewerBar2`, `SngPlayerBar`,
+    `SngCurrentFrame`) so the stylesheet draws the playback buttons as small raised boxes and the current frame in
+    orange, as Nuke's;
+  - **in Natron's default layout** the viewer takes 58 % of the height (Natron: half), and the properties pane starts
+    empty (Natron opens the project's settings there; Display > Project Settings opens them again);
+  - the properties pane's panel-count field is made wide enough for "10" (Natron sizes it for its larger font);
+  - **the Layout menu reads Workspace**, Nuke's name for the same thing; the other menu names stay Natron's (its help
+    pages use them).
 - **The artist's way back.** The Nuke menu's **Look › Natron's own look for me…** (after a yes) keeps `"look":
   "natron"` in the layer's own config.json: from the next start the skin stays out and the look sets only its habits
   (Natron's own stylesheet, colours, icons and font come back; the keys, Tab names, ToolSets stay). **Look › Nuke
   look for me…** takes it back. `NATRON_LAYER_SKIN=off` does the same for one session (the "before" pictures).
-- What the skin doesn't reach: the node graph's drawing (node shapes, links: core patch 0001, below, in this fork's
-  own builds), Natron's own custom-drawn widgets (its drop-downs, the knobs' check boxes, sliders), icons not drawn yet (GAPS.md lists them),
-  the window title and program icon (kept: it's Natron, and its licence is happy with that), the menu names (kept
-  as Natron's so its help pages match).
+- What the skin doesn't reach: the node graph's drawing and the properties rows (core patches 0001, 0003 to 0005,
+  below, in this fork's own builds), Natron's own custom-drawn widgets beyond what those patches opened (the knobs'
+  check boxes, the timeline's ruler), icons not drawn yet (GAPS.md lists them), the window title and program icon
+  (kept: it's Natron, and its licence is happy with that), the menu names but Workspace (kept as Natron's so its
+  help pages match).
 
 ## Nuke's keys
 
@@ -520,6 +538,27 @@ no postage stamp on new Read nodes, a node as wide as its label (Read nodes with
 Niik-l's plain release the preferences don't exist: the look says so in its report ("the node graph drawn as
 Natron's") and the smoke test accepts it. Backdrops keep a halo when selected (a tinted backdrop would colour half
 the graph).
+
+## The properties rows and more of the node graph (core patches 0004 and 0005, `.sng4`)
+
+Measured against Foundry's guide pictures (Nuke 17 user guide: "Properties Panels", "Using the Viewer Controls",
+"Nuke Studio Environments", "Using the Tab Menu"; the URLs and what each shows are in Singerie's
+`docs/dev/progress/2026-11-01-natron-reskin-3.md`), more preferences, each defaulting to Natron's own drawing and
+read by name (Settings.h unchanged), the look setting the Nuke-like value for the session:
+
+- **0004, the properties rows** (Appearance > Main Window): `sliderHandleBar` (a slider's handle a small upright bar
+  in the slider colour, khaki in the look, over thin ticks, as Nuke's), `knobDimensionButtonLast` (the "4" after the
+  colour swatch and wheel: Nuke's order is value, slider, swatch, wheel, 4, animation), `knobAnimationButton` (each
+  row of an animatable number or colour ends with a button opening the animation menu a right-click opens; named
+  `KnobAnimationButton`), `pageTabNodeName` (a node's first tab, when its plug-in calls it "Controls", named after
+  the node: Grade, Blur, as Nuke's). And a drop-down whose `flat` property is set (nothing in Natron sets it;
+  `arrange.py` does on the viewer bar) shows its text and arrow without its box.
+- **0005, the node graph** (Appearance > Node Graph > Node and link drawing): `linkLabelNearInput` (an input's label
+  beside its link close to the node, none on a node's only input that isn't a mask, connected or not, as Nuke draws
+  them), `viewerNodePointed` (Viewer nodes with pointed ends, Nuke's Viewer node shape), `backdropLabelOnly` (no name
+  strip, the label twice the interface size at the top left; the strip stays, unseen, to drag by), `nodeBadgesFlat`
+  (the E, P, V marks as flat discs), `nodeNameKeepsSize` (once a node's panel had been opened, Natron's label editor
+  left an empty font tag of HTML size 6 in its label and the name was drawn about twice as large as the others').
 
 ## Writing code here
 
