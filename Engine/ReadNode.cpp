@@ -52,6 +52,9 @@ CLANG_DIAG_OFF(uninitialized)
 #include <QProcess>
 #include <QFile>
 #include <QFileInfo>
+#include <QDir>
+#include <QRegularExpression>
+#include <QTimer>
 CLANG_DIAG_ON(deprecated)
 CLANG_DIAG_ON(uninitialized)
 
@@ -68,6 +71,7 @@ CLANG_DIAG_ON(uninitialized)
 #include "Engine/KnobSerialization.h" // createDefaultValueForParam
 #include "Engine/Plugin.h"
 #include "Engine/Settings.h"
+#include "Engine/TimeLine.h"
 
 //The plug-in that is instantiated whenever this node is created and doesn't point to any valid or known extension
 #define READ_NODE_DEFAULT_READER PLUGINID_OFX_READOIIO
@@ -253,6 +257,9 @@ public:
 
     bool wasCreatedAsHiddenNode;
 
+    // The "File not found" message was set by knobChanged's own check (cleared by it once the file is there).
+    bool missingFileMessage;
+
 
     ReadNodePrivate(ReadNode* publicInterface)
     : _publicInterface(publicInterface)
@@ -268,6 +275,7 @@ public:
     , creatingReadNode(0)
     , lastPluginIDCreated()
     , wasCreatedAsHiddenNode(false)
+    , missingFileMessage(false)
     {
     }
 
@@ -282,6 +290,8 @@ public:
     void cloneGenericKnobs();
 
     void refreshPluginSelectorKnob();
+
+    void checkFileFound(const std::string& filename);
 
     void refreshFileInfoVisibility(const std::string& pluginID);
 
@@ -651,6 +661,67 @@ getFileNameFromSerialization(const std::list<KnobSerializationPtr>& serializatio
     return filePattern;
 }
 
+// Whether the file a Read names is there: the frame asked for, or, for a sequence pattern (#, @ or %0Nd), any file of
+// the pattern in its folder (the frame asked for may lie outside the sequence's range).
+static bool
+readerFileExists(const std::string& frameFile, const std::string& pattern)
+{
+    if ( !frameFile.empty() && QFile::exists( QString::fromUtf8( frameFile.c_str() ) ) ) {
+        return true;
+    }
+    QString pat = QString::fromUtf8( pattern.c_str() );
+    int token = pat.indexOf( QRegularExpression( QString::fromUtf8("#|@|%[0-9]*d") ) );
+    if (token < 0) {
+        return false;
+    }
+    QFileInfo info( pat.left(token) );
+    QString prefix = info.fileName();
+    QRegularExpressionMatch m = QRegularExpression( QString::fromUtf8("(#+|@+|%[0-9]*d)") ).match(pat, token);
+    QString suffix = pat.mid( token + m.capturedLength() );
+    if ( suffix.contains( QLatin1Char('/') ) || suffix.contains( QLatin1Char('\\') ) ) {
+        return true; // a frame number in a folder name: not checked here, rendering will say
+    }
+    QDir dir = info.dir();
+    if ( !dir.exists() ) {
+        return false;
+    }
+
+    return !dir.entryList( QStringList( prefix + QLatin1Char('*') + suffix ), QDir::Files ).isEmpty();
+}
+
+void
+ReadNodePrivate::checkFileFound(const std::string& filename)
+{
+    // Natron finds a missing file when it first renders the Read, its postage stamp included. With postage stamps
+    // off by preference (readerPreview) nothing renders an unconnected Read, so look for the file when it's named.
+    KnobBool* readerPreview = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("readerPreview").get() );
+    KnobFilePtr fileKnob = inputFileKnob.lock();
+    if ( !readerPreview || readerPreview->getValue() || filename.empty() || !fileKnob || !_publicInterface->getApp() ) {
+        return;
+    }
+    NodePtr node = _publicInterface->getNode();
+    if ( node && !node->isNodeCreated() ) {
+        // A node still being made drops its messages: look again once it's made (the next turn of the event loop).
+        std::string name = filename;
+        QTimer::singleShot( 0, _publicInterface, [this, name]() { checkFileFound(name); } );
+
+        return;
+    }
+    std::string frameFile = fileKnob->getFileName( (int)_publicInterface->getApp()->getTimeLine()->currentFrame(), ViewIdx(0) );
+    std::string pattern = filename;
+    _publicInterface->getApp()->getProject()->canonicalizePath(frameFile);
+    _publicInterface->getApp()->getProject()->canonicalizePath(pattern);
+    if ( readerFileExists(frameFile, pattern) ) {
+        if (missingFileMessage) {
+            _publicInterface->clearPersistentMessage(false);
+            missingFileMessage = false;
+        }
+    } else {
+        _publicInterface->setPersistentMessage( eMessageTypeError, tr("File not found: %1").arg( QString::fromUtf8( filename.c_str() ) ).toStdString() );
+        missingFileMessage = true;
+    }
+}
+
 void
 ReadNodePrivate::createReadNode(bool throwErrors,
                                 const std::string& filename,
@@ -823,6 +894,7 @@ ReadNodePrivate::createReadNode(bool throwErrors,
     if (knob) {
         inputFileKnob = std::dynamic_pointer_cast<KnobFile>(knob);
     }
+    checkFileFound(filename);
 } // ReadNodePrivate::createReadNode
 
 void

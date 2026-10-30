@@ -585,6 +585,8 @@ protected:
 
     bool isSelectionTinted() const;
 
+    bool isErrorTinted() const;
+
 private:
     void initializeInputsForInspector();
 
