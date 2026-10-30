@@ -136,6 +136,26 @@ settingsColor(void (Settings::*getter)(double*, double*, double*) const)
     return c;
 }
 
+static double
+nodeErrorTint()
+{
+    KnobDouble* k = dynamic_cast<KnobDouble*>( appPTR->getCurrentSettings()->getKnobByName("nodeErrorTint").get() );
+
+    return k ? k->getValue() : 0.;
+}
+
+static QColor
+nodeErrorColor()
+{
+    KnobColor* k = dynamic_cast<KnobColor*>( appPTR->getCurrentSettings()->getKnobByName("nodeErrorColor").get() );
+    QColor c(217, 31, 26);
+    if (k) {
+        c.setRgbF( Image::clamp(k->getValue(0), 0., 1.), Image::clamp(k->getValue(1), 0., 1.), Image::clamp(k->getValue(2), 0., 1.) );
+    }
+
+    return c;
+}
+
 static QColor
 mixColors(const QColor& a, const QColor& b, double t)
 {
@@ -333,6 +353,11 @@ NodeGui::initialize(NodeGraph* dag,
     }
 
     restoreStateAfterCreation();
+
+    // A message the node got before its drawing existed (a Read finding its file missing as it's made).
+    if ( internalNode->hasPersistentMessage() ) {
+        onPersistentMessageChanged();
+    }
 
     ///Link the position of the node to the position of the parent multi-instance
     const std::string parentMultiInstanceName = internalNode->getParentMultiInstanceName();
@@ -1797,6 +1822,24 @@ NodeGui::applyBrush(const QBrush & brush)
 }
 
 bool
+NodeGui::isErrorTinted() const
+{
+    // In error, and the error drawn as a tint (not Natron's frame and large ERROR).
+    if ( nodeErrorTint() <= 0. || dynamic_cast<const BackdropGui*>(this) ) {
+        return false;
+    }
+    NodePtr node = getNode();
+    if (!node) {
+        return false;
+    }
+    QString message;
+    int type = 0;
+    node->getPersistentMessage(&message, &type);
+
+    return !message.isEmpty() && type == 1;
+}
+
+bool
 NodeGui::isSelectionTinted() const
 {
     // A selected node takes the selection colour instead of a halo when the preference asks (backdrops keep the halo).
@@ -1807,9 +1850,25 @@ void
 NodeGui::refreshCurrentBrush()
 {
     QColor color = _slaveMasterLink ? _clonedColor : _currentColor;
-    if ( isSelectionTinted() && getIsSelected() ) {
-        color = mixColors( color, settingsColor(&Settings::getNodeSelectedColor),
-                           appPTR->getCurrentSettings()->getNodeSelectedTint() );
+    // A selected node keeps its own colour, brightened (by nodeSelectedTint), with an outline in the selection
+    // colour, when the preference asks; otherwise Natron's halo shows it (refreshStateIndicator).
+    bool selected = isSelectionTinted() && getIsSelected();
+    if (selected) {
+        color = mixColors( color, Qt::white, appPTR->getCurrentSettings()->getNodeSelectedTint() * 0.5 );
+    }
+    // A node in error takes the error colour and an outline of it when the preference asks (nodeErrorTint).
+    bool inError = isErrorTinted();
+    if (inError) {
+        color = mixColors( color, nodeErrorColor(), nodeErrorTint() );
+    }
+    if ( _boundingBox && !dynamic_cast<BackdropGui*>(this) ) {
+        if (inError) {
+            _boundingBox->setPen( QPen(nodeErrorColor(), 2) );
+        } else if (selected) {
+            _boundingBox->setPen( QPen(settingsColor(&Settings::getNodeSelectedColor), 2) );
+        } else {
+            _boundingBox->setPen( QPen(settingsColor(&Settings::getNodeOutlineColor), 1) );
+        }
     }
     applyBrush(color);
 }
@@ -2249,6 +2308,9 @@ NodeGui::onPersistentMessageChanged()
         }
 
         setToolTip(message);
+        if ( type == 1 && isErrorTinted() ) {
+            _persistentMessage->setVisible(false); // the tint says it; the message shows on hover
+        }
 
         refreshSize();
     }
@@ -2373,6 +2435,10 @@ NodeGui::refreshStateIndicator()
         _stateIndicator->setBrush(Qt::green);
     } else if ( isSelected && !isSelectionTinted() ) {
         _stateIndicator->setBrush( settingsColor(&Settings::getNodeSelectedColor) ); // light yellow selection by default
+    } else if ( !message.isEmpty() && (type == 1) && isErrorTinted() ) {
+        // The node itself is drawn in the error colour (refreshCurrentBrush), framed in it too, as visible as
+        // Natron's dark red frame.
+        _stateIndicator->setBrush( nodeErrorColor() );
     } else if ( !message.isEmpty() && ( (type == 1) || (type == 2) ) ) {
         if (type == 1) {
             _stateIndicator->setBrush( QColor(128, 0, 0, 255) ); //< error
@@ -2391,7 +2457,7 @@ NodeGui::refreshStateIndicator()
             (*it)->setUseSelected(isSelected);
         }
     }
-    if ( isSelectionTinted() ) {
+    if ( isSelectionTinted() || nodeErrorTint() > 0. ) {
         refreshCurrentBrush();
     }
     if ( showIndicator && !_stateIndicator->isVisible() ) {

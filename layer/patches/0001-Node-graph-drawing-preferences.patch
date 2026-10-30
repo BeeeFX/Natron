@@ -43,7 +43,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  9 files changed, 255 insertions(+), 25 deletions(-)
 
 diff --git a/Engine/Node.cpp b/Engine/Node.cpp
-index a6a4eae3..1442a65a 100644
+index a6a4eae3a..1442a65ac 100644
 --- a/Engine/Node.cpp
 +++ b/Engine/Node.cpp
 @@ -3821,6 +3821,14 @@ Node::makePreviewByDefault() const
@@ -62,7 +62,7 @@ index a6a4eae3..1442a65a 100644
  }
  
 diff --git a/Engine/Settings.cpp b/Engine/Settings.cpp
-index 07a79aaf..466c3194 100644
+index 07a79aaf9..466c3194d 100644
 --- a/Engine/Settings.cpp
 +++ b/Engine/Settings.cpp
 @@ -131,6 +131,7 @@ Settings::initializeKnobs()
@@ -193,7 +193,7 @@ index 07a79aaf..466c3194 100644
  Settings::getHostName() const
  {
 diff --git a/Engine/Settings.h b/Engine/Settings.h
-index 977d4f1f..f2c57c6b 100644
+index 977d4f1f3..f2c57c6bf 100644
 --- a/Engine/Settings.h
 +++ b/Engine/Settings.h
 @@ -205,6 +205,23 @@ public:
@@ -251,7 +251,7 @@ index 977d4f1f..f2c57c6b 100644
      KnobColorPtr _defaultBackdropColor;
      KnobColorPtr _defaultGeneratorColor;
 diff --git a/Gui/DotGui.cpp b/Gui/DotGui.cpp
-index e5924991..ef015c5b 100644
+index e59249918..ef015c5b5 100644
 --- a/Gui/DotGui.cpp
 +++ b/Gui/DotGui.cpp
 @@ -127,7 +127,7 @@ DotGui::createGui()
@@ -277,7 +277,7 @@ index e5924991..ef015c5b 100644
      } else {
          showIndicator = false;
 diff --git a/Gui/Edge.cpp b/Gui/Edge.cpp
-index 54871ac9..c0777583 100644
+index 54871ac91..c07775837 100644
 --- a/Gui/Edge.cpp
 +++ b/Gui/Edge.cpp
 @@ -55,9 +55,11 @@
@@ -349,7 +349,7 @@ index 54871ac9..c0777583 100644
              color.setAlphaF(0.4);
          }
 diff --git a/Gui/NodeGraphRectItem.cpp b/Gui/NodeGraphRectItem.cpp
-index 707ff50b..884621b7 100644
+index 707ff50bc..884621b7c 100644
 --- a/Gui/NodeGraphRectItem.cpp
 +++ b/Gui/NodeGraphRectItem.cpp
 @@ -36,6 +36,7 @@ NodeGraphRectItem::NodeGraphRectItem(QGraphicsItem *parent,
@@ -380,7 +380,7 @@ index 707ff50b..884621b7 100644
      }
  
 diff --git a/Gui/NodeGraphRectItem.h b/Gui/NodeGraphRectItem.h
-index 4fdcc9bb..aec75178 100644
+index 4fdcc9bbf..aec751788 100644
 --- a/Gui/NodeGraphRectItem.h
 +++ b/Gui/NodeGraphRectItem.h
 @@ -45,6 +45,7 @@ class NodeGraphRectItem
@@ -405,7 +405,7 @@ index 4fdcc9bb..aec75178 100644
  };
  
 diff --git a/Gui/NodeGui.cpp b/Gui/NodeGui.cpp
-index 2dc3afa8..d087f3a0 100644
+index 2dc3afa89..d087f3a04 100644
 --- a/Gui/NodeGui.cpp
 +++ b/Gui/NodeGui.cpp
 @@ -27,6 +27,7 @@
@@ -590,7 +590,7 @@ index 2dc3afa8..d087f3a0 100644
  
          double x, y;
 diff --git a/Gui/NodeGui.h b/Gui/NodeGui.h
-index 49e2fc10..f5f68d32 100644
+index 49e2fc107..f5f68d32b 100644
 --- a/Gui/NodeGui.h
 +++ b/Gui/NodeGui.h
 @@ -579,8 +579,13 @@ private:

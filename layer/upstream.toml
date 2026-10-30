@@ -23,10 +23,10 @@ natron = "2.6.0"
 python = "3.14.6"
 qt_binding = "PySide6 6.11 through qtpy 2.4.3 (both bundled with the release)"
 # run_smoke.py --gui (31 October 2026, the second wave): 261 checks with the repository's layer on this release (its
-# node graph drawn as Natron's: no drawing preferences), 279 on the .sng3 source build (built from this branch with
-# core patches 0001 and 0002, MSYS2 packages of 2026-10-02; Python 3.14.8, PySide6 6.11.2).
+# node graph drawn as Natron's: no drawing preferences), 284 on the .sng3 source build (built from this branch with
+# core patches 0001 to 0003, MSYS2 packages of 2026-10-02; Python 3.14.8, PySide6 6.11.2; the window out of sight).
 checks = 261
-source_build_checks = 279
+source_build_checks = 284
 # Earlier releases the layer passed on (before the skin, 5 October 2026).
 also_passed = ["natron-2.6-2026.09.20"]
 
@@ -34,7 +34,7 @@ also_passed = ["natron-2.6-2026.09.20"]
 # Core patches carried on top of Niik-l's code (patches/series). Budget: research, parity-layers.md section 1.2.
 # Since .sng3 the builds are made from source (README.md, "Building from source"): the node graph drawing and the
 # properties panel header name (patches/README.md).
-count = 2
+count = 3
 budget_count = 5
 budget_lines = 800
 

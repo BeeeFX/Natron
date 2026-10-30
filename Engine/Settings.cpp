@@ -999,7 +999,26 @@ Settings::initializeKnobsNodeGraphDrawing()
     KnobSeparatorPtr sep = AppManager::createKnob<KnobSeparator>( this, tr("Node and link drawing") );
     _nodegraphColorsTab->addKnob(sep);
 
-    // Read by NodeGui through its name (no member, so this header stays as it is).
+    // Read by NodeGui through their names (no member, so this header stays as it is).
+    KnobDoublePtr errorTint = AppManager::createKnob<KnobDouble>( this, tr("Node in error tint") );
+    errorTint->setName("nodeErrorTint");
+    errorTint->setHintToolTip( tr("How much a node in error takes the error colour, with an outline of that colour, instead "
+                                  "of a frame around it and a large ERROR over it (0: Natron's frame). Its message shows "
+                                  "when the mouse is over the node.") );
+    errorTint->disableSlider();
+    errorTint->setMinimum(0.);
+    errorTint->setMaximum(1.);
+    errorTint->setDefaultValue(0.);
+    _nodegraphColorsTab->addKnob(errorTint);
+    KnobColorPtr errorColor = AppManager::createKnob<KnobColor>(this, tr("Node in error"), 3);
+    errorColor->setName("nodeErrorColor");
+    errorColor->setSimplified(true);
+    errorColor->setHintToolTip( tr("The colour of a node in error, when the tint above is more than 0.") );
+    errorColor->setDefaultValue(0.85, 0);
+    errorColor->setDefaultValue(0.12, 1);
+    errorColor->setDefaultValue(0.10, 2);
+    _nodegraphColorsTab->addKnob(errorColor);
+
     KnobBoolPtr fitLabel = AppManager::createKnob<KnobBool>( this, tr("Nodes as wide as their label") );
     fitLabel->setName("nodeFitLabel");
     fitLabel->setHintToolTip( tr("When checked, a node whose label is longer than the node width grows to fit it; "
@@ -1035,7 +1054,7 @@ Settings::initializeKnobsNodeGraphDrawing()
     struct DoubleDef { KnobDoublePtr* knob; const char* name; QString label; double def, min, max; QString hint; };
     const DoubleDef doubles[] = {
         { &_nodeShading, "nodeShading", tr("Node shading"), 1., 0., 2., tr("How strong the top-to-bottom shading of nodes is: 0 is a flat colour, 1 is Natron's shading.") },
-        { &_nodeSelectedTint, "nodeSelectedTint", tr("Selected node tint"), 0., 0., 1., tr("How much a selected node takes the selection colour (0: a halo around it instead).") },
+        { &_nodeSelectedTint, "nodeSelectedTint", tr("Selected node tint"), 0., 0., 1., tr("How much a selected node brightens, keeping its own colour, with an outline in the selection colour (0: a halo around it instead).") },
         { &_linkWidth, "linkWidth", tr("Link width"), 3., 0.5, 6., tr("The width of the links between nodes, in pixels.") },
         { &_linkArrowLength, "linkArrowLength", tr("Link arrow length"), 14., 4., 40., tr("The length of the arrow heads of links, in pixels.") },
         { &_linkArrowAngle, "linkArrowAngle", tr("Link arrow opening"), 24., 10., 90., tr("How wide the arrow heads of links open, in degrees.") },
@@ -1055,7 +1074,7 @@ Settings::initializeKnobsNodeGraphDrawing()
     struct ColorDef { KnobColorPtr* knob; const char* name; QString label; double r, g, b; QString hint; };
     const ColorDef colors[] = {
         { &_nodeOutlineColor, "nodeOutlineColor", tr("Node outline"), 0., 0., 0., tr("The colour of the thin line around nodes.") },
-        { &_nodeSelectedColor, "nodeSelectedColor", tr("Selected node"), 1., 230. / 255., 128. / 255., tr("The colour that shows a node is selected.") },
+        { &_nodeSelectedColor, "nodeSelectedColor", tr("Selected node"), 1., 230. / 255., 128. / 255., tr("The colour of the halo, or of the outline, that shows a node is selected.") },
         { &_linkColor, "linkColor", tr("Links"), 0., 0., 0., tr("The colour of the links between nodes.") },
         { &_linkSelectedColor, "linkSelectedColor", tr("Links of selected nodes"), 1., 1., 1., tr("The colour of the links of selected nodes.") },
         { &_disabledCrossColor, "disabledCrossColor", tr("Disabled node cross"), 0., 0., 0., tr("The colour of the cross drawn over a disabled node.") },
