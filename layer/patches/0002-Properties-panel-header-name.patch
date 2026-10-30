@@ -1,0 +1,36 @@
+From 3f954e5e9c07e7cacadc39941d54b9f3d992c5ca Mon Sep 17 00:00:00 2001
+From: "Baptiste G." <70719480+BeeeFX@users.noreply.github.com>
+Date: Fri, 30 Oct 2026 11:32:41 +0000
+Subject: [PATCH 2/2] Properties panels: name the header for stylesheets
+
+The header of a properties panel (name field, colour, undo/redo, float, close...) is a plain QFrame, so a
+stylesheet couldn't tell its buttons from the knobs' own buttons below. It is now named
+"DockablePanelHeader" (QFrame#DockablePanelHeader QPushButton { ... }). Nothing else changes.
+
+Core patch 0002 of the BeeeFX fork (layer/patches/), written to be offered upstream as it is.
+
+Gap: layer/GAPS.md, "Nuke's look and habits" (the properties panels' header buttons).
+Size: 1 file, 2 lines added.
+upstream: not offered yet (to offer to Niik-l: github.com/Niik-l/Natron).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ Gui/DockablePanel.cpp | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/Gui/DockablePanel.cpp b/Gui/DockablePanel.cpp
+index 51d9f813..573aba38 100644
+--- a/Gui/DockablePanel.cpp
++++ b/Gui/DockablePanel.cpp
+@@ -185,6 +185,8 @@ DockablePanel::DockablePanel(Gui* gui,
+     if (headerMode != eHeaderModeNoHeader) {
+         _imp->_headerWidget = new QFrame(this);
+         _imp->_headerWidget->setFrameShape(QFrame::Box);
++        // A name the stylesheet can aim at: the header's buttons, apart from the knobs' own buttons.
++        _imp->_headerWidget->setObjectName( QString::fromUtf8("DockablePanelHeader") );
+         _imp->_headerLayout = new QHBoxLayout(_imp->_headerWidget);
+         _imp->_headerLayout->setContentsMargins(0, 0, 0, 0);
+         _imp->_headerWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+-- 
+2.48.1.windows.1
+

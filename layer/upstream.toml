@@ -29,10 +29,12 @@ also_passed = ["natron-2.6-2026.09.20"]
 
 [patches]
 # Core patches carried on top of Niik-l's code (patches/series). Budget: research, parity-layers.md section 1.2.
-count = 0
+# Since .sng3 the builds are made from source (README.md, "Building from source"): the node graph drawing and the
+# properties panel header name (patches/README.md).
+count = 2
 budget_count = 5
 budget_lines = 800
 
 [build]
 # How a packaged build is named (tools/package_build.py): 2.6.0+<release date>.sng<n>.
-version = "2.6.0+2026.10.02.sng2"
+version = "2.6.0+2026.10.02.sng3"
