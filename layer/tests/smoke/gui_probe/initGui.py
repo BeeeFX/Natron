@@ -199,6 +199,9 @@ def _layer_probe():
                 if node.getInput(i) is not None:
                     node.disconnectInput(i)
             node.setPosition(area.left() + 80 + dx, area.top() + 80)
+        # Nothing selected: a new node is selected, and since patch 0008 a selected node is filled with the orange
+        # selection colour, which would read as red here.
+        natron_app.clearSelection()
         # Let the deferred file check run and the graph repaint (no fixed wait: a few turns of the event loop).
         for _ in range(20):
             app.processEvents()
