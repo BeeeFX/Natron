@@ -27,6 +27,8 @@ qt_binding = "PySide6 6.11 through qtpy 2.4.3 (both bundled with the release)"
 # core patches 0001 to 0003, MSYS2 packages of 2026-10-02; Python 3.14.8, PySide6 6.11.2; the window out of sight).
 # run_smoke.py --gui --offscreen (1 November 2026, .sng4): 297 checks on the .sng4 source build (core patches 0001 to
 # 0005, the window arranged like Nuke's); Singerie's Natron suite (--no-window) passed on it too (407 checks inside).
+# run_smoke.py --gui --offscreen (1 November 2026, .sng8): 312 checks on the .sng8 source build (patches 0001 to 0010,
+# the Ctrl+wheel checks among them).
 checks = 261
 source_build_checks = 297
 # Earlier releases the layer passed on (before the skin, 5 October 2026).
