@@ -1,0 +1,65 @@
+From a68408cbadd40ef3e3bf2d32b59cf9c16729a8bc Mon Sep 17 00:00:00 2001
+From: "Baptiste G." <70719480+BeeeFX@users.noreply.github.com>
+Date: Sat, 31 Oct 2026 16:59:19 +0000
+Subject: [PATCH] Node graph: a node enlarged by Ctrl+wheel goes back to its
+ size once Ctrl is let go elsewhere
+
+Natron's magnifier (Ctrl+wheel over the node graph enlarges the node last clicked)
+shrank the node back only on a Ctrl key release the node graph itself received. The
+wheel reaches the node graph under the mouse whatever widget has the keyboard, so with
+the keyboard in the viewer or the properties the release went there and the node stayed
+enlarged until it was clicked again or deselected. A mouse move or a wheel over the node
+graph without Ctrl now puts it back. Reproduced on the .sng7 build (Niik-l's code
+unchanged there): Ctrl+wheel x2 left the node 1.44 times its size after Ctrl was let
+go in the viewer and the mouse moved (and on Niik-l's own 2026.10.02 release).
+
+Core patch 0010 of the BeeeFX fork (layer/patches/). A fix of Niik-l's code (Natron's
+own, older than his fork), not a look: no preference.
+
+Gap: none (a bug in Natron's node graph).
+Size: 2 files, 12 lines added.
+upstream: not offered yet (Baptiste: keep the fork private for now).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ Gui/NodeGraph20.cpp | 6 ++++++
+ Gui/NodeGraph30.cpp | 6 ++++++
+ 2 files changed, 12 insertions(+)
+
+diff --git a/Gui/NodeGraph20.cpp b/Gui/NodeGraph20.cpp
+index e7dfedb64..d5155a557 100644
+--- a/Gui/NodeGraph20.cpp
++++ b/Gui/NodeGraph20.cpp
+@@ -384,6 +384,12 @@ NodeGraph::moveSelectedNodesBy(bool shiftdown,
+ void
+ NodeGraph::mouseMoveEvent(QMouseEvent* e)
+ {
++    // A node enlarged by Ctrl+wheel goes back to its size once Ctrl is no longer held, also when Ctrl was let go
++    // while the keyboard was in another panel (the node graph never got the key release and left it enlarged).
++    if ( _imp->_magnifOn && _imp->_magnifiedNode && !(e->modifiers() & Qt::ControlModifier) ) {
++        _imp->_magnifOn = false;
++        _imp->_magnifiedNode->setScale_natron(_imp->_nodeSelectedScaleBeforeMagnif);
++    }
+     QPointF newPos = mapToScene( e->pos() );
+     QPointF lastMousePosScene = mapToScene( _imp->_lastMousePos.x(), _imp->_lastMousePos.y() );
+     double dx, dy;
+diff --git a/Gui/NodeGraph30.cpp b/Gui/NodeGraph30.cpp
+index 40f3c1b5b..98ddc5ff3 100644
+--- a/Gui/NodeGraph30.cpp
++++ b/Gui/NodeGraph30.cpp
+@@ -200,6 +200,12 @@ NodeGraph::wheelEvent(QWheelEvent* e)
+     if (e->angleDelta().x() != 0) {
+         return;
+     }
++    // A node enlarged by Ctrl+wheel goes back to its size once Ctrl is no longer held, also when Ctrl was let go
++    // while the keyboard was in another panel (the node graph never got the key release and left it enlarged).
++    if ( _imp->_magnifOn && _imp->_magnifiedNode && !(e->modifiers() & Qt::ControlModifier) ) {
++        _imp->_magnifOn = false;
++        _imp->_magnifiedNode->setScale_natron(_imp->_nodeSelectedScaleBeforeMagnif);
++    }
+     wheelEventInternal( modCASIsControl(e), e->angleDelta().y() );
+     _imp->_lastMousePos = QPoint(e->position().x(), e->position().y());
+     update();
+-- 
+2.48.1.windows.1
+

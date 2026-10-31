@@ -343,6 +343,10 @@ def gui_checks(renderer: str, tmp: Path, say: Say) -> None:
     code = watch_window([str(natron)], env, tmp / "gui" / "out" / "viewer_switch.txt", say)
     report = tmp / "gui" / "out" / "gui_probe.json"
     if not report.is_file():
+        steps = tmp / "gui" / "out" / "ctrl_wheel.txt"
+        if steps.is_file():  # the Ctrl+wheel checks write each step first
+            lines = steps.read_text(encoding="utf-8").strip().splitlines()
+            print("    the Ctrl+wheel checks' last steps:" + "".join("\n      " + line for line in lines))
         say(False, "the probe in Natron's window wrote its report")
         return
     found = json.loads(report.read_text(encoding="utf-8"))

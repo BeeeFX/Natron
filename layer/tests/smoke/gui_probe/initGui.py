@@ -174,6 +174,10 @@ def _layer_probe():
         except Exception:
             say(False, "the node graph's drawing checks raised:\n" + traceback.format_exc())
         try:
+            ctrl_wheel_checks(app, window, natron_app)
+        except Exception:
+            say(False, "the Ctrl+wheel checks raised:\n" + traceback.format_exc())
+        try:
             viewer_switch_checks(app, window, natron_app)
         except Exception:
             say(False, "the viewer switch's checks raised:\n" + traceback.format_exc())
@@ -458,6 +462,195 @@ def _layer_probe():
             "and the node graph, every step drawn, without Natron freezing (Natron 2.6 froze on Shift+1 in the viewer)")
         for node in made:
             node.destroy()
+        app.processEvents()
+
+    def ctrl_wheel_checks(app, window, natron_app):
+        """Ctrl+wheel in each panel, the wheel events sent through Qt's own event API: in the node graph it zooms the
+        view like the wheel alone, as in Nuke's (preference nodeGraphCtrlWheelZooms, set by the look; Natron enlarged
+        the node last clicked instead), and nothing resizes a node from the viewer, the properties or the curve editor.
+        With the preference off (Natron's own behaviour, for this session only, never saved) Ctrl+wheel still enlarges
+        that node, and it goes back to its size once the mouse moves in the node graph without Ctrl, even when Ctrl was
+        let go elsewhere (Natron 2.6 left it enlarged: core patch 0010). Writes ctrl_wheel.txt with the numbers."""
+        import NatronEngine
+        from qtpy import QtGui
+        from qtpy.QtTest import QTest
+        from natron_layer import compat
+
+        Qt = QtCore.Qt
+        ctrl, plain = Qt.KeyboardModifier.ControlModifier, Qt.KeyboardModifier.NoModifier
+        notes = []
+
+        def mark(step):
+            # Each step written first, so a Natron that stops on one is named by run_smoke.py's report.
+            if out:
+                with open(os.path.join(out, "ctrl_wheel.txt"), "w", encoding="utf-8") as file:
+                    file.write("\n".join(notes + ["started " + step]) + "\n")
+
+        mark("setting up")
+        graphs = [g for g in widgets_named(app, "NodeGraph") if g.isVisible()] or widgets_named(app, "NodeGraph")
+        if not graphs:
+            say(False, "a node graph in the window for Ctrl+wheel")
+            return
+        graph = max(graphs, key=lambda g: g.viewport().width() * g.viewport().height())
+        port = graph.viewport()
+        pref = NatronEngine.natron.getSettings().getParam("nodeGraphCtrlWheelZooms")
+
+        def wheel(widget, pos, modifiers, notches=1):
+            for n in range(notches):
+                mark("a wheel notch %d over %s at %d,%d" % (n + 1, class_name(widget), pos.x(), pos.y()))
+                event = QtGui.QWheelEvent(QtCore.QPointF(pos), QtCore.QPointF(widget.mapToGlobal(pos)), QtCore.QPoint(),
+                                          QtCore.QPoint(0, 120), Qt.MouseButton.NoButton, modifiers,
+                                          Qt.ScrollPhase.NoScrollPhase, False)
+                app.sendEvent(widget, event)
+                app.processEvents()
+
+        def move(widget, pos, modifiers):
+            event = QtGui.QMouseEvent(QtCore.QEvent.Type.MouseMove, QtCore.QPointF(pos),
+                                      QtCore.QPointF(widget.mapToGlobal(pos)), Qt.MouseButton.NoButton,
+                                      Qt.MouseButton.NoButton, modifiers)
+            app.sendEvent(widget, event)
+            app.processEvents()
+
+        def zoom():
+            return round(graph.transform().m11(), 3)
+
+        compat.select_nodes(natron_app, [])
+        node = natron_app.createNode("net.sf.openfx.GradePlugin")
+        for i in range(node.getMaxInputCount()):
+            if node.getInput(i) is not None:
+                node.disconnectInput(i)
+        # On an empty part of the graph, right of every node the probe made before, with the view centred on it.
+        others = [n.getPosition() for n in compat.children(natron_app) if n.getScriptName() != node.getScriptName()]
+        spot = QtCore.QPointF(max([p[0] for p in others] + [0.0]) + 3000.0, max([p[1] for p in others] + [0.0]) + 3000.0)
+        node.setPosition(spot.x(), spot.y())
+        graph.centerOn(spot)
+        app.processEvents()
+        x, y = node.getPosition()
+        w, h = node.getSize()
+
+        def centre():
+            return graph.mapFromScene(QtCore.QPointF(x + w / 2.0, y + h / 2.0))
+
+        def node_scale():
+            # The node's width on screen over its width at this zoom, measured on a picture of the node graph along
+            # a row near its top, above the mask input's arrow (Natron enlarges a node from its top left corner). The node's drawing
+            # itself (a QGraphicsItem) isn't asked: PySide's wrappers of Natron's items can delete them.
+            image = port.grab().toImage()
+            ratio = image.devicePixelRatio() or 1.0
+            row = int(graph.mapFromScene(QtCore.QPointF(x, y + h * 0.2)).y() * ratio)
+            left = int(graph.mapFromScene(QtCore.QPointF(x, y + h * 0.2)).x() * ratio)
+            if not (0 <= row < image.height()) or not (0 <= left < image.width()):
+                return None
+            far = image.pixelColor(image.width() - 3, row)
+
+            def background(i):
+                c = image.pixelColor(i, row)
+                return abs(c.red() - far.red()) + abs(c.green() - far.green()) + abs(c.blue() - far.blue()) < 24
+
+            middle = int(graph.mapFromScene(QtCore.QPointF(x + w / 2.0, y + h * 0.2)).x() * ratio)
+            right = middle
+            while right < image.width() - 4 and not (background(right) and background(right + 1)
+                                                     and background(right + 2)):
+                right += 1
+            return round((right - left) / (ratio * w * graph.transform().m11()), 2)
+
+        def unscaled(values):
+            # The outline and its shadow add a few pixels; Natron's magnifier makes a node 1.2 times larger a notch.
+            return all(v is not None and v < 1.12 for v in values)
+
+        def scales():
+            return [node_scale()]
+
+        QTest.mouseClick(port, Qt.MouseButton.LeftButton, plain, centre())  # Natron's magnifier takes the last click
+        app.processEvents()
+        mark("node graph, the look's value")
+        # 1. The look's value (on in this fork's builds): Ctrl+wheel zooms like the wheel alone.
+        z0, s0 = zoom(), scales()
+        mark("node graph, Ctrl+wheel")
+        wheel(port, centre(), ctrl, 3)
+        z1, s1 = zoom(), scales()
+        mark("node graph, the wheel alone")
+        wheel(port, centre(), plain, 3)
+        z2 = zoom()
+        mark("node graph, Ctrl let go")
+        QTest.keyRelease(graph, Qt.Key.Key_Control)
+        app.processEvents()
+        notes.append("node graph, preference %s: zoom %s, after Ctrl+wheel x3 %s, after the wheel x3 %s; node scales "
+                     "%s, after Ctrl+wheel %s" % (pref.get() if pref is not None else "absent", z0, z1, z2, s0, s1))
+        if pref is not None:
+            say(pref.get() and unscaled(s1) and z1 > z0 * 1.2 and z2 > z1 * 1.2,
+                "Ctrl+wheel in the node graph zooms like the wheel alone, as in Nuke's, and resizes no node (zoom %s, "
+                "after Ctrl+wheel %s, after the wheel %s; node scales %s)" % (z0, z1, z2, s1))
+        mark("node graph, Natron's own behaviour")
+        # 2. Natron's own behaviour, the preference off for this session (never saved).
+        before_off = node_scale()
+        if pref is not None:
+            with compat.unsaved():
+                pref.setValue(False)
+        try:
+            QTest.mouseClick(port, Qt.MouseButton.LeftButton, plain, centre())
+            app.processEvents()
+            wheel(port, centre(), ctrl, 2)
+            enlarged = node_scale()
+            # Ctrl let go while the keyboard is elsewhere (the viewer): the node graph never hears it.
+            viewers = [v for v in widgets_named(app, "ViewerGL") if v.isVisible()]
+            if viewers:
+                viewers[0].setFocus(Qt.FocusReason.OtherFocusReason)
+                QTest.keyRelease(viewers[0], Qt.Key.Key_Control)
+                app.processEvents()
+            still = node_scale()
+            mark("node graph, a mouse move without Ctrl")
+            move(port, centre() + QtCore.QPoint(3, 3), plain)
+            back = node_scale()
+            notes.append("node graph, Natron's behaviour: the clicked node's scale %s, after Ctrl+wheel x2 %s, after "
+                         "Ctrl let go in the viewer %s, after a mouse move without Ctrl %s"
+                         % (before_off, enlarged, still, back))
+            if pref is not None:
+                say(enlarged is not None and enlarged > 1.2 and unscaled([back]),
+                    "with the preference off, Ctrl+wheel enlarges the node last clicked (Natron's own: scale %s) and it "
+                    "goes back to its size when the mouse moves without Ctrl, Ctrl let go in the viewer (then %s, "
+                    "after the move %s)" % (enlarged, still, back))
+        finally:
+            if pref is not None:
+                with compat.unsaved():
+                    pref.setValue(True)
+            mark("node graph, a click in empty space")
+            QTest.mouseClick(port, Qt.MouseButton.LeftButton, plain, QtCore.QPoint(5, 5))  # empty space: deselects
+            QTest.keyRelease(graph, Qt.Key.Key_Control)
+            app.processEvents()
+        # 3. The other panels: Ctrl+wheel resizes no node there. The node's properties opened by a double click.
+        QTest.mouseDClick(port, Qt.MouseButton.LeftButton, plain, centre())
+        app.processEvents()
+        before = scales()
+        frame0 = natron_app.timelineGetTime()
+        viewers = [v for v in widgets_named(app, "ViewerGL") if v.isVisible()]
+        for v in viewers[:1]:
+            mark("viewer")
+            wheel(v, v.rect().center(), ctrl, 2)
+            notes.append("viewer: frame %s, after Ctrl+wheel x2 (away from you) %s" % (frame0, natron_app.timelineGetTime()))
+        curves = widgets_named(app, "CurveWidget")
+        for c in curves[:1]:
+            mark("curve editor")
+            wheel(c, c.rect().center(), ctrl, 2)
+            notes.append("curve editor (%s): Ctrl+wheel x2 sent" % ("on screen" if c.isVisible() else "in a hidden tab"))
+        boxes = [b for b in widgets_named(app, "KnobSpinBox") + widgets_named(app, "SpinBox") if b.isVisible()]
+        notes.append("properties panels open: %d" % len([p for p in widgets_named(app, "DockablePanel") if p.isVisible()]))
+        white = node.getParam("white")
+        value0 = white.getValue(0) if white is not None else None
+        for b in boxes[:1]:
+            mark("properties")
+            wheel(b, b.rect().center(), ctrl, 2)
+        value1 = white.getValue(0) if white is not None else None
+        after = scales()
+        notes.append("properties: %d value fields on screen; Grade's white %s, after Ctrl+wheel x2 over the first "
+                     "field (not clicked) %s" % (len(boxes), value0, value1))
+        notes.append("node scales before the other panels %s, after %s" % (before, after))
+        say(unscaled(before) and unscaled(after), "Ctrl+wheel in the viewer, the curve editor and the properties resizes "
+            "no node (node scales %s, then %s)" % (before, after))
+        if out:
+            with open(os.path.join(out, "ctrl_wheel.txt"), "w", encoding="utf-8") as file:
+                file.write("\n".join(notes) + "\n")
+        node.destroy()
         app.processEvents()
 
     def tools(app, natron_app):

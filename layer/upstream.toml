@@ -27,6 +27,8 @@ qt_binding = "PySide6 6.11 through qtpy 2.4.3 (both bundled with the release)"
 # core patches 0001 to 0003, MSYS2 packages of 2026-10-02; Python 3.14.8, PySide6 6.11.2; the window out of sight).
 # run_smoke.py --gui --offscreen (1 November 2026, .sng4): 297 checks on the .sng4 source build (core patches 0001 to
 # 0005, the window arranged like Nuke's); Singerie's Natron suite (--no-window) passed on it too (407 checks inside).
+# run_smoke.py --gui --offscreen (1 November 2026, .sng8): 312 checks on the .sng8 source build (patches 0001 to 0010,
+# the Ctrl+wheel checks among them).
 checks = 261
 source_build_checks = 297
 # Earlier releases the layer passed on (before the skin, 5 October 2026).
@@ -41,12 +43,14 @@ also_passed = ["natron-2.6-2026.09.20"]
 # the Tab search's favourites (patches/README.md). The budget grew by one patch and 100 lines for .sng5, and by two
 # patches and 300 lines for .sng6 (1 November 2026): all are drawn by Natron's C++ code, out of a stylesheet's reach.
 # Since .sng7 (patch 0009) a fix of a bug in Niik-l's own code (Shift+1 in the viewer froze it) is carried too: fixes
-# count apart from the look's budget (fixes), since one can't wait for a free place (patches/README.md).
+# count apart from the look's budget (fixes), since one can't wait for a free place (patches/README.md). Since .sng8
+# a second (patch 0010: a node enlarged by Natron's Ctrl+wheel magnifier stayed enlarged when Ctrl was let go in another
+# panel), and patch 0008 also carries nodeGraphCtrlWheelZooms (Ctrl+wheel zooms the node graph, as Nuke's).
 count = 8
-fixes = 1
+fixes = 2
 budget_count = 8
 budget_lines = 1200
 
 [build]
 # How a packaged build is named (tools/package_build.py): 2.6.0+<release date>.sng<n>.
-version = "2.6.0+2026.10.02.sng7"
+version = "2.6.0+2026.10.02.sng8"
