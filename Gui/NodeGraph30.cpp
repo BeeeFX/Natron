@@ -44,6 +44,7 @@ CLANG_DIAG_ON(uninitialized)
 #include "Engine/Node.h"
 #include "Engine/CreateNodeArgs.h"
 #include "Engine/NodeGroup.h"
+#include "Engine/KnobTypes.h"
 #include "Engine/Settings.h"
 #include "Engine/ViewerInstance.h"
 
