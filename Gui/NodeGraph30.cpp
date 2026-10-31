@@ -44,6 +44,7 @@ CLANG_DIAG_ON(uninitialized)
 #include "Engine/Node.h"
 #include "Engine/CreateNodeArgs.h"
 #include "Engine/NodeGroup.h"
+#include "Engine/Settings.h"
 #include "Engine/ViewerInstance.h"
 
 #include "Gui/CurveWidget.h"
@@ -169,6 +170,12 @@ NodeGraph::wheelEventInternal(bool ctrlDown,
         return;
     }
 
+    // With the preference nodeGraphCtrlWheelZooms (read by name), Ctrl+wheel zooms like the wheel alone, as in Nuke's
+    // node graph, instead of enlarging the node last clicked.
+    if (ctrlDown && _imp->_magnifiedNode) {
+        KnobBool* zooms = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("nodeGraphCtrlWheelZooms").get() );
+        ctrlDown = !(zooms && zooms->getValue());
+    }
     if (ctrlDown && _imp->_magnifiedNode) {
         if (!_imp->_magnifOn) {
             _imp->_magnifOn = true;

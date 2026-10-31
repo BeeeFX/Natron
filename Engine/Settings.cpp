@@ -1120,6 +1120,13 @@ Settings::initializeKnobsNodeGraphDrawing()
     selectedFill->setHintToolTip( tr("When checked (with a selected node tint above 0), a selected node is filled with the selection colour inside a thin rim of its own colour; otherwise it is brightened with an outline.") );
     selectedFill->setDefaultValue(false);
     _nodegraphColorsTab->addKnob(selectedFill);
+    // Read by NodeGraph::wheelEventInternal through its name (no member, so this header stays as it is).
+    KnobBoolPtr ctrlWheelZooms = AppManager::createKnob<KnobBool>( this, tr("Ctrl+wheel zooms the node graph") );
+    ctrlWheelZooms->setName("nodeGraphCtrlWheelZooms");
+    ctrlWheelZooms->setHintToolTip( tr("When checked, the mouse wheel zooms the node graph whether Ctrl is held or not; "
+                                       "otherwise Ctrl+wheel enlarges the node last clicked while Ctrl is held.") );
+    ctrlWheelZooms->setDefaultValue(false);
+    _nodegraphColorsTab->addKnob(ctrlWheelZooms);
 
     struct IntDef { KnobIntPtr* knob; const char* name; QString label; int def, min, max; QString hint; };
     const IntDef ints[] = {
