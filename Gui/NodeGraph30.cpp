@@ -199,6 +199,12 @@ NodeGraph::wheelEvent(QWheelEvent* e)
     if (e->angleDelta().x() != 0) {
         return;
     }
+    // A node enlarged by Ctrl+wheel goes back to its size once Ctrl is no longer held, also when Ctrl was let go
+    // while the keyboard was in another panel (the node graph never got the key release and left it enlarged).
+    if ( _imp->_magnifOn && _imp->_magnifiedNode && !(e->modifiers() & Qt::ControlModifier) ) {
+        _imp->_magnifOn = false;
+        _imp->_magnifiedNode->setScale_natron(_imp->_nodeSelectedScaleBeforeMagnif);
+    }
     wheelEventInternal( modCASIsControl(e), e->angleDelta().y() );
     _imp->_lastMousePos = QPoint(e->position().x(), e->position().y());
     update();
