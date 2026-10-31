@@ -1851,6 +1851,7 @@ InspectorNode::refreshActiveInputs(int inputNbChanged,
 {
     assert( QThread::currentThread() == qApp->thread() );
     NodePtr inputNode = getRealInput(inputNbChanged);
+    bool bInputSet = false;
     {
         QMutexLocker l(&_activeInputsMutex);
         if (!inputNode) {
@@ -1862,23 +1863,24 @@ InspectorNode::refreshActiveInputs(int inputNbChanged,
             }
         } else {
             if ( !isASide && (_activeInputs[0] != -1) ) {
-                ViewerInstance* isViewer = isEffectViewer();
-                if (isViewer) {
-                    OpenGLViewerI* viewerUI = isViewer->getUiContext();
-                    if (viewerUI) {
-                        ViewerCompositingOperatorEnum op = viewerUI->getCompositingOperator();
-                        if (op == eViewerCompositingOperatorNone) {
-                            viewerUI->setCompositingOperator(eViewerCompositingOperatorWipeUnder);
-                        }
-                    }
-                }
                 _activeInputs[1] = inputNbChanged;
+                bInputSet = true;
             } else {
                 _activeInputs[0] = inputNbChanged;
                 if (_activeInputs[1] == -1) {
                     _activeInputs[1] = inputNbChanged;
                 }
             }
+        }
+    }
+    // The viewer's compare operation is changed once the lock is released: changing it shows the B info bar, and
+    // with Qt 6 that can repaint the viewer at once, whose drawing reads the active inputs (getActiveInputs) and
+    // would wait for this same lock forever (the window froze on Shift+1 in the viewer, B side).
+    if (bInputSet) {
+        ViewerInstance* isViewer = isEffectViewer();
+        OpenGLViewerI* viewerUI = isViewer ? isViewer->getUiContext() : 0;
+        if ( viewerUI && (viewerUI->getCompositingOperator() == eViewerCompositingOperatorNone) ) {
+            viewerUI->setCompositingOperator(eViewerCompositingOperatorWipeUnder);
         }
     }
     Q_EMIT activeInputsChanged();
