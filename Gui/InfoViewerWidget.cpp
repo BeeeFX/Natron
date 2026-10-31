@@ -38,12 +38,24 @@
 #include "Engine/ViewerInstance.h"
 #include "Engine/Lut.h"
 #include "Engine/Image.h"
+#include "Engine/KnobTypes.h"
+#include "Engine/Settings.h"
 #include "Gui/GuiApplicationManager.h"
 #include "Gui/ViewerGL.h"
 #include "Gui/Label.h"
 
 using std::cout; using std::endl;
 NATRON_NAMESPACE_ENTER
+
+// Optionally (preference viewerInfoNuke, read by name, off by default) the info bar worded and ordered as Nuke's:
+// the format, "bbox:", "channels:", the pointer's position, the values in Nuke's colours, then H S V L.
+static bool
+infoBarNuke()
+{
+    KnobBool* pref = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("viewerInfoNuke").get() );
+
+    return pref && pref->getValue();
+}
 
 InfoViewerWidget::InfoViewerWidget(const QString & description,
                                    QWidget* parent)
@@ -321,6 +333,14 @@ InfoViewerWidget::setColor(float r,
                  .arg( font.pixelSize() );
     }
 
+    const bool nuke = infoBarNuke();
+    if (nuke) {
+        // Nuke's brighter red, green and blue, and a white alpha (Foundry's Viewer pictures).
+        values.replace( QString::fromUtf8("#d93232"), QString::fromUtf8("#ff3c3c") );
+        values.replace( QString::fromUtf8("#00a700"), QString::fromUtf8("#3cf03c") );
+        values.replace( QString::fromUtf8("#5858ff"), QString::fromUtf8("#5050ff") );
+        values.replace( QString::fromUtf8("#DBE0E0"), QString::fromUtf8("#FFFFFF") );
+    }
     if (_colorApprox) {
         values.prepend( QString::fromUtf8("<b> ~ </b>") );
     }
@@ -361,8 +381,9 @@ InfoViewerWidget::setColor(float r,
     QString sS = _colorValid ? QString::number(s, 'f', 2) : QString::fromUtf8("?");
     QString vS = _colorValid ? QString::number(v, 'f', 2) : QString::fromUtf8("?");
     QString hsvlValues;
-    hsvlValues = QString::fromUtf8("<font color=\"#DBE0E0\" face=\"%5\" size=%6>H:%1 S:%2 V:%3  L:%4</font>")
-                 .arg(hS)
+    hsvlValues = QString::fromUtf8(nuke ? "<font color=\"#E0E0E0\" face=\"%5\" size=%6>H:%1 S:%2 V:%3&nbsp; L: %4</font>"
+                                   : "<font color=\"#DBE0E0\" face=\"%5\" size=%6>H:%1 S:%2 V:%3  L:%4</font>")
+                 .arg( nuke ? hS.rightJustified(3, QLatin1Char(' ')).replace( QLatin1Char(' '), QString::fromUtf8("&nbsp;") ) : hS )
                  .arg(sS)
                  .arg(vS)
                  .arg(lS)
@@ -426,7 +447,8 @@ InfoViewerWidget::setDataWindow(const RectI & r)
     x2.setNum(r.x2);
     y2.setNum(r.y2);
 
-    bbox = QString::fromUtf8("<font color=\"#DBE0E0\" face=\"%5\" size=%6>RoD: %1 %2 %3 %4</font>")
+    bbox = QString::fromUtf8(infoBarNuke() ? "<font color=\"#E0E0E0\" face=\"%5\" size=%6>bbox: %1 %2 %3 %4</font>"
+                             : "<font color=\"#DBE0E0\" face=\"%5\" size=%6>RoD: %1 %2 %3 %4</font>")
            .arg(x1)
            .arg(y1)
            .arg(x2)
@@ -446,11 +468,27 @@ InfoViewerWidget::setImageFormat(const ImagePlaneDesc& comp,
                    .arg( font.family() )
                    .arg( font.pixelSize() );
     QString format = QString::fromUtf8( Image::getFormatString(comp, depth).c_str() );
+    const bool nuke = infoBarNuke();
+    if (nuke) {
+        // "channels: rgba", as Nuke's (no bit depth); a layer other than the colour one keeps its name (forward.uv).
+        format = QString::fromUtf8( comp.getChannelsLabel().c_str() ).toLower();
+        if ( !comp.isColorPlane() ) {
+            format.prepend( QString::fromUtf8( comp.getPlaneLabel().c_str() ) + QLatin1Char('.') );
+        }
+        format.prepend( QString::fromUtf8("channels: ") );
+    }
 
     text.append(format);
     text.append( QString::fromUtf8("</font>") );
     imageFormat->setText(text);
     _comp = comp;
+    // Nuke's order has the channels after the bbox, Natron's before the format: moved on each image, so the
+    // preference applies without a restart.
+    const bool after = layout->indexOf(imageFormat) > layout->indexOf(coordDispWindow);
+    if (nuke != after) {
+        layout->removeWidget(imageFormat);
+        layout->insertWidget(layout->indexOf(nuke ? coordDispWindow : descriptionLabel) + 1, imageFormat);
+    }
 }
 
 NATRON_NAMESPACE_EXIT

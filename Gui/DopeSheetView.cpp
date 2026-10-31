@@ -41,6 +41,7 @@
 // Natron includes
 #include "Engine/Curve.h"
 #include "Engine/Image.h"
+#include "Engine/KnobTypes.h"
 #include "Engine/Node.h"
 #include "Engine/NodeGroup.h"
 #include "Engine/Project.h"
@@ -1423,24 +1424,47 @@ DopeSheetViewPrivate::drawTexturedKeyframe(DopeSheetViewPrivate::KeyframeTexture
     GLProtectAttrib a(GL_ENABLE_BIT | GL_COLOR_BUFFER_BIT | GL_CURRENT_BIT | GL_TRANSFORM_BIT);
     GLProtectMatrix pr(GL_MODELVIEW);
 
-    glEnable(GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE_2D, kfTexturesIDs[textureType]);
+    // Optionally (preference animationEditorsNuke, read by name) a key as Nuke's dope sheet draws it: a narrow grey
+    // upright bar with a dark edge, in the selection colour when selected (odd textures are the selected ones).
+    KnobBool* nukeKeys = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("animationEditorsNuke").get() );
+    if ( nukeKeys && nukeKeys->getValue() ) {
+        const double inset = rect.width() * 0.29;
+        const double top = rect.top() - (rect.top() - rect.bottom()) * 0.07, bottom = rect.bottom() + (rect.top() - rect.bottom()) * 0.07;
+        QColor fill(128, 128, 128);
+        if (textureType % 2 == 1) {
+            fill = textColor;
+        }
+        glColor4f(fill.redF(), fill.greenF(), fill.blueF(), 1.f);
+        for (int edge = 0; edge < 2; ++edge) {
+            glBegin(edge ? GL_LINE_LOOP : GL_POLYGON);
+            glVertex2d(rect.left() + inset, bottom);
+            glVertex2d(rect.right() - inset, bottom);
+            glVertex2d(rect.right() - inset, top);
+            glVertex2d(rect.left() + inset, top);
+            glEnd();
+            glColor4f(0.1f, 0.1f, 0.1f, 1.f);
+        }
+        glColor4f(1, 1, 1, 1);
+    } else {
+        glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, kfTexturesIDs[textureType]);
 
-    glBegin(GL_POLYGON);
-    glTexCoord2f(0.0f, 1.0f);
-    glVertex2f( rect.left(), rect.top() );
-    glTexCoord2f(0.0f, 0.0f);
-    glVertex2f( rect.left(), rect.bottom() );
-    glTexCoord2f(1.0f, 0.0f);
-    glVertex2f( rect.right(), rect.bottom() );
-    glTexCoord2f(1.0f, 1.0f);
-    glVertex2f( rect.right(), rect.top() );
-    glEnd();
+        glBegin(GL_POLYGON);
+        glTexCoord2f(0.0f, 1.0f);
+        glVertex2f( rect.left(), rect.top() );
+        glTexCoord2f(0.0f, 0.0f);
+        glVertex2f( rect.left(), rect.bottom() );
+        glTexCoord2f(1.0f, 0.0f);
+        glVertex2f( rect.right(), rect.bottom() );
+        glTexCoord2f(1.0f, 1.0f);
+        glVertex2f( rect.right(), rect.top() );
+        glEnd();
 
-    glColor4f(1, 1, 1, 1);
-    glBindTexture(GL_TEXTURE_2D, 0);
+        glColor4f(1, 1, 1, 1);
+        glBindTexture(GL_TEXTURE_2D, 0);
 
-    glDisable(GL_TEXTURE_2D);
+        glDisable(GL_TEXTURE_2D);
+    }
 
     if (drawTime) {
         QString text = QString::number(time);

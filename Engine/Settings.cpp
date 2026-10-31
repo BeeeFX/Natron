@@ -863,6 +863,11 @@ Settings::initializeKnobsGuiColors()
                                    "is shaded from light to dark with a dark edge; otherwise Natron's flat ones.") );
     insetCross->setDefaultValue(false);
     _guiColorsTab->addKnob(insetCross);
+    KnobBoolPtr infoNuke = AppManager::createKnob<KnobBool>( this, tr("Viewer info bar as Nuke's") );
+    infoNuke->setName("viewerInfoNuke");
+    infoNuke->setHintToolTip( tr("When checked, the viewer's info bar reads as Nuke's: the format, bbox, channels, the pointer's position, the values in brighter red, green and blue, then H S V L; otherwise Natron's (RoD, the image's kind first).") );
+    infoNuke->setDefaultValue(false);
+    _guiColorsTab->addKnob(infoNuke);
 } // Settings::initializeKnobsGuiColors
 
 void
@@ -885,6 +890,11 @@ Settings::initializeKnobsCurveEditorColors()
     _curveEditorScaleColor->setName("curveeditorScale");
     _curveEditorScaleColor->setSimplified(true);
     _curveEditorColorsTab->addKnob(_curveEditorScaleColor);
+    KnobBoolPtr animNuke = AppManager::createKnob<KnobBool>( this, tr("Curves and keys as Nuke's") );
+    animNuke->setName("animationEditorsNuke");
+    animNuke->setHintToolTip( tr("When checked, the r, g, b and a curves are drawn red, green, blue and white, and the dope sheet's keys as narrow grey bars; otherwise Natron's colours and key pictures.") );
+    animNuke->setDefaultValue(false);
+    _curveEditorColorsTab->addKnob(animNuke);
 }
 
 void
