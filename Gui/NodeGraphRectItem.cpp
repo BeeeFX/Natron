@@ -60,17 +60,24 @@ NodeGraphRectItem::paint(QPainter *painter, const QStyleOptionGraphicsItem* /*op
         painter->setBrush(QBrush(gradient));
     }
 
-    if ( data(kNodeGraphRectPointedEnds).toBool() ) {
-        // Pointed left and right ends (a Viewer node, NodeGui::createGui).
-        const QRectF r = rect();
-        const double tip = std::min( r.height() / 2., r.width() / 4. );
-        QPolygonF shape;
-        shape << QPointF(r.left() + tip, r.top()) << QPointF(r.right() - tip, r.top()) << QPointF( r.right(), r.center().y() )
-              << QPointF(r.right() - tip, r.bottom()) << QPointF(r.left() + tip, r.bottom()) << QPointF( r.left(), r.center().y() );
-        painter->drawPolygon(shape);
-        return;
+    // The node's shape, then optionally the same shape 2.5 units smaller, flat in the inner colour.
+    for (int pass = 0; pass < (_inner.isValid() ? 2 : 1); ++pass) {
+        const QRectF r = pass ? rect().adjusted(2.5, 2.5, -2.5, -2.5) : rect();
+        if (pass) {
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(_inner);
+        }
+        if ( data(kNodeGraphRectPointedEnds).toBool() ) {
+            // Pointed left and right ends (a Viewer node, NodeGui::createGui).
+            const double tip = std::min( r.height() / 2., r.width() / 4. );
+            QPolygonF shape;
+            shape << QPointF(r.left() + tip, r.top()) << QPointF(r.right() - tip, r.top()) << QPointF( r.right(), r.center().y() )
+                  << QPointF(r.right() - tip, r.bottom()) << QPointF(r.left() + tip, r.bottom()) << QPointF( r.left(), r.center().y() );
+            painter->drawPolygon(shape);
+        } else {
+            painter->drawRoundedRect(r, std::max(0., _cornerRadiusPx - 1.5 * pass), std::max(0., _cornerRadiusPx - 1.5 * pass));
+        }
     }
-    painter->drawRoundedRect(rect(), _cornerRadiusPx, _cornerRadiusPx);
 }
 
 NATRON_NAMESPACE_EXIT

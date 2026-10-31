@@ -1115,6 +1115,11 @@ Settings::initializeKnobsNodeGraphDrawing()
                                  "leaves an empty font in the label).") );
     keepSize->setDefaultValue(false);
     _nodegraphColorsTab->addKnob(keepSize);
+    KnobBoolPtr selectedFill = AppManager::createKnob<KnobBool>( this, tr("Selected nodes filled") );
+    selectedFill->setName("nodeSelectedFill");
+    selectedFill->setHintToolTip( tr("When checked (with a selected node tint above 0), a selected node is filled with the selection colour inside a thin rim of its own colour; otherwise it is brightened with an outline.") );
+    selectedFill->setDefaultValue(false);
+    _nodegraphColorsTab->addKnob(selectedFill);
 
     struct IntDef { KnobIntPtr* knob; const char* name; QString label; int def, min, max; QString hint; };
     const IntDef ints[] = {
@@ -1542,6 +1547,15 @@ Settings::initializeKnobsNodeGraph()
                                                       "A and B, input A is be preferred "
                                                       "for auto-connection. When the node is disabled, B is always output, whether this is checked or not.") );
     _nodegraphTab->addKnob(_useInputAForMergeAutoConnect);
+    KnobBoolPtr tabNuke = AppManager::createKnob<KnobBool>( this, tr("Tab search with favourites") );
+    tabNuke->setName("tabSearchNuke");
+    tabNuke->setHintToolTip( tr("When checked, the Tab search lists your favourites first, shows a star on each row to add or remove one, a green dot for the nodes you make most often, and the letters you typed in bold.") );
+    tabNuke->setDefaultValue(false);
+    _nodegraphTab->addKnob(tabNuke);
+    KnobStringPtr favourites = AppManager::createKnob<KnobString>( this, tr("Tab search favourites") );
+    favourites->setName("tabFavourites");
+    favourites->setHintToolTip( tr("The nodes listed first in the Tab search, separated by |. Clear it to remove them all.") );
+    _nodegraphTab->addKnob(favourites);
 } // Settings::initializeKnobsNodeGraph
 
 void

@@ -49,6 +49,7 @@ class NodeGraphRectItem
     int _cornerRadiusPx;
     bool _flat;
     double _shading;
+    QColor _inner; // when valid, drawn flat inside a rim of the node's own colour (a selected node, as Nuke's)
 public:
 
     NodeGraphRectItem(QGraphicsItem *parent,
@@ -75,6 +76,11 @@ public:
     void setShading(double shading)
     {
         _shading = shading;
+    }
+
+    void setInnerColor(const QColor& color)
+    {
+        _inner = color;
     }
 
     virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) OVERRIDE FINAL;
