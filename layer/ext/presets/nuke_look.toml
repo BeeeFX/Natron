@@ -174,3 +174,11 @@ writeUseDialog = false
 
 # Project Setup: no postage stamps on new nodes (Nuke shows thumbnails on Read nodes only).
 enableAutoPreviewNewProjects = false
+
+[fork_habits]
+# Behaviours only this fork's own builds have (core patches; Niik-l's plain release keeps Natron's own, which isn't an
+# error). Habits like the table above: they stay when the artist chooses Natron's own look.
+# Core patch 0008 (since .sng8): Ctrl+wheel zooms the node graph like the wheel alone, as in Nuke's node graph (Foundry's
+# "Navigating Inside the Node Graph": the wheel zooms; nothing resizes a node). Natron's own Ctrl+wheel enlarged the node
+# last clicked while Ctrl was held, which artists took for the node changing size.
+nodeGraphCtrlWheelZooms = true

@@ -1,7 +1,7 @@
-From 4ecd3c31ddaa6d6ee9ce1fb7cb531f7b71ffeff1 Mon Sep 17 00:00:00 2001
+From 8eb988c3bd59c1bf461db49dfcf0b92677ad6ef6 Mon Sep 17 00:00:00 2001
 From: "Baptiste G." <70719480+BeeeFX@users.noreply.github.com>
 Date: Sat, 31 Oct 2026 01:45:09 +0000
-Subject: [PATCH 8/8] Selected nodes filled and the Tab search's favourites,
+Subject: [PATCH] Selected nodes filled and the Tab search's favourites,
  optionally like Nuke's
 
 - nodeSelectedFill (Appearance > Node Graph; off by default): with a selected node tint above 0, a selected node is
@@ -12,28 +12,32 @@ Subject: [PATCH 8/8] Selected nodes filled and the Tab search's favourites,
   for a favourite, that adds or removes one with a click (saved with the preferences; the click doesn't make the
   node); a green dot growing with Natron's own count of the nodes made from the Tab search; the typed letters bold
   where the search found them.
+- nodeGraphCtrlWheelZooms (Appearance > Node Graph; off by default, since .sng8): Ctrl+wheel over the node graph
+  zooms like the wheel alone, as in Nuke's node graph, instead of enlarging the node last clicked (Natron's
+  magnifier, which artists took for the node changing size).
 - Every new preference is read by name, so Settings.h doesn't change.
 
 Core patch 0008 of the BeeeFX fork (layer/patches/).
 
 Gap: layer/GAPS.md, item 1 (Tab node search: favourites) and "Nuke's look and habits" (the selected node).
-Size: 5 files, 178 lines added, 12 removed.
+Size: 6 files, 193 lines added, 12 removed.
 upstream: not offered (Baptiste: keep the fork private for now).
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
- Engine/Settings.cpp        |  14 ++++
+ Engine/Settings.cpp        |  21 ++++++
  Gui/NodeCreationDialog.cpp | 132 +++++++++++++++++++++++++++++++++++++
+ Gui/NodeGraph30.cpp        |   8 +++
  Gui/NodeGraphRectItem.cpp  |  27 +++++---
  Gui/NodeGraphRectItem.h    |   6 ++
  Gui/NodeGui.cpp            |  11 +++-
- 5 files changed, 178 insertions(+), 12 deletions(-)
+ 6 files changed, 193 insertions(+), 12 deletions(-)
 
 diff --git a/Engine/Settings.cpp b/Engine/Settings.cpp
-index 22934ac3c..3f15ad012 100644
+index 22934ac3c..f5faf7ab7 100644
 --- a/Engine/Settings.cpp
 +++ b/Engine/Settings.cpp
-@@ -1115,6 +1115,11 @@ Settings::initializeKnobsNodeGraphDrawing()
+@@ -1115,6 +1115,18 @@ Settings::initializeKnobsNodeGraphDrawing()
                                   "leaves an empty font in the label).") );
      keepSize->setDefaultValue(false);
      _nodegraphColorsTab->addKnob(keepSize);
@@ -42,10 +46,17 @@ index 22934ac3c..3f15ad012 100644
 +    selectedFill->setHintToolTip( tr("When checked (with a selected node tint above 0), a selected node is filled with the selection colour inside a thin rim of its own colour; otherwise it is brightened with an outline.") );
 +    selectedFill->setDefaultValue(false);
 +    _nodegraphColorsTab->addKnob(selectedFill);
++    // Read by NodeGraph::wheelEventInternal through its name (no member, so this header stays as it is).
++    KnobBoolPtr ctrlWheelZooms = AppManager::createKnob<KnobBool>( this, tr("Ctrl+wheel zooms the node graph") );
++    ctrlWheelZooms->setName("nodeGraphCtrlWheelZooms");
++    ctrlWheelZooms->setHintToolTip( tr("When checked, the mouse wheel zooms the node graph whether Ctrl is held or not; "
++                                       "otherwise Ctrl+wheel enlarges the node last clicked while Ctrl is held.") );
++    ctrlWheelZooms->setDefaultValue(false);
++    _nodegraphColorsTab->addKnob(ctrlWheelZooms);
  
      struct IntDef { KnobIntPtr* knob; const char* name; QString label; int def, min, max; QString hint; };
      const IntDef ints[] = {
-@@ -1542,6 +1547,15 @@ Settings::initializeKnobsNodeGraph()
+@@ -1542,6 +1554,15 @@ Settings::initializeKnobsNodeGraph()
                                                        "A and B, input A is be preferred "
                                                        "for auto-connection. When the node is disabled, B is always output, whether this is checked or not.") );
      _nodegraphTab->addKnob(_useInputAForMergeAutoConnect);
@@ -244,6 +255,32 @@ index cc9086ff9..c42d2166d 100644
      QString text = index.data().toString();
  
      setText(text);
+diff --git a/Gui/NodeGraph30.cpp b/Gui/NodeGraph30.cpp
+index f1159df17..40f3c1b5b 100644
+--- a/Gui/NodeGraph30.cpp
++++ b/Gui/NodeGraph30.cpp
+@@ -44,6 +44,8 @@ CLANG_DIAG_ON(uninitialized)
+ #include "Engine/Node.h"
+ #include "Engine/CreateNodeArgs.h"
+ #include "Engine/NodeGroup.h"
++#include "Engine/KnobTypes.h"
++#include "Engine/Settings.h"
+ #include "Engine/ViewerInstance.h"
+ 
+ #include "Gui/CurveWidget.h"
+@@ -169,6 +171,12 @@ NodeGraph::wheelEventInternal(bool ctrlDown,
+         return;
+     }
+ 
++    // With the preference nodeGraphCtrlWheelZooms (read by name), Ctrl+wheel zooms like the wheel alone, as in Nuke's
++    // node graph, instead of enlarging the node last clicked.
++    if (ctrlDown && _imp->_magnifiedNode) {
++        KnobBool* zooms = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("nodeGraphCtrlWheelZooms").get() );
++        ctrlDown = !(zooms && zooms->getValue());
++    }
+     if (ctrlDown && _imp->_magnifiedNode) {
+         if (!_imp->_magnifOn) {
+             _imp->_magnifOn = true;
 diff --git a/Gui/NodeGraphRectItem.cpp b/Gui/NodeGraphRectItem.cpp
 index 2f5b46cde..924d40e2d 100644
 --- a/Gui/NodeGraphRectItem.cpp

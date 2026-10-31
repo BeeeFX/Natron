@@ -634,6 +634,41 @@ read by name, the look setting the Nuke value for the session:
   through the shortcuts as a real key does), drawing the window after each step; `run_smoke.py` stops Natron when a
   step takes over 30 seconds and names it. On `.sng6` it stops at "Shift+1 in the viewer".
 
+## Ctrl+wheel in the node graph (`.sng8`)
+
+Baptiste, on `.sng7`: "doing CTRL + Scroll changes the selected or viewed node's size, really weird". Measured off
+screen with the smoke test's probe (wheel events with Ctrl sent through Qt's own event API to each panel, the node's
+width read on a picture of the node graph), on `.sng7` and on Niik-l's own 2026.10.02 release (the same behaviour:
+it is Natron's own code, none of our patches):
+
+| Panel | What Ctrl+wheel did (`.sng7`) | Now (`.sng8`, the Nuke look) |
+|---|---|---|
+| Node graph | Natron's **magnifier**: the node last clicked grows 1.2 times a notch (three notches: 1.73 times its size), the view doesn't zoom; the node shrinks back when Ctrl is let go, but only if the node graph has the keyboard. With the keyboard in the viewer or the properties (the wheel reaches the panel under the mouse whatever has the keyboard), it stayed enlarged (1.44 times after two notches) until the node was clicked again | Zooms the view like the wheel alone (preference `nodeGraphCtrlWheelZooms`, patch 0008); the node keeps its size |
+| Viewer | Steps one frame a notch (away from you: back; frame 1 then 250, 249) | The same |
+| Properties | Nothing over a value field that wasn't clicked; in a clicked field, a finer step than the wheel alone | The same |
+| Curve editor | Zooms the time axis only (Ctrl+Shift+wheel: the values only) | The same |
+
+**Nuke**: its wheel zooms the node graph, and Foundry's public guide ("Navigating Inside the Node Graph") gives
++ and - and Alt with a middle-drag as the other ways to zoom; nothing there resizes a node, by the wheel or
+otherwise. So, with the Nuke look:
+
+- **`nodeGraphCtrlWheelZooms`** (Appearance > Node Graph, "Ctrl+wheel zooms the node graph"; off by default, which
+  is Natron's magnifier), read by name in `NodeGraph::wheelEventInternal`. It's in `nuke_look.toml`'s new
+  `[fork_habits]` table: a behaviour, so it stays with "Natron's own look for me" like the other habits; only this fork's builds have it (Niik-l's plain release reports it with the drawing
+  preferences it lacks, not as an error). Folded into patch 0008 (15 lines) rather than a ninth patch: the look's
+  budget stays at 8 patches, about 1,225 lines for about 1,200.
+- **Patch 0010, a fix for everyone** (counted with the fixes, like 0009): a node enlarged by Ctrl+wheel goes back to
+  its size as soon as the mouse moves or the wheel turns over the node graph without Ctrl, wherever Ctrl was let go.
+  Natron's magnifier itself stays for whoever turns the preference off.
+- The viewer, the properties and the curve editor keep Natron's Ctrl+wheel: none resizes a node, and Foundry's guide
+  gives Nuke's no other use of it to follow.
+- **The smoke test** (`ctrl_wheel_checks` in `gui_probe/initGui.py`, its numbers in `ctrl_wheel.txt`): Ctrl+wheel
+  over a clicked Grade zooms the view as much as the wheel alone and leaves the node's width; with the preference
+  off for the session (never saved), it enlarges the node and a mouse move without Ctrl puts it back after Ctrl was
+  let go in the viewer; Ctrl+wheel in the viewer, the curve editor and over a value field resizes no node. The
+  node's size is read from pixels, not from its `QGraphicsItem`: PySide's wrapper of an item Natron owns can delete
+  it when the wrapper goes (the probe crashed Natron that way while it was being written).
+
 ## Writing code here
 
 - Natron and Qt only through `compat` (the adapter): one place to fix when the fork's API moves.

@@ -14,10 +14,12 @@ Values from 2 and 3 are set for the session only: Natron doesn't write a prefere
 also turns Natron's hidden "Save settings on change" off while it sets them (``compat.unsaved``). So the artist's
 Natron settings never change by themselves, and Natron's Preferences window saves only what the artist changes in it.
 
-The look has three tables: ``[settings]``, what it looks like (the stylesheet, the colours), ``[drawing]``, how the
+The look has four tables: ``[settings]``, what it looks like (the stylesheet, the colours), ``[drawing]``, how the
 node graph draws nodes and links (preferences only this fork's own builds have: core patch 0001; a Natron without
-them keeps its own drawing, which isn't an error), and ``[habits]``, how it behaves (snap, Merge to A, panels). When the artist chose Natron's own look (``skin.natron_look_chosen``), only the
-habits apply. In a session with a window, the stylesheet is the skin's session copy of nuke.qss
+them keeps its own drawing, which isn't an error), ``[habits]``, how it behaves (snap, Merge to A, panels), and
+``[fork_habits]``, behaviours only this fork's own builds have (Ctrl+wheel zooming the node graph: core patch 0008;
+absent from Niik-l's plain release, which isn't an error either). When the artist chose Natron's own look
+(``skin.natron_look_chosen``), only the habits (both tables) apply. In a session with a window, the stylesheet is the skin's session copy of nuke.qss
 (``skin.session_stylesheet``: the layer's pictures' paths filled in, the skin's font size).
 
 ``reset`` is the menu's "Use this build's look again…": with the artist's yes, it removes their stored values of the
@@ -70,6 +72,7 @@ def load_look(visual: bool = True) -> dict[str, Any]:
     if visual:
         values.update(data.get("drawing", {}))
     values.update(data.get("habits", {}))
+    values.update(data.get("fork_habits", {}))
     root = paths.layer_root()
     for name, value in values.items():
         if isinstance(value, str) and value.startswith(LAYER_PREFIX):
@@ -78,11 +81,13 @@ def load_look(visual: bool = True) -> dict[str, Any]:
 
 
 def drawing_names() -> set[str]:
-    """The look's ``[drawing]`` preferences (the node graph's drawing, in this fork's own builds only)."""
+    """The look's preferences only this fork's own builds have: ``[drawing]`` (the node graph's drawing) and
+    ``[fork_habits]`` (behaviours of its core patches). Niik-l's plain release lacks them, which isn't an error."""
     import tomllib  # noqa: PLC0415
 
     with open(paths.preset("nuke_look.toml"), "rb") as file:
-        return set(tomllib.load(file).get("drawing", {}))
+        data = tomllib.load(file)
+    return set(data.get("drawing", {})) | set(data.get("fork_habits", {}))
 
 
 def is_own(name: str, stored: compat.StoredSettings, param: Any = None) -> bool:
