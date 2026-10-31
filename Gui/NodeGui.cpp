@@ -1872,7 +1872,11 @@ NodeGui::refreshCurrentBrush()
     // A selected node keeps its own colour, brightened (by nodeSelectedTint), with an outline in the selection
     // colour, when the preference asks; otherwise Natron's halo shows it (refreshStateIndicator).
     bool selected = isSelectionTinted() && getIsSelected();
-    if (selected) {
+    // Or (preference nodeSelectedFill, read by name) filled with the selection colour inside a rim of its own
+    // colour, outlined as usual, as Nuke's.
+    KnobBool* fillPref = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("nodeSelectedFill").get() );
+    const bool fill = selected && fillPref && fillPref->getValue();
+    if (selected && !fill) {
         color = mixColors( color, Qt::white, appPTR->getCurrentSettings()->getNodeSelectedTint() * 0.5 );
     }
     // A node in error takes the error colour and an outline of it when the preference asks (nodeErrorTint).
@@ -1883,11 +1887,14 @@ NodeGui::refreshCurrentBrush()
     if ( _boundingBox && !dynamic_cast<BackdropGui*>(this) ) {
         if (inError) {
             _boundingBox->setPen( QPen(nodeErrorColor(), 2) );
-        } else if (selected) {
+        } else if (selected && !fill) {
             _boundingBox->setPen( QPen(settingsColor(&Settings::getNodeSelectedColor), 2) );
         } else {
             _boundingBox->setPen( QPen(settingsColor(&Settings::getNodeOutlineColor), 1) );
         }
+    }
+    if ( _boundingBox && !dynamic_cast<BackdropGui*>(this) ) {
+        _boundingBox->setInnerColor( (fill && !inError) ? settingsColor(&Settings::getNodeSelectedColor) : QColor() );
     }
     applyBrush(color);
 }

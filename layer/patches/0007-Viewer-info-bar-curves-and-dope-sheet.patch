@@ -1,0 +1,277 @@
+From 77b3c380c9199b46f439ec5291238dcfb90cc657 Mon Sep 17 00:00:00 2001
+From: "Baptiste G." <70719480+BeeeFX@users.noreply.github.com>
+Date: Sat, 31 Oct 2026 01:45:09 +0000
+Subject: [PATCH 7/8] Viewer info bar, curve colours and dope sheet keys
+ optionally drawn like Nuke's
+
+- viewerInfoNuke (Appearance > Main Window; off by default, Natron's info bar as before): the viewer's info bar
+  reads "bbox:" instead of "RoD:", "channels: rgba" (instead of "Color.RGBA32f") after the bbox instead of first,
+  the values in brighter red, green and blue with a white alpha, and "H: 51 S:0.05 V:0.86  L: 0.84822". The
+  channels move each time an image arrives, so the preference applies without a restart.
+- animationEditorsNuke (Appearance > Curve Editor; off by default): the r, g, b and a curves red, green, blue and
+  white in the curve editor (other curves keep Natron's colours), and the dope sheet's keys as narrow grey bars with
+  a dark edge (the selection colour when selected) instead of the interpolation pictures.
+- Every new preference is read by name, so Settings.h doesn't change.
+
+Core patch 0007 of the BeeeFX fork (layer/patches/).
+
+Gap: layer/GAPS.md, "Nuke's look and habits" (the info bar, the curve editor and dope sheet).
+Size: 4 files, 112 lines added, 18 removed.
+upstream: not offered (Baptiste: keep the fork private for now).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ Engine/Settings.cpp      | 10 ++++++++
+ Gui/CurveEditor.cpp      | 22 ++++++++++++++++
+ Gui/DopeSheetView.cpp    | 54 +++++++++++++++++++++++++++++-----------
+ Gui/InfoViewerWidget.cpp | 44 +++++++++++++++++++++++++++++---
+ 4 files changed, 112 insertions(+), 18 deletions(-)
+
+diff --git a/Engine/Settings.cpp b/Engine/Settings.cpp
+index 93bd09d38..22934ac3c 100644
+--- a/Engine/Settings.cpp
++++ b/Engine/Settings.cpp
+@@ -863,6 +863,11 @@ Settings::initializeKnobsGuiColors()
+                                    "is shaded from light to dark with a dark edge; otherwise Natron's flat ones.") );
+     insetCross->setDefaultValue(false);
+     _guiColorsTab->addKnob(insetCross);
++    KnobBoolPtr infoNuke = AppManager::createKnob<KnobBool>( this, tr("Viewer info bar as Nuke's") );
++    infoNuke->setName("viewerInfoNuke");
++    infoNuke->setHintToolTip( tr("When checked, the viewer's info bar reads as Nuke's: the format, bbox, channels, the pointer's position, the values in brighter red, green and blue, then H S V L; otherwise Natron's (RoD, the image's kind first).") );
++    infoNuke->setDefaultValue(false);
++    _guiColorsTab->addKnob(infoNuke);
+ } // Settings::initializeKnobsGuiColors
+ 
+ void
+@@ -885,6 +890,11 @@ Settings::initializeKnobsCurveEditorColors()
+     _curveEditorScaleColor->setName("curveeditorScale");
+     _curveEditorScaleColor->setSimplified(true);
+     _curveEditorColorsTab->addKnob(_curveEditorScaleColor);
++    KnobBoolPtr animNuke = AppManager::createKnob<KnobBool>( this, tr("Curves and keys as Nuke's") );
++    animNuke->setName("animationEditorsNuke");
++    animNuke->setHintToolTip( tr("When checked, the r, g, b and a curves are drawn red, green, blue and white, and the dope sheet's keys as narrow grey bars; otherwise Natron's colours and key pictures.") );
++    animNuke->setDefaultValue(false);
++    _curveEditorColorsTab->addKnob(animNuke);
+ }
+ 
+ void
+diff --git a/Gui/CurveEditor.cpp b/Gui/CurveEditor.cpp
+index cde56d34e..0170aed47 100644
+--- a/Gui/CurveEditor.cpp
++++ b/Gui/CurveEditor.cpp
+@@ -51,6 +51,8 @@ GCC_DIAG_UNUSED_PRIVATE_FIELD_ON
+ #include "Engine/RotoDrawableItem.h"
+ #include "Engine/RotoStrokeItem.h"
+ #include "Engine/EffectInstance.h"
++#include "Engine/KnobTypes.h"
++#include "Engine/Settings.h"
+ #include "Engine/TimeLine.h"
+ #include "Engine/ViewIdx.h"
+ 
+@@ -77,6 +79,25 @@ using std::endl;
+ 
+ NATRON_NAMESPACE_ENTER
+ 
++// Optionally (preference animationEditorsNuke, read by name, off by default) a colour channel's curve drawn in its
++// channel's colour, as Nuke's curve editor: r red, g green, b blue, a white. Other curves keep Natron's colours.
++static void
++setNukeChannelColor(const CurveGuiPtr& curve,
++                    const std::string& dimension)
++{
++    KnobBool* pref = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("animationEditorsNuke").get() );
++    if ( !pref || !pref->getValue() ) {
++        return;
++    }
++    static const char* const names[] = { "r", "g", "b", "a" };
++    static const QColor colors[] = { QColor(240, 30, 15), QColor(45, 205, 10), QColor(30, 30, 255), QColor(225, 225, 225) };
++    for (int i = 0; i < 4; ++i) {
++        if (dimension == names[i]) {
++            curve->setColor(colors[i]);
++        }
++    }
++}
++
+ class CurveEditorTreeWidget
+     : public QTreeWidget
+ {
+@@ -467,6 +488,7 @@ createElementsForKnob(QTreeWidgetItem* parent,
+                 elem = new NodeCurveEditorElement(tree, curveEditor, k, j, dimItem, dimCurve);
+             }
+             curveWidget->addCurveAndSetColor(dimCurve);
++            setNukeChannelColor( dimCurve, k->getDimensionName(j) );
+ 
+             elements.push_back(elem);
+             std::string expr = k->getExpression(j);
+diff --git a/Gui/DopeSheetView.cpp b/Gui/DopeSheetView.cpp
+index b0c7bc016..508667779 100644
+--- a/Gui/DopeSheetView.cpp
++++ b/Gui/DopeSheetView.cpp
+@@ -41,6 +41,7 @@
+ // Natron includes
+ #include "Engine/Curve.h"
+ #include "Engine/Image.h"
++#include "Engine/KnobTypes.h"
+ #include "Engine/Node.h"
+ #include "Engine/NodeGroup.h"
+ #include "Engine/Project.h"
+@@ -1423,24 +1424,47 @@ DopeSheetViewPrivate::drawTexturedKeyframe(DopeSheetViewPrivate::KeyframeTexture
+     GLProtectAttrib a(GL_ENABLE_BIT | GL_COLOR_BUFFER_BIT | GL_CURRENT_BIT | GL_TRANSFORM_BIT);
+     GLProtectMatrix pr(GL_MODELVIEW);
+ 
+-    glEnable(GL_TEXTURE_2D);
+-    glBindTexture(GL_TEXTURE_2D, kfTexturesIDs[textureType]);
++    // Optionally (preference animationEditorsNuke, read by name) a key as Nuke's dope sheet draws it: a narrow grey
++    // upright bar with a dark edge, in the selection colour when selected (odd textures are the selected ones).
++    KnobBool* nukeKeys = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("animationEditorsNuke").get() );
++    if ( nukeKeys && nukeKeys->getValue() ) {
++        const double inset = rect.width() * 0.29;
++        const double top = rect.top() - (rect.top() - rect.bottom()) * 0.07, bottom = rect.bottom() + (rect.top() - rect.bottom()) * 0.07;
++        QColor fill(128, 128, 128);
++        if (textureType % 2 == 1) {
++            fill = textColor;
++        }
++        glColor4f(fill.redF(), fill.greenF(), fill.blueF(), 1.f);
++        for (int edge = 0; edge < 2; ++edge) {
++            glBegin(edge ? GL_LINE_LOOP : GL_POLYGON);
++            glVertex2d(rect.left() + inset, bottom);
++            glVertex2d(rect.right() - inset, bottom);
++            glVertex2d(rect.right() - inset, top);
++            glVertex2d(rect.left() + inset, top);
++            glEnd();
++            glColor4f(0.1f, 0.1f, 0.1f, 1.f);
++        }
++        glColor4f(1, 1, 1, 1);
++    } else {
++        glEnable(GL_TEXTURE_2D);
++        glBindTexture(GL_TEXTURE_2D, kfTexturesIDs[textureType]);
+ 
+-    glBegin(GL_POLYGON);
+-    glTexCoord2f(0.0f, 1.0f);
+-    glVertex2f( rect.left(), rect.top() );
+-    glTexCoord2f(0.0f, 0.0f);
+-    glVertex2f( rect.left(), rect.bottom() );
+-    glTexCoord2f(1.0f, 0.0f);
+-    glVertex2f( rect.right(), rect.bottom() );
+-    glTexCoord2f(1.0f, 1.0f);
+-    glVertex2f( rect.right(), rect.top() );
+-    glEnd();
++        glBegin(GL_POLYGON);
++        glTexCoord2f(0.0f, 1.0f);
++        glVertex2f( rect.left(), rect.top() );
++        glTexCoord2f(0.0f, 0.0f);
++        glVertex2f( rect.left(), rect.bottom() );
++        glTexCoord2f(1.0f, 0.0f);
++        glVertex2f( rect.right(), rect.bottom() );
++        glTexCoord2f(1.0f, 1.0f);
++        glVertex2f( rect.right(), rect.top() );
++        glEnd();
+ 
+-    glColor4f(1, 1, 1, 1);
+-    glBindTexture(GL_TEXTURE_2D, 0);
++        glColor4f(1, 1, 1, 1);
++        glBindTexture(GL_TEXTURE_2D, 0);
+ 
+-    glDisable(GL_TEXTURE_2D);
++        glDisable(GL_TEXTURE_2D);
++    }
+ 
+     if (drawTime) {
+         QString text = QString::number(time);
+diff --git a/Gui/InfoViewerWidget.cpp b/Gui/InfoViewerWidget.cpp
+index c796854ff..3024105a8 100644
+--- a/Gui/InfoViewerWidget.cpp
++++ b/Gui/InfoViewerWidget.cpp
+@@ -38,6 +38,8 @@
+ #include "Engine/ViewerInstance.h"
+ #include "Engine/Lut.h"
+ #include "Engine/Image.h"
++#include "Engine/KnobTypes.h"
++#include "Engine/Settings.h"
+ #include "Gui/GuiApplicationManager.h"
+ #include "Gui/ViewerGL.h"
+ #include "Gui/Label.h"
+@@ -45,6 +47,16 @@
+ using std::cout; using std::endl;
+ NATRON_NAMESPACE_ENTER
+ 
++// Optionally (preference viewerInfoNuke, read by name, off by default) the info bar worded and ordered as Nuke's:
++// the format, "bbox:", "channels:", the pointer's position, the values in Nuke's colours, then H S V L.
++static bool
++infoBarNuke()
++{
++    KnobBool* pref = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("viewerInfoNuke").get() );
++
++    return pref && pref->getValue();
++}
++
+ InfoViewerWidget::InfoViewerWidget(const QString & description,
+                                    QWidget* parent)
+     : QWidget(parent)
+@@ -321,6 +333,14 @@ InfoViewerWidget::setColor(float r,
+                  .arg( font.pixelSize() );
+     }
+ 
++    const bool nuke = infoBarNuke();
++    if (nuke) {
++        // Nuke's brighter red, green and blue, and a white alpha (Foundry's Viewer pictures).
++        values.replace( QString::fromUtf8("#d93232"), QString::fromUtf8("#ff3c3c") );
++        values.replace( QString::fromUtf8("#00a700"), QString::fromUtf8("#3cf03c") );
++        values.replace( QString::fromUtf8("#5858ff"), QString::fromUtf8("#5050ff") );
++        values.replace( QString::fromUtf8("#DBE0E0"), QString::fromUtf8("#FFFFFF") );
++    }
+     if (_colorApprox) {
+         values.prepend( QString::fromUtf8("<b> ~ </b>") );
+     }
+@@ -361,8 +381,9 @@ InfoViewerWidget::setColor(float r,
+     QString sS = _colorValid ? QString::number(s, 'f', 2) : QString::fromUtf8("?");
+     QString vS = _colorValid ? QString::number(v, 'f', 2) : QString::fromUtf8("?");
+     QString hsvlValues;
+-    hsvlValues = QString::fromUtf8("<font color=\"#DBE0E0\" face=\"%5\" size=%6>H:%1 S:%2 V:%3  L:%4</font>")
+-                 .arg(hS)
++    hsvlValues = QString::fromUtf8(nuke ? "<font color=\"#E0E0E0\" face=\"%5\" size=%6>H:%1 S:%2 V:%3&nbsp; L: %4</font>"
++                                   : "<font color=\"#DBE0E0\" face=\"%5\" size=%6>H:%1 S:%2 V:%3  L:%4</font>")
++                 .arg( nuke ? hS.rightJustified(3, QLatin1Char(' ')).replace( QLatin1Char(' '), QString::fromUtf8("&nbsp;") ) : hS )
+                  .arg(sS)
+                  .arg(vS)
+                  .arg(lS)
+@@ -426,7 +447,8 @@ InfoViewerWidget::setDataWindow(const RectI & r)
+     x2.setNum(r.x2);
+     y2.setNum(r.y2);
+ 
+-    bbox = QString::fromUtf8("<font color=\"#DBE0E0\" face=\"%5\" size=%6>RoD: %1 %2 %3 %4</font>")
++    bbox = QString::fromUtf8(infoBarNuke() ? "<font color=\"#E0E0E0\" face=\"%5\" size=%6>bbox: %1 %2 %3 %4</font>"
++                             : "<font color=\"#DBE0E0\" face=\"%5\" size=%6>RoD: %1 %2 %3 %4</font>")
+            .arg(x1)
+            .arg(y1)
+            .arg(x2)
+@@ -446,11 +468,27 @@ InfoViewerWidget::setImageFormat(const ImagePlaneDesc& comp,
+                    .arg( font.family() )
+                    .arg( font.pixelSize() );
+     QString format = QString::fromUtf8( Image::getFormatString(comp, depth).c_str() );
++    const bool nuke = infoBarNuke();
++    if (nuke) {
++        // "channels: rgba", as Nuke's (no bit depth); a layer other than the colour one keeps its name (forward.uv).
++        format = QString::fromUtf8( comp.getChannelsLabel().c_str() ).toLower();
++        if ( !comp.isColorPlane() ) {
++            format.prepend( QString::fromUtf8( comp.getPlaneLabel().c_str() ) + QLatin1Char('.') );
++        }
++        format.prepend( QString::fromUtf8("channels: ") );
++    }
+ 
+     text.append(format);
+     text.append( QString::fromUtf8("</font>") );
+     imageFormat->setText(text);
+     _comp = comp;
++    // Nuke's order has the channels after the bbox, Natron's before the format: moved on each image, so the
++    // preference applies without a restart.
++    const bool after = layout->indexOf(imageFormat) > layout->indexOf(coordDispWindow);
++    if (nuke != after) {
++        layout->removeWidget(imageFormat);
++        layout->insertWidget(layout->indexOf(nuke ? coordDispWindow : descriptionLabel) + 1, imageFormat);
++    }
+ }
+ 
+ NATRON_NAMESPACE_EXIT
+-- 
+2.48.1.windows.1
+

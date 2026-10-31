@@ -51,6 +51,8 @@ GCC_DIAG_UNUSED_PRIVATE_FIELD_ON
 #include "Engine/RotoDrawableItem.h"
 #include "Engine/RotoStrokeItem.h"
 #include "Engine/EffectInstance.h"
+#include "Engine/KnobTypes.h"
+#include "Engine/Settings.h"
 #include "Engine/TimeLine.h"
 #include "Engine/ViewIdx.h"
 
@@ -76,6 +78,25 @@ using std::cout;
 using std::endl;
 
 NATRON_NAMESPACE_ENTER
+
+// Optionally (preference animationEditorsNuke, read by name, off by default) a colour channel's curve drawn in its
+// channel's colour, as Nuke's curve editor: r red, g green, b blue, a white. Other curves keep Natron's colours.
+static void
+setNukeChannelColor(const CurveGuiPtr& curve,
+                    const std::string& dimension)
+{
+    KnobBool* pref = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("animationEditorsNuke").get() );
+    if ( !pref || !pref->getValue() ) {
+        return;
+    }
+    static const char* const names[] = { "r", "g", "b", "a" };
+    static const QColor colors[] = { QColor(240, 30, 15), QColor(45, 205, 10), QColor(30, 30, 255), QColor(225, 225, 225) };
+    for (int i = 0; i < 4; ++i) {
+        if (dimension == names[i]) {
+            curve->setColor(colors[i]);
+        }
+    }
+}
 
 class CurveEditorTreeWidget
     : public QTreeWidget
@@ -467,6 +488,7 @@ createElementsForKnob(QTreeWidgetItem* parent,
                 elem = new NodeCurveEditorElement(tree, curveEditor, k, j, dimItem, dimCurve);
             }
             curveWidget->addCurveAndSetColor(dimCurve);
+            setNukeChannelColor( dimCurve, k->getDimensionName(j) );
 
             elements.push_back(elem);
             std::string expr = k->getExpression(j);

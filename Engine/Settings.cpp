@@ -863,6 +863,11 @@ Settings::initializeKnobsGuiColors()
                                    "is shaded from light to dark with a dark edge; otherwise Natron's flat ones.") );
     insetCross->setDefaultValue(false);
     _guiColorsTab->addKnob(insetCross);
+    KnobBoolPtr infoNuke = AppManager::createKnob<KnobBool>( this, tr("Viewer info bar as Nuke's") );
+    infoNuke->setName("viewerInfoNuke");
+    infoNuke->setHintToolTip( tr("When checked, the viewer's info bar reads as Nuke's: the format, bbox, channels, the pointer's position, the values in brighter red, green and blue, then H S V L; otherwise Natron's (RoD, the image's kind first).") );
+    infoNuke->setDefaultValue(false);
+    _guiColorsTab->addKnob(infoNuke);
 } // Settings::initializeKnobsGuiColors
 
 void
@@ -885,6 +890,11 @@ Settings::initializeKnobsCurveEditorColors()
     _curveEditorScaleColor->setName("curveeditorScale");
     _curveEditorScaleColor->setSimplified(true);
     _curveEditorColorsTab->addKnob(_curveEditorScaleColor);
+    KnobBoolPtr animNuke = AppManager::createKnob<KnobBool>( this, tr("Curves and keys as Nuke's") );
+    animNuke->setName("animationEditorsNuke");
+    animNuke->setHintToolTip( tr("When checked, the r, g, b and a curves are drawn red, green, blue and white, and the dope sheet's keys as narrow grey bars; otherwise Natron's colours and key pictures.") );
+    animNuke->setDefaultValue(false);
+    _curveEditorColorsTab->addKnob(animNuke);
 }
 
 void
@@ -1105,6 +1115,11 @@ Settings::initializeKnobsNodeGraphDrawing()
                                  "leaves an empty font in the label).") );
     keepSize->setDefaultValue(false);
     _nodegraphColorsTab->addKnob(keepSize);
+    KnobBoolPtr selectedFill = AppManager::createKnob<KnobBool>( this, tr("Selected nodes filled") );
+    selectedFill->setName("nodeSelectedFill");
+    selectedFill->setHintToolTip( tr("When checked (with a selected node tint above 0), a selected node is filled with the selection colour inside a thin rim of its own colour; otherwise it is brightened with an outline.") );
+    selectedFill->setDefaultValue(false);
+    _nodegraphColorsTab->addKnob(selectedFill);
 
     struct IntDef { KnobIntPtr* knob; const char* name; QString label; int def, min, max; QString hint; };
     const IntDef ints[] = {
@@ -1532,6 +1547,15 @@ Settings::initializeKnobsNodeGraph()
                                                       "A and B, input A is be preferred "
                                                       "for auto-connection. When the node is disabled, B is always output, whether this is checked or not.") );
     _nodegraphTab->addKnob(_useInputAForMergeAutoConnect);
+    KnobBoolPtr tabNuke = AppManager::createKnob<KnobBool>( this, tr("Tab search with favourites") );
+    tabNuke->setName("tabSearchNuke");
+    tabNuke->setHintToolTip( tr("When checked, the Tab search lists your favourites first, shows a star on each row to add or remove one, a green dot for the nodes you make most often, and the letters you typed in bold.") );
+    tabNuke->setDefaultValue(false);
+    _nodegraphTab->addKnob(tabNuke);
+    KnobStringPtr favourites = AppManager::createKnob<KnobString>( this, tr("Tab search favourites") );
+    favourites->setName("tabFavourites");
+    favourites->setHintToolTip( tr("The nodes listed first in the Tab search, separated by |. Clear it to remove them all.") );
+    _nodegraphTab->addKnob(favourites);
 } // Settings::initializeKnobsNodeGraph
 
 void

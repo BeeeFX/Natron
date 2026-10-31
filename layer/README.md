@@ -585,6 +585,30 @@ Environments"' viewer_focus.png) and its knob row ("Using the Color Controls"):
   the in and out fields flat, rounded, their numbers dim; a node panel's tabs white and bold (no orange: that's for
   the panes' tabs).
 
+## The info bar, the curves, the selection and the Tab search (core patches 0007 and 0008, `.sng6`)
+
+Measured against Foundry's guide pictures ("Nuke Studio Environments"' viewer_focus.png for the info bar, "Working
+with Nodes"' nodes_branching_2.png for a selected node, "Animating Parameters"' curve_editor_intro.png and
+dope_sheet_intro.png, "Using the Tab Menu"' pictures), four more preferences, each defaulting to Natron's own drawing,
+read by name, the look setting the Nuke value for the session:
+
+- `viewerInfoNuke` (0007; Appearance > Main Window): the viewer's info bar reads as Nuke's: the format and size, "bbox:"
+  (Natron's "RoD:"), "channels: rgba" after it (Natron puts "Color.RGBA32f" first), the pointer's position, the
+  values in Nuke's brighter red, green and blue with a white alpha, the swatch, then "H: 51 S:0.05 V:0.86  L: 0.84822".
+- `animationEditorsNuke` (0007; Appearance > Curve Editor): the r, g, b and a curves red, green, blue and white (their
+  names at the curve's end take the same colour); other curves keep Natron's colours. The dope sheet's keys are narrow
+  grey bars with a dark edge (the selection colour when selected), as Nuke's, instead of Natron's interpolation
+  pictures.
+- `nodeSelectedFill` (0008; Appearance > Node Graph, with `nodeSelectedTint` above 0): a selected node is filled flat with
+  the selection colour (Nuke's 252, 186, 99, measured; `nodeSelectedColor` in the look) inside a 2.5-unit rim of its
+  own shaded colour, outlined as usual; its links take `linkSelectedColor`, the same orange.
+- `tabSearchNuke` (0008; Nodegraph): the Tab search lists the favourites first, with a line under the last one; each row
+  has a star at its right end (filled for a favourite, outlined otherwise) that adds or removes it with one click
+  (the click doesn't make the node); a green dot before the star grows with how often the node was made from the Tab
+  search (Natron's own count); the letters typed are drawn bold where the search found them. The favourites are the
+  preference `tabFavourites` (Nodegraph, the rows' text separated by `|`; clearing it removes them all), saved with
+  Natron's preferences when the artist clicks a star, never set by the look.
+
 ## Writing code here
 
 - Natron and Qt only through `compat` (the adapter): one place to fix when the fork's API moves.

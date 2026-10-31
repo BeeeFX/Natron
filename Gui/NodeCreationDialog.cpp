@@ -40,11 +40,19 @@ CLANG_DIAG_OFF(uninitialized)
 #include "Global/QtCompat.h"
 #include <QApplication>
 #include <QStringListModel>
+#include <QStyledItemDelegate>
+#include <QMouseEvent>
+#include <QCursor>
+#include <QPainter>
+#include <QPolygonF>
+#include <QtMath>
 CLANG_DIAG_ON(deprecated)
 CLANG_DIAG_ON(uninitialized)
 
 #include "Engine/AppManager.h"
 #include "Engine/Plugin.h"
+#include "Engine/KnobTypes.h"
+#include "Engine/Settings.h"
 #include "Gui/LineEdit.h"
 #include "Gui/GuiApplicationManager.h"
 
@@ -56,6 +64,116 @@ CLANG_DIAG_ON(uninitialized)
 
 NATRON_NAMESPACE_ENTER
 
+
+// Optionally (preference tabSearchNuke, read by name, off by default) the Tab search as Nuke's: the favourites
+// (preference tabFavourites, entries separated by |) listed first, a star on each row to add or remove one, a green
+// dot growing with how often a node was made from here, and the typed letters in bold.
+static bool
+tabSearchNuke()
+{
+    KnobBool* pref = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("tabSearchNuke").get() );
+
+    return pref && pref->getValue();
+}
+
+static QStringList
+tabFavourites()
+{
+    KnobString* k = dynamic_cast<KnobString*>( appPTR->getCurrentSettings()->getKnobByName("tabFavourites").get() );
+
+    return k ? QString::fromUtf8( k->getValue().c_str() ).split(QLatin1Char('|'), Qt::SkipEmptyParts) : QStringList();
+}
+
+class TabSearchDelegate
+    : public QStyledItemDelegate
+{
+public:
+    TabSearchDelegate(CompleterLineEdit* edit, const CompleterLineEdit::PluginsNamesMap* names)
+        : QStyledItemDelegate(edit), _edit(edit), _names(names) {}
+
+    virtual void paint(QPainter* p, const QStyleOptionViewItem& option, const QModelIndex& index) const OVERRIDE FINAL
+    {
+        if ( !tabSearchNuke() ) {
+            QStyledItemDelegate::paint(p, option, index);
+            return;
+        }
+        QStyleOptionViewItem opt(option);
+        initStyleOption(&opt, index);
+        const QString label = opt.text;
+        opt.text.clear();
+        opt.widget->style()->drawControl(QStyle::CE_ItemViewItem, &opt, p, opt.widget);
+        const QString typed = _edit->text();
+        // The star sits at the visible right end (the row can be wider than the list); the text stops before it.
+        const QAbstractItemView* view = qobject_cast<const QAbstractItemView*>(opt.widget);
+        const int right = view ? std::min( opt.rect.right(), view->viewport()->rect().right() ) : opt.rect.right();
+        QFont bold(opt.font);
+        bold.setBold(true);
+        p->save();
+        p->setClipRect( QRect( opt.rect.left(), opt.rect.top(), right - 24 - opt.rect.left(), opt.rect.height() ) );
+        p->setPen( opt.palette.color( (opt.state & QStyle::State_Selected) ? QPalette::HighlightedText : QPalette::Text ) );
+        int x = opt.rect.left() + 4, t = 0;
+        for (int i = 0; i < label.size(); ++i) {
+            const bool hit = t < typed.size() && label[i].toLower() == typed[t].toLower();
+            t += hit ? 1 : 0;
+            p->setFont(hit ? bold : opt.font);
+            p->drawText(QRect( x, opt.rect.top(), opt.rect.width(), opt.rect.height() ), Qt::AlignVCenter | Qt::AlignLeft, QString(label[i]));
+            x += QFontMetrics(hit ? bold : opt.font).horizontalAdvance(label[i]);
+        }
+        p->setClipping(false);
+        p->setRenderHint(QPainter::Antialiasing);
+        const QPointF star( right - 10, opt.rect.center().y() + 0.5 );
+        int weight = 0;
+        for (CompleterLineEdit::PluginsNamesMap::const_iterator it = _names->begin(); it != _names->end(); ++it) {
+            weight = (it->second.second == label) ? it->first : weight;
+        }
+        if (weight > 0) { // Nuke's green dot, larger for the nodes made most often
+            const double r = std::min( 3.5, 1. + std::log2(1. + weight) * 0.5 );
+            p->setPen(Qt::NoPen);
+            p->setBrush( QColor(80, 170, 60) );
+            p->drawEllipse(star - QPointF(14, 0), r, r);
+        }
+        QPolygonF shape;
+        for (int i = 0; i < 10; ++i) {
+            const double a = M_PI / 5. * i - M_PI / 2., r = (i % 2) ? 2.2 : 5.;
+            shape << star + QPointF(r * std::cos(a), r * std::sin(a));
+        }
+        const QStringList favs = tabFavourites();
+        const bool fav = favs.contains(label);
+        p->setPen( fav ? Qt::NoPen : QPen(QColor(105, 105, 105), 1) );
+        p->setBrush( fav ? QBrush( QColor(200, 200, 200) ) : QBrush(Qt::NoBrush) );
+        p->drawPolygon(shape);
+        const QModelIndex next = index.sibling(index.row() + 1, 0);
+        if ( fav && next.isValid() && !favs.contains( next.data().toString() ) ) { // a line under the last favourite
+            p->setPen( QPen(Qt::black, 1) );
+            p->drawLine( opt.rect.bottomLeft(), QPoint( right, opt.rect.bottom() ) );
+        }
+        p->restore();
+    }
+
+    virtual bool editorEvent(QEvent* e, QAbstractItemModel* model, const QStyleOptionViewItem& option, const QModelIndex& index) OVERRIDE FINAL
+    {
+        // A press on the star adds the row to the favourites or takes it out, saved with the preferences.
+        if ( tabSearchNuke() && (e->type() == QEvent::MouseButtonPress) && (static_cast<QMouseEvent*>(e)->position().x() > _edit->getView()->viewport()->rect().right() - 18) ) {
+            KnobString* k = dynamic_cast<KnobString*>( appPTR->getCurrentSettings()->getKnobByName("tabFavourites").get() );
+            if (k) {
+                QStringList favs = tabFavourites();
+                const QString label = index.data().toString();
+                if ( !favs.removeAll(label) ) {
+                    favs.push_back(label);
+                }
+                k->setValue( favs.join( QLatin1Char('|') ).toStdString() );
+                appPTR->getCurrentSettings()->saveSetting( k );
+                QTimer::singleShot( 0, _edit, SLOT(showCompleter()) );
+            }
+            return true;
+        }
+        return QStyledItemDelegate::editorEvent(e, model, option, index);
+    }
+
+private:
+    CompleterLineEdit* _edit;
+    const CompleterLineEdit::PluginsNamesMap* _names;
+};
 
 struct CompleterLineEditPrivate
 {
@@ -103,6 +221,7 @@ CompleterLineEdit::CompleterLineEdit(const PluginsNamesMap& plugins,
     _imp->model = new QStringListModel(this);
     _imp->listView->setWindowFlags(Qt::ToolTip);
     _imp->listView->setModel(_imp->model);
+    _imp->listView->setItemDelegate( new TabSearchDelegate(this, &_imp->names) );
 
     connect( this, SIGNAL(textChanged(QString)), this, SLOT(filterText(QString)) );
     connect( _imp->listView, SIGNAL(clicked(QModelIndex)), this, SLOT(setTextFromIndex(QModelIndex)) );
@@ -119,6 +238,7 @@ CompleterLineEdit::CompleterLineEdit(const QStringList & displayWords,
     _imp->model = new QStringListModel(this);
     _imp->listView->setWindowFlags(Qt::ToolTip);
     _imp->listView->setModel(_imp->model);
+    _imp->listView->setItemDelegate( new TabSearchDelegate(this, &_imp->names) );
 
     connect( this, SIGNAL(textChanged(QString)), this, SLOT(filterText(QString)) );
     connect( _imp->listView, SIGNAL(clicked(QModelIndex)), this, SLOT(setTextFromIndex(QModelIndex)) );
@@ -188,6 +308,14 @@ CompleterLineEdit::filterText(const QString & txt)
         }
 #endif
     }
+    if ( tabSearchNuke() ) { // the favourites first, each group in its own order
+        const QStringList favs = tabFavourites();
+        QStringList first, rest;
+        for (int i = 0; i < sl.size(); ++i) {
+            ( favs.contains(sl[i]) ? first : rest ).push_back(sl[i]);
+        }
+        sl = first + rest;
+    }
     _imp->model->setStringList(sl);
     _imp->listView->setModel(_imp->model);
 
@@ -213,6 +341,10 @@ CompleterLineEdit::filterText(const QString & txt)
 void
 CompleterLineEdit::setTextFromIndex(const QModelIndex & index)
 {
+    const QPoint at = _imp->listView->viewport()->mapFromGlobal( QCursor::pos() );
+    if ( tabSearchNuke() && (at.x() > _imp->listView->viewport()->rect().right() - 18) ) {
+        return; // a click on the star (TabSearchDelegate) doesn't choose the row
+    }
     QString text = index.data().toString();
 
     setText(text);

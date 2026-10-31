@@ -1,7 +1,8 @@
 # Core patches
 
-Changes to Natron's own files (its C++ code, its build), carried on top of Niik-l's releases. **Six**: three since
-`.sng3` (31 October 2026), two more since `.sng4`, one more since `.sng5` (1 November 2026); about 870 changed lines in all, all written so Niik-l can take them as they are: new preferences whose
+Changes to Natron's own files (its C++ code, its build), carried on top of Niik-l's releases. **Eight**: three since
+`.sng3` (31 October 2026), two more since `.sng4`, one more since `.sng5`, two more since `.sng6` (1 November 2026);
+about 1,190 changed lines in all, all written so Niik-l can take them as they are: new preferences whose
 defaults are Natron's own behaviour (nothing changes for anyone who doesn't set them), and a name for the stylesheet.
 The layer sets the Nuke-like values for the session, like its other preferences.
 
@@ -16,9 +17,14 @@ The layer sets the Nuke-like values for the session, like its other preferences.
 
 | `0006-Timeline-ruler-and-knob-widgets.patch` (on top of 0004) | `timelineRulerNuke` (the timeline's frame ruler as Nuke's: no axis line, short ticks and taller numbered ones on one baseline, the cached line under them, the in and out points as upright lines, regular-weight numbers), `knobWidgetsShaded` (check boxes with a small cross in a darker square, drop-downs shaded light to dark), and `sliderHandleBar` drawing the scale as Nuke's (a dark groove, dark ticks and numbers). | `Engine/Settings.cpp`, `Gui/TimeLineGui.cpp`, `Gui/ScaleSliderQWidget.cpp`, `Gui/AnimatedCheckBox.cpp`, `Gui/ComboBox.cpp`; 126 lines added, 33 removed | not offered (kept private for now, Baptiste) |
 
-**The budget is now full again** (6 of 6 patches, about 870 of 900 lines). It grew for `.sng5` by one patch and 100
-lines: the timeline's ruler and the knobs' widgets (sliders, check boxes, drop-downs) are painted by Natron's C++ code,
-which a stylesheet can't reach. A next core change replaces or grows one of these.
+| `0007-Viewer-info-bar-curves-and-dope-sheet.patch` | `viewerInfoNuke` (the viewer's info bar as Nuke's: "bbox:", "channels: rgba" after it, the values in Nuke's brighter red, green and blue with a white alpha, "H: 51 S:0.05 V:0.86  L: 0.84822"), `animationEditorsNuke` (the r, g, b and a curves red, green, blue and white; the dope sheet's keys as narrow grey bars). | `Engine/Settings.cpp`, `Gui/InfoViewerWidget.cpp`, `Gui/CurveEditor.cpp`, `Gui/DopeSheetView.cpp`; 112 lines added, 18 removed | not offered (kept private for now, Baptiste) |
+| `0008-Selected-node-fill-and-Tab-favourites.patch` (on top of 0001, 0003 and 0005) | `nodeSelectedFill` (a selected node filled flat with the selection colour inside a rim of its own colour, as Nuke's), `tabSearchNuke` and `tabFavourites` (the Tab search with favourites first and a star on each row, a green dot for the nodes made most often, the typed letters bold). | `Engine/Settings.cpp`, `Gui/NodeGraphRectItem.{h,cpp}`, `Gui/NodeGui.cpp`, `Gui/NodeCreationDialog.cpp`; 178 lines added, 12 removed | not offered (kept private for now, Baptiste) |
+
+**The budget is full again** (8 of 8 patches, about 1,190 of 1,200 lines). It grew for `.sng6` by two patches and
+300 lines (1 November 2026, round 5): the viewer's info bar, the curve editor's colours, the dope sheet's keys, the
+node graph's selected node and the Tab search's list are all painted by Natron's C++ code, four places a stylesheet
+or the Python layer can't reach (the info bar's labels get their text from C++ with no signal Python could follow).
+Two patches rather than one keeps each under 300 lines. A next core change replaces or grows one of these.
 
 `fixes/` holds something else: **build fixes for the plug-ins' and Cycles' sources** (not Natron's), needed when the MSYS2
 packages of a release's day are newer than Niik-l's PC had, applied by `../tools/source_build.sh` after his own
@@ -31,8 +37,8 @@ the mutex is now made on first use), to offer to Niik-l's Cycles. They don't cou
 A core patch has to be redone or rebased every time Niik-l publishes a release (every one to three weeks), so each
 one is costly. The budget:
 
-- **At most 6 core patches**, and **about 900 changed lines in Natron's files in total**, none over 300 lines (5 and
-  800 until `.sng5`).
+- **At most 8 core patches**, and **about 1,200 changed lines in Natron's files in total**, none over 300 lines (6 and
+  900 until `.sng6`, 5 and 800 until `.sng5`).
 - **None in the files the fork is busy rewriting** (the viewer's colour path, the 3D workspace, the properties panels
   of 3D nodes) unless Niik-l takes it.
 - When the budget is full, a new patch replaces an old one or waits.
@@ -48,4 +54,4 @@ Each patch is a `git format-patch` file in this folder, listed in `series`, whos
 changes, kept for offering them and for re-applying them on a new release (`git am layer/patches/000*.patch` on his
 tag, when a merge conflicts). Since there are patches, the build is made from source (`../README.md`, "Building from
 source"), and `upstream.toml`'s `[patches] count` says how many. The next candidates, in order, are in `../GAPS.md`
-(shortcut import and export in Natron's shortcut editor, Tab search favourites, centre the node graph on a node).
+(shortcut import and export in Natron's shortcut editor, the Tab search's menu-path column, centre the node graph on a node).
