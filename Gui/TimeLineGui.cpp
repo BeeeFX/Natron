@@ -730,9 +730,12 @@ TimeLineGui::paintGL()
         }
 
         QString currentFrameStr = _imp->isTimeFormatFrames ? QString::number(currentTime) : timecodeString(currentTime, fps);
-        double cursorTextXposWidget = cursorBtmWidgetCoord.x();
+        // Nuke's compact ruler: the current frame's number beside its marker (and the in and out points' beside their
+        // lines, below) rather than over it, so the ruler needs one line of text less.
+        double cursorTextXposWidget = cursorBtmWidgetCoord.x() + (nukeRuler ? cursorWidth / 2. + TO_DPIX(2) : 0.);
         double cursorTextPos = toTimeLine(cursorTextXposWidget);
-        renderText(cursorTextPos, cursorTopLeft.y(), currentFrameStr, actualCursorColor, *_imp->_textFont, Qt::AlignHCenter);
+        renderText(cursorTextPos, nukeRuler ? cursorBtm.y() : cursorTopLeft.y(), currentFrameStr, actualCursorColor, *_imp->_textFont,
+                   nukeRuler ? Qt::AlignLeft : Qt::AlignHCenter);
         glBegin(GL_POLYGON);
         glVertex2f( cursorBtm.x(), cursorBtm.y() );
         glVertex2f( cursorTopLeft.x(), cursorTopLeft.y() );
@@ -750,10 +753,10 @@ TimeLineGui::paintGL()
             if ( ( leftBoundBtm.x() >= btmLeft.x() ) && ( leftBoundBtmRight.x() <= topRight.x() ) ) {
                 if (leftBound != currentTime) {
                     QString leftBoundStr( _imp->isTimeFormatFrames ? QString::number(leftBound) : timecodeString(leftBound, fps) );
-                    double leftBoundTextXposWidget = toWidgetCoordinates( ( leftBoundBtm.x() + leftBoundBtmRight.x() ) / 2., 0 ).x();
+                    double leftBoundTextXposWidget = nukeRuler ? leftBoundWidgetCoord.x() - TO_DPIX(3) : toWidgetCoordinates( ( leftBoundBtm.x() + leftBoundBtmRight.x() ) / 2., 0 ).x();
                     double leftBoundTextPos = toTimeLine(leftBoundTextXposWidget);
-                    renderText(leftBoundTextPos, leftBoundTop.y(),
-                               leftBoundStr, boundsColor, *_imp->_textFont, Qt::AlignHCenter);
+                    renderText(leftBoundTextPos, nukeRuler ? leftBoundBtm.y() : leftBoundTop.y(),
+                               leftBoundStr, boundsColor, *_imp->_textFont, nukeRuler ? Qt::AlignRight : Qt::AlignHCenter);
                 }
                 glColor4f(boundsR, boundsG, boundsB, 1.);
                 if (nukeRuler) {
@@ -776,10 +779,10 @@ TimeLineGui::paintGL()
             if ( ( rightBoundBtmLeft.x() >= btmLeft.x() ) && ( rightBoundBtm.x() <= topRight.x() ) ) {
                 if ( (rightBound != currentTime) && (rightBound != leftBound) ) {
                     QString rightBoundStr( _imp->isTimeFormatFrames ? QString::number(rightBound) : timecodeString(rightBound, fps) );
-                    double rightBoundTextXposWidget = toWidgetCoordinates( ( rightBoundBtm.x() + rightBoundBtmLeft.x() ) / 2., 0 ).x();
+                    double rightBoundTextXposWidget = nukeRuler ? rightBoundWidgetCoord.x() + TO_DPIX(3) : toWidgetCoordinates( ( rightBoundBtm.x() + rightBoundBtmLeft.x() ) / 2., 0 ).x();
                     double rightBoundTextPos = toTimeLine(rightBoundTextXposWidget);
-                    renderText(rightBoundTextPos, rightBoundTop.y(),
-                               rightBoundStr, boundsColor, *_imp->_textFont, Qt::AlignHCenter);
+                    renderText(rightBoundTextPos, nukeRuler ? rightBoundBtm.y() : rightBoundTop.y(),
+                               rightBoundStr, boundsColor, *_imp->_textFont, nukeRuler ? Qt::AlignLeft : Qt::AlignHCenter);
                 }
                 glColor4f(boundsR, boundsG, boundsB, 1.);
                 glCheckError();

@@ -19,7 +19,8 @@ it expects (a release that changed them): nothing breaks, that part just stays N
   under it the frame rate and time format on the left, the loop mode, then in the middle the set-in button, first
   frame, previous keyframe, previous frame, play backward, the current frame, play, next frame, next keyframe, last
   frame and the set-out button, then the frame increment; the viewers' lock on the right. The ruler itself is drawn
-  by Natron (core patch 0004's ``timelineRulerNuke``).
+  by Natron (core patch 0006's ``timelineRulerNuke``); with it the ruler and the bar are as compact as Nuke's (the
+  current frame's number beside its marker, the bar as tall as its 18-pixel buttons).
 - **The properties panels' header in Nuke's order**: the collapse button first, the name field taking the width,
   the colour, undo, redo and revert buttons after it, help, float and close at the right end. Panels opened later
   are arranged too (``watch``).
@@ -209,9 +210,27 @@ PLAYER_NAMES = ("in_button", "in_point", "fps_switch", "fps_label", "fps", "time
 NUKE_PLAYER = ("fps_switch", 3, "fps_label", "fps", "time_format", "|", "loop", "turbo", "~", "in_button", "first",
                "prev_key", "prev_frame", "play_back", "current", "play", "next_frame", "next_key", "last",
                "out_button", 8, "prev_incr", "incr", "next_incr", "~", "sync")
-PLAYER_BUTTON = (26, 20)  # Nuke's playback buttons: a little wider than tall
+PLAYER_BUTTON = (24, 18)  # Nuke's playback buttons: a little wider than tall
+PLAYER_ROW = 20  # the playback bar's height: its buttons and fields, a pixel above and below
 POINT_WIDTH = 46  # the in and out fields at the ruler's ends
-RULER_HEIGHT = 54  # Nuke's ruler: the current frame's number, its marker, the ticks, the cached line, the numbers
+RULER_HEIGHT = 54  # Natron's ruler drawn as Natron's (current frame's number over its marker): room for both lines
+
+
+def ruler_height(ruler: Any) -> int:
+    """The ruler's height. Drawn as Nuke's (preference ``timelineRulerNuke``, this fork's builds), the current frame's
+    number sits beside its marker, so the ruler is as compact as Nuke's: a line for the marker, the ticks and the
+    numbers beside them, and a line for the frame numbers (Foundry's timeline picture: the ruler a little more than
+    five digits tall). Otherwise room for Natron's two lines of text over the ticks."""
+    if compat.setting_value("timelineRulerNuke") is not True:
+        return max(ruler.minimumHeight(), RULER_HEIGHT)
+    # The ruler draws its text in Natron's font at its "Font size" preference (Gui/TimeLineGui.cpp), not the
+    # widget's: a line of frame numbers, the gap to the ticks' baseline (5), the marker's number standing on it, and
+    # a few pixels around.
+    qt = compat.qt_modules()
+    font = qt.QtGui.QFont(ruler.font())
+    font.setPointSizeF(float(compat.setting_value("fontSize") or font.pointSizeF()))
+    metrics = qt.QtGui.QFontMetrics(font)
+    return metrics.height() + round(metrics.capHeight()) + 11
 
 
 def arrange_player(viewer: Any, bar: Any, qt: Any) -> bool:
@@ -226,18 +245,27 @@ def arrange_player(viewer: Any, bar: Any, qt: Any) -> bool:
         return False
     widgets = dict(zip(PLAYER_NAMES, found))
     relayout(qt, bar, NUKE_PLAYER, widgets)
+    compact = compat.setting_value("timelineRulerNuke") is True
     for name in NUKE_PLAYER:
         if isinstance(name, str) and kind(widgets.get(name)) == "QPushButton":
             widgets[name].setFixedSize(*PLAYER_BUTTON)
+        elif compact and isinstance(name, str) and name in widgets:  # not "|" and "~"
+            widgets[name].setMaximumHeight(PLAYER_BUTTON[1])  # fields and drop-downs as tall as the buttons
+    if compact:
+        bar.setFixedHeight(PLAYER_ROW)
     widgets["current"].setObjectName("SngCurrentFrame")
     # The ruler's row: [in] ruler [out], a layout inside the viewer's own, so the ruler (an OpenGL widget) keeps its
     # parent; only the two fields move to the viewer.
     ruler = timeline[0]
-    ruler.setMinimumHeight(max(ruler.minimumHeight(), RULER_HEIGHT))  # room for the current frame's number on top
+    height = ruler_height(ruler)
+    if height < RULER_HEIGHT:
+        ruler.setFixedHeight(height)  # smaller than Natron's own size hint
+    else:
+        ruler.setMinimumHeight(height)
     index = layout.indexOf(ruler)
     layout.removeWidget(ruler)
     row = qt.QtWidgets.QHBoxLayout()
-    row.setContentsMargins(2, 2, 2, 0)
+    row.setContentsMargins(2, 1, 2, 0)
     row.setSpacing(2)
     for name, object_name in (("in_point", "SngInPoint"), ("out_point", "SngOutPoint")):
         field = widgets[name]

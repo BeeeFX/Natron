@@ -1,4 +1,4 @@
-From a8cbc4a614aad2baf3867f97245f704f1503da9f Mon Sep 17 00:00:00 2001
+From 0813eb8b001b63a45ed5a2f8c7622011b3ec9935 Mon Sep 17 00:00:00 2001
 From: "Baptiste G." <70719480+BeeeFX@users.noreply.github.com>
 Date: Fri, 30 Oct 2026 15:55:30 +0000
 Subject: [PATCH] Timeline ruler, sliders, check boxes and drop-downs
@@ -7,7 +7,9 @@ Subject: [PATCH] Timeline ruler, sliders, check boxes and drop-downs
 - timelineRulerNuke (Appearance > Main Window; off by default, Natron's ruler as before): the timeline's frame ruler
   without its axis line, with short ticks on every step and taller ones where a number can sit, all rising from one
   baseline, the cached frames' line between the ticks and the numbers, the playback in and out points as upright
-  lines through the ruler, and the numbers in the regular weight.
+  lines through the ruler, and the numbers in the regular weight; the current frame's number beside its marker and
+  the in and out points' beside their lines (not over them), so the ruler needs one line of text less and can be as
+  compact as Nuke's (since .sng7).
 - sliderHandleBar (patch 0004's preference) now also draws the scale as Nuke's: a dark groove for a baseline, dark
   ticks rising from it, dark numbers.
 - knobWidgetsShaded (off by default): a ticked check box shows a small cross inside its square and a plain one is
@@ -17,17 +19,17 @@ Subject: [PATCH] Timeline ruler, sliders, check boxes and drop-downs
 Core patch 0006 of the BeeeFX fork (layer/patches/).
 
 Gap: layer/GAPS.md, "Nuke's look and habits" (the timeline and the properties panels' widgets).
-Size: 5 files, 126 lines added, 33 removed.
+Size: 5 files, 137 lines added, 41 removed.
 upstream: not offered (Baptiste: keep the fork private for now).
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
- Engine/Settings.cpp        | 14 ++++++
- Gui/AnimatedCheckBox.cpp   | 17 ++++++-
- Gui/ComboBox.cpp           | 14 +++++-
- Gui/ScaleSliderQWidget.cpp | 24 +++++++---
- Gui/TimeLineGui.cpp        | 90 ++++++++++++++++++++++++++++----------
- 5 files changed, 126 insertions(+), 33 deletions(-)
+ Engine/Settings.cpp        |  14 +++++
+ Gui/AnimatedCheckBox.cpp   |  17 +++++-
+ Gui/ComboBox.cpp           |  14 ++++-
+ Gui/ScaleSliderQWidget.cpp |  24 ++++++--
+ Gui/TimeLineGui.cpp        | 109 ++++++++++++++++++++++++++-----------
+ 5 files changed, 137 insertions(+), 41 deletions(-)
 
 diff --git a/Engine/Settings.cpp b/Engine/Settings.cpp
 index 868f4b58e..93bd09d38 100644
@@ -190,7 +192,7 @@ index 1bc50072f..883602dd1 100644
                  p.setPen(c);
  
 diff --git a/Gui/TimeLineGui.cpp b/Gui/TimeLineGui.cpp
-index 19825f6f5..bb9fba629 100644
+index 19825f6f5..b41d7ef71 100644
 --- a/Gui/TimeLineGui.cpp
 +++ b/Gui/TimeLineGui.cpp
 @@ -67,6 +67,17 @@ GCC_DIAG_UNUSED_PRIVATE_FIELD_ON
@@ -285,8 +287,32 @@ index 19825f6f5..bb9fba629 100644
              glEnd();
              glCheckErrorIgnoreOSXBug();
  
-@@ -732,11 +756,20 @@ TimeLineGui::paintGL()
-                                leftBoundStr, boundsColor, *_imp->_textFont, Qt::AlignHCenter);
+@@ -706,9 +730,12 @@ TimeLineGui::paintGL()
+         }
+ 
+         QString currentFrameStr = _imp->isTimeFormatFrames ? QString::number(currentTime) : timecodeString(currentTime, fps);
+-        double cursorTextXposWidget = cursorBtmWidgetCoord.x();
++        // Nuke's compact ruler: the current frame's number beside its marker (and the in and out points' beside their
++        // lines, below) rather than over it, so the ruler needs one line of text less.
++        double cursorTextXposWidget = cursorBtmWidgetCoord.x() + (nukeRuler ? cursorWidth / 2. + TO_DPIX(2) : 0.);
+         double cursorTextPos = toTimeLine(cursorTextXposWidget);
+-        renderText(cursorTextPos, cursorTopLeft.y(), currentFrameStr, actualCursorColor, *_imp->_textFont, Qt::AlignHCenter);
++        renderText(cursorTextPos, nukeRuler ? cursorBtm.y() : cursorTopLeft.y(), currentFrameStr, actualCursorColor, *_imp->_textFont,
++                   nukeRuler ? Qt::AlignLeft : Qt::AlignHCenter);
+         glBegin(GL_POLYGON);
+         glVertex2f( cursorBtm.x(), cursorBtm.y() );
+         glVertex2f( cursorTopLeft.x(), cursorTopLeft.y() );
+@@ -726,35 +753,53 @@ TimeLineGui::paintGL()
+             if ( ( leftBoundBtm.x() >= btmLeft.x() ) && ( leftBoundBtmRight.x() <= topRight.x() ) ) {
+                 if (leftBound != currentTime) {
+                     QString leftBoundStr( _imp->isTimeFormatFrames ? QString::number(leftBound) : timecodeString(leftBound, fps) );
+-                    double leftBoundTextXposWidget = toWidgetCoordinates( ( leftBoundBtm.x() + leftBoundBtmRight.x() ) / 2., 0 ).x();
++                    double leftBoundTextXposWidget = nukeRuler ? leftBoundWidgetCoord.x() - TO_DPIX(3) : toWidgetCoordinates( ( leftBoundBtm.x() + leftBoundBtmRight.x() ) / 2., 0 ).x();
+                     double leftBoundTextPos = toTimeLine(leftBoundTextXposWidget);
+-                    renderText(leftBoundTextPos, leftBoundTop.y(),
+-                               leftBoundStr, boundsColor, *_imp->_textFont, Qt::AlignHCenter);
++                    renderText(leftBoundTextPos, nukeRuler ? leftBoundBtm.y() : leftBoundTop.y(),
++                               leftBoundStr, boundsColor, *_imp->_textFont, nukeRuler ? Qt::AlignRight : Qt::AlignHCenter);
                  }
                  glColor4f(boundsR, boundsG, boundsB, 1.);
 -                glBegin(GL_POLYGON);
@@ -311,7 +337,16 @@ index 19825f6f5..bb9fba629 100644
                  glCheckErrorIgnoreOSXBug();
              }
  
-@@ -750,11 +783,20 @@ TimeLineGui::paintGL()
+             if ( ( rightBoundBtmLeft.x() >= btmLeft.x() ) && ( rightBoundBtm.x() <= topRight.x() ) ) {
+                 if ( (rightBound != currentTime) && (rightBound != leftBound) ) {
+                     QString rightBoundStr( _imp->isTimeFormatFrames ? QString::number(rightBound) : timecodeString(rightBound, fps) );
+-                    double rightBoundTextXposWidget = toWidgetCoordinates( ( rightBoundBtm.x() + rightBoundBtmLeft.x() ) / 2., 0 ).x();
++                    double rightBoundTextXposWidget = nukeRuler ? rightBoundWidgetCoord.x() + TO_DPIX(3) : toWidgetCoordinates( ( rightBoundBtm.x() + rightBoundBtmLeft.x() ) / 2., 0 ).x();
+                     double rightBoundTextPos = toTimeLine(rightBoundTextXposWidget);
+-                    renderText(rightBoundTextPos, rightBoundTop.y(),
+-                               rightBoundStr, boundsColor, *_imp->_textFont, Qt::AlignHCenter);
++                    renderText(rightBoundTextPos, nukeRuler ? rightBoundBtm.y() : rightBoundTop.y(),
++                               rightBoundStr, boundsColor, *_imp->_textFont, nukeRuler ? Qt::AlignLeft : Qt::AlignHCenter);
                  }
                  glColor4f(boundsR, boundsG, boundsB, 1.);
                  glCheckError();

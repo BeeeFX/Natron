@@ -169,6 +169,38 @@ def run(command: list[str], env: dict[str, str], what: str, timeout: int = TIMEO
     return done.returncode, output
 
 
+FROZEN = 30  # seconds one step of the probe's viewer switch may take before Natron counts as frozen
+
+
+def watch_window(command: list[str], env: dict[str, str], marker: Path, say: Say, timeout: int = 300) -> int:
+    """Natron's window with the probe, stopped when it doesn't finish in time or freezes in the viewer switch (its
+    step file still says "started ..." after FROZEN seconds: Natron 2.6 froze on Shift+1 in the viewer)."""
+    print("--- Natron's window with the layer and the probe (about 50 s)", flush=True)
+    started = time.monotonic()
+    process = subprocess.Popen(command, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                               stderr=subprocess.DEVNULL)
+    while process.poll() is None:
+        time.sleep(0.5)
+        frozen = ""
+        try:
+            text = marker.read_text(encoding="utf-8")
+            if text.startswith("started ") and time.time() - marker.stat().st_mtime > FROZEN:
+                frozen = text[len("started "):]
+        except OSError:
+            pass
+        if frozen or time.monotonic() - started > timeout:
+            process.kill()
+            process.wait()
+            if frozen:
+                say(False, f"Natron doesn't freeze while the viewer's inputs are switched: it froze at \"{frozen}\" "
+                    "(stopped)")
+            else:
+                print(f"    it didn't finish within {timeout} s (stopped)")
+            return 1
+    print(f"    (exit code {process.returncode}, {time.monotonic() - started:.1f} s)", flush=True)
+    return process.returncode
+
+
 def unit_tests(say: Say) -> None:
     code, output = run([sys.executable, str(HERE / "test_nuke_prefs.py")], dict(os.environ),
                        "the Nuke preferences reader's tests (no Natron)")  # fmt: skip
@@ -192,8 +224,11 @@ def repository_checks(say: Say) -> None:
     import tomllib
 
     upstream = tomllib.loads((LAYER / "upstream.toml").read_text(encoding="utf-8"))
-    say(len(series) == upstream["patches"]["count"] <= upstream["patches"]["budget_count"],
-        f"the patch series ({len(series)}) matches upstream.toml and the budget")
+    fixes = upstream["patches"].get("fixes", 0)  # fixes of Niik-l's bugs count apart from the look's budget
+    say(len(series) == upstream["patches"]["count"] + fixes and upstream["patches"]["count"]
+        <= upstream["patches"]["budget_count"],
+        f"the patch series ({len(series)}: {upstream['patches']['count']} for the look, {fixes} fixes) matches "
+        "upstream.toml and the budget")
     plugin = LAYER / "ext" / "plugin"
     run_by_natron = [*plugin.rglob("*.py"), LAYER / "ext" / "python" / "natron_layer" / "flipbook_job.py",
                      *HERE.glob("*_checks.py"), *(HERE / "gui_probe").glob("*.py")]
@@ -305,7 +340,7 @@ def gui_checks(renderer: str, tmp: Path, say: Say) -> None:
     env["NATRON_LAYER_SMOKE_REFERENCES"] = str(tmp / "out" / "toolset_references.json")
     if os.environ.get("NATRON_LAYER_PROBE_OFFSCREEN") == "1" or "--offscreen" in sys.argv:
         env["NATRON_LAYER_PROBE_OFFSCREEN"] = "1"  # the probe moves the window out of sight (someone at the PC)
-    code, _output = run([str(natron)], env, "Natron's window with the layer and the probe (about 40 s)", timeout=300)
+    code = watch_window([str(natron)], env, tmp / "gui" / "out" / "viewer_switch.txt", say)
     report = tmp / "gui" / "out" / "gui_probe.json"
     if not report.is_file():
         say(False, "the probe in Natron's window wrote its report")
