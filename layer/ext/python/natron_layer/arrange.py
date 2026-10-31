@@ -223,7 +223,14 @@ def ruler_height(ruler: Any) -> int:
     five digits tall). Otherwise room for Natron's two lines of text over the ticks."""
     if compat.setting_value("timelineRulerNuke") is not True:
         return max(ruler.minimumHeight(), RULER_HEIGHT)
-    return 2 * ruler.fontMetrics().height() + 6
+    # The ruler draws its text in Natron's font at its "Font size" preference (Gui/TimeLineGui.cpp), not the
+    # widget's: a line of frame numbers, the gap to the ticks' baseline (5), the marker's number standing on it, and
+    # a few pixels around.
+    qt = compat.qt_modules()
+    font = qt.QtGui.QFont(ruler.font())
+    font.setPointSizeF(float(compat.setting_value("fontSize") or font.pointSizeF()))
+    metrics = qt.QtGui.QFontMetrics(font)
+    return metrics.height() + round(metrics.capHeight()) + 11
 
 
 def arrange_player(viewer: Any, bar: Any, qt: Any) -> bool:
@@ -242,7 +249,7 @@ def arrange_player(viewer: Any, bar: Any, qt: Any) -> bool:
     for name in NUKE_PLAYER:
         if isinstance(name, str) and kind(widgets.get(name)) == "QPushButton":
             widgets[name].setFixedSize(*PLAYER_BUTTON)
-        elif compact and isinstance(name, str):
+        elif compact and isinstance(name, str) and name in widgets:  # not "|" and "~"
             widgets[name].setMaximumHeight(PLAYER_BUTTON[1])  # fields and drop-downs as tall as the buttons
     if compact:
         bar.setFixedHeight(PLAYER_ROW)
