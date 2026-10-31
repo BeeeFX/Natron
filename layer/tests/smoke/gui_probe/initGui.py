@@ -173,6 +173,10 @@ def _layer_probe():
             drawing_checks(app, natron_app)
         except Exception:
             say(False, "the node graph's drawing checks raised:\n" + traceback.format_exc())
+        try:
+            viewer_switch_checks(app, window, natron_app)
+        except Exception:
+            say(False, "the viewer switch's checks raised:\n" + traceback.format_exc())
         if out:
             picture = os.path.join(out, "natron_window.png")
             window.grab().save(picture)
@@ -356,6 +360,17 @@ def _layer_probe():
                                                          - rulers[0].mapTo(window, QtCore.QPoint(0, 0)).y()) <= 4
                                                      for p in points)
         say(bool(beside), "the playback in and out points sit at the frame ruler's ends (" + str(len(points)) + " fields)")
+        compact = NatronEngine.natron.getSettings().getParam("timelineRulerNuke")
+        if compact is not None and compact.get() and rulers:
+            from natron_layer import arrange
+
+            ruler = rulers[0]
+            bars = [w for w in window.findChildren(QtWidgets.QWidget) if w.objectName() == "SngPlayerBar"]
+            wanted = arrange.ruler_height(ruler)
+            say(ruler.height() == wanted and wanted < arrange.RULER_HEIGHT and bars
+                and bars[0].height() == arrange.PLAYER_ROW,
+                "the timeline is as compact as Nuke's: the ruler " + str(ruler.height()) + " px (wanted " + str(wanted)
+                + ", Natron's own 45), the playback bar " + (str(bars[0].height()) if bars else "?") + " px")
         # This fork's builds draw the properties rows and parts of the node graph like Nuke's (core patches 0004, 0005).
         if patched:
             settings = NatronEngine.natron.getSettings()
@@ -370,6 +385,80 @@ def _layer_probe():
             favourites = settings.getParam("tabFavourites")
             say(favourites is not None and favourites.get() == "", "the Tab search's favourites are the artist's: the look "
                 "sets none (patch 0008)")
+
+    def viewer_switch_checks(app, window, natron_app):
+        """The viewer's inputs switched by Natron's API and by the keys (1, Shift+1 and AZERTY's unshifted 1 key, in
+        the viewer and in the node graph) on a comp like an artist's, every step drawn: Natron 2.6 froze on Shift+1
+        in the viewer (its B side turned the wipe on while holding the lock the viewer's drawing waits for; fixed in
+        core patch 0009). Each step is written to viewer_switch.txt first, so run_smoke.py stops a frozen Natron
+        and names the step."""
+        import NatronEngine
+        from qtpy.QtTest import QTest
+        from natron_layer import compat
+
+        marker = os.path.join(out, "viewer_switch.txt")
+
+        def step(name):
+            with open(marker, "w", encoding="utf-8") as file:
+                file.write("started " + name)
+            window.grab()  # the viewer and the node graph drawn, as on screen (the window may be out of sight)
+            app.processEvents()
+
+        Qt = QtCore.Qt
+        compat.select_nodes(natron_app, [])
+        source = natron_app.createNode("net.sf.openfx.CheckerBoardPlugin")
+        made, previous = [source], source
+        for _i in range(3):
+            compat.select_nodes(natron_app, [])
+            node = natron_app.createNode("net.sf.openfx.ColorCorrectPlugin")
+            compat.connect(node, 0, previous)
+            made.append(node)
+            previous = node
+        cc1, cc2, cc3 = made[1:]
+        viewer_node = natron_app.getNode("Viewer1") or natron_app.createNode("fr.inria.built-in.Viewer")
+        viewer = natron_app.getViewer(viewer_node.getScriptName())
+        gl = [w for w in widgets_named(app, "ViewerGL") if w.isVisible()]
+        graph = [w for w in widgets_named(app, "NodeGraph") if w.isVisible()]
+        none = NatronEngine.Natron.ViewerCompositingOperatorEnum.eViewerCompositingOperatorNone
+
+        step("API: Viewer1's input 1 to ColorCorrect3, A and B on it")
+        compat.connect(viewer_node, 0, cc3)
+        viewer.setAInput(0)
+        viewer.setBInput(0)
+        step("API: Viewer1's input 2 to ColorCorrect2")
+        compat.connect(viewer_node, 1, cc2)
+        first = viewer_node.getInput(0)
+        say(first is not None and first.getScriptName() == cc3.getScriptName(),
+            "the viewer's inputs set through Natron's API (input 1: " + (first.getScriptName() if first else "none") + ")")
+        for where, widgets in (("viewer", gl), ("node graph", graph)):
+            if not widgets:
+                say(False, "the " + where + " is in the window for the viewer keys")
+                continue
+            target = widgets[0]
+            for label, key, modifiers, node in (("1", Qt.Key.Key_1, Qt.KeyboardModifier.NoModifier, cc2),
+                                                 ("Shift+1", Qt.Key.Key_1, Qt.KeyboardModifier.ShiftModifier, cc3),
+                                                 ("& (AZERTY's 1 key)", Qt.Key.Key_Ampersand,
+                                                  Qt.KeyboardModifier.NoModifier, cc1)):
+                viewer.setCompositingOperator(none)  # Shift+1 (B side) then turns the wipe on, where Natron froze
+                compat.select_only(natron_app, node)
+                step(label + " in the " + where + " with " + node.getScriptName() + " selected")
+                target.setFocus()
+                QTest.keyClick(target, key, modifiers)
+                app.processEvents()
+                window.grab()
+        step("the A and B drop-downs' values")
+        for a, b in ((0, 1), (1, 0), (0, 0)):
+            viewer.setAInput(a)
+            viewer.setBInput(b)
+            app.processEvents()
+        window.grab()
+        with open(marker, "w", encoding="utf-8") as file:
+            file.write("done")
+        say(viewer.getBInput() == 0, "the viewer's inputs switched by the API and by 1, Shift+1 and & in the viewer "
+            "and the node graph, every step drawn, without Natron freezing (Natron 2.6 froze on Shift+1 in the viewer)")
+        for node in made:
+            node.destroy()
+        app.processEvents()
 
     def tools(app, natron_app):
         """Roadmap items 5 to 7 in the window: gizmos by their ID, similar colour, the ToolSets pasted with Natron's

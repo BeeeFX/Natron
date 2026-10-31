@@ -1526,7 +1526,7 @@ QLineEdit#SngOutPoint {
     color: rgb(150, 150, 150);
     border: 0px;
     border-radius: 3px;
-    font-size: 11pt;
+    font-size: 10pt;
     padding: 0px;
 }
 
