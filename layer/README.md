@@ -609,6 +609,31 @@ read by name, the look setting the Nuke value for the session:
   preference `tabFavourites` (Nodegraph, the rows' text separated by `|`; clearing it removes them all), saved with
   Natron's preferences when the artist clicks a star, never set by the look.
 
+## The compact timeline and the viewer's B side (`.sng7`)
+
+- **The timeline as compact as Nuke's** (Baptiste, after `.sng6`: "styled right, but in Nuke it occupies less
+  space"). Measured on Foundry's timeline picture ("Using the Viewer Controls", comp_timeline2.png: pixel heights
+  read, nothing kept): Nuke's ruler is a little more than five digits tall, with the current frame's number standing
+  on its marker's level rather than a line above it; its ruler and playback bar take about 60 % of the height
+  `.sng6` gave them. With `timelineRulerNuke` (patch 0006), the current frame's number is drawn beside its orange
+  marker and the in and out points' numbers beside their red lines (left of the in line, right of the out line), so
+  `arrange.py` gives the ruler two lines of text (Natron's ruler font at its "Font size" preference, a few pixels
+  around: 40 px instead of 54 on a 96-dpi screen) and the playback bar its buttons' height (buttons 24 x 18, fields
+  and drop-downs at most 18, the bar 20 px instead of about 24). The in and out fields' numbers are 10 pt (11 before).
+  In all, 60 px instead of 78; Natron's own is about 73. Without the preference, or with "Natron's own look for me",
+  the ruler and bar are Natron's.
+- **Patch 0009: Shift+1 in the viewer froze Natron** (Baptiste, on `.sng6`). `InspectorNode::refreshActiveInputs`
+  turned the viewer's wipe on (the B side set while an A input is shown) while holding the viewer's active-inputs
+  lock; showing the B info bar repaints the viewer at once under Qt 6, its drawing asks for the active inputs and
+  waits for that same lock forever. Found with a stack of the frozen window (gdb on the unstripped `Natron.exe` in
+  the build tree); the same steps froze Niik-l's own 2026.10.02 release without the layer and our `.sng1` to
+  `.sng6`. The wipe is now turned on once the lock is released. A fix of his code, so no preference, and counted
+  apart from the look's budget (`patches/README.md`).
+- **The smoke test** switches the viewer's inputs on a Checkerboard > ColorCorrect x 3 > Viewer comp by the API and
+  by 1, Shift+1 and AZERTY's unshifted 1 key (&) in the viewer and in the node graph (Qt's test keyboard, which goes
+  through the shortcuts as a real key does), drawing the window after each step; `run_smoke.py` stops Natron when a
+  step takes over 30 seconds and names it. On `.sng6` it stops at "Shift+1 in the viewer".
+
 ## Writing code here
 
 - Natron and Qt only through `compat` (the adapter): one place to fix when the fork's API moves.
