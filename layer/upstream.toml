@@ -37,12 +37,13 @@ also_passed = ["natron-2.6-2026.09.20"]
 # Since .sng3 the builds are made from source (README.md, "Building from source"): the node graph drawing, the
 # properties panel header name, errors and selection, and since .sng4 the properties rows and the node graph's Viewer
 # nodes, input labels, backdrops and badges, and since .sng5 the timeline's ruler, the sliders' scale, check boxes and
-# drop-downs (patches/README.md). The budget grew by one patch and 100 lines for .sng5 (1 November 2026): the ruler
-# and the knobs' widgets are drawn by Natron's C++ code, out of a stylesheet's reach.
-count = 6
-budget_count = 6
-budget_lines = 900
+# drop-downs, and since .sng6 the viewer's info bar, the curves' colours, the dope sheet's keys, the selected node and
+# the Tab search's favourites (patches/README.md). The budget grew by one patch and 100 lines for .sng5, and by two
+# patches and 300 lines for .sng6 (1 November 2026): all are drawn by Natron's C++ code, out of a stylesheet's reach.
+count = 8
+budget_count = 8
+budget_lines = 1200
 
 [build]
 # How a packaged build is named (tools/package_build.py): 2.6.0+<release date>.sng<n>.
-version = "2.6.0+2026.10.02.sng4"
+version = "2.6.0+2026.10.02.sng6"

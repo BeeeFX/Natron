@@ -358,11 +358,15 @@ def _layer_probe():
             settings = NatronEngine.natron.getSettings()
             wanted = ("sliderHandleBar", "knobDimensionButtonLast", "knobAnimationButton", "pageTabNodeName",
                       "linkLabelNearInput", "viewerNodePointed", "backdropLabelOnly", "nodeBadgesFlat", "nodeNameKeepsSize",
-                      "timelineRulerNuke", "knobWidgetsShaded")
+                      "timelineRulerNuke", "knobWidgetsShaded", "nodeSelectedFill", "viewerInfoNuke",
+                      "animationEditorsNuke", "tabSearchNuke")
             missing = [n for n in wanted if settings.getParam(n) is None]
             off = [n for n in wanted if n not in missing and not settings.getParam(n).get()]
-            say(not missing and not off, "the Nuke drawing preferences of patches 0004 to 0006 are on for the session"
+            say(not missing and not off, "the Nuke drawing preferences of patches 0004 to 0008 are on for the session"
                 + (" (missing: " + ", ".join(missing) + ")" if missing else "") + (" (off: " + ", ".join(off) + ")" if off else ""))
+            favourites = settings.getParam("tabFavourites")
+            say(favourites is not None and favourites.get() == "", "the Tab search's favourites are the artist's: the look "
+                "sets none (patch 0008)")
 
     def tools(app, natron_app):
         """Roadmap items 5 to 7 in the window: gizmos by their ID, similar colour, the ToolSets pasted with Natron's

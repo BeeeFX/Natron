@@ -16,7 +16,7 @@ Natron's own code changed: costly at every release, so few (see `patches/README.
 
 | # | Nuke | Natron today | Route | Status |
 |---|---|---|---|---|
-| 1 | Tab node search | Has it, ranked by use; no favourites | E: Nuke names as aliases and gizmos. C: favourites and a menu-path column (about 150–300 lines) | **E done** (13 aliases, `Copy [Nuke]`, and 6 gizmos); C planned (item 9) |
+| 1 | Tab node search | Has it, ranked by use; no favourites | E: Nuke names as aliases and gizmos. C: favourites and a menu-path column (about 150–300 lines) | **E done** (13 aliases, `Copy [Nuke]`, and 6 gizmos); **favourites done** (`.sng6`, patch 0008: starred, listed first, weights as green dots, typed letters bold); menu-path column planned (item 9) |
 | 2 | Node graph behaviour and keys | Mostly (Dot, Backdrop, Ctrl+G, D, Ctrl+F, snap, Merge to A, colours per class) | E: Nuke's keys it lacks, preferences, select similar. Bookmarks: E panel plus C "centre on node" | **E done** for keys (K, I, `\`, Shift+Y, Alt+B, Alt+F), preferences and Select similar class / colour; bookmarks planned (item 12) |
 | 3 | Viewer | Good, with the fork's OCIO display and view | E: flipbook through RV, ImageStatistics. C: input process | **flipbook done** (Alt+F: NatronRenderer in the background, then RV or a movie); input process not planned (unless Niik-l wants it) |
 | 4 | Properties bin | Partly (max panels, floating panels) | E: max panels. C: several and pinned bins | **E done** (10 panels); C not planned |
@@ -103,10 +103,16 @@ collapse triangle first, the name field wide), the sliders' scale as a dark groo
 dark khaki handle, fields a little lighter than the panel with a dark edge, shaded buttons, check boxes with a small
 cross, shaded drop-downs, the panel's tabs white and bold.
 
-Still Natron's (next): the info bar's content and order (Natron's labels, "RoD" for Nuke's "bbox"), the curve
-editor's curve colours (Nuke draws r, g, b in red, green, blue) and its own drawing, the selected node (tinted, not
-Nuke's selection colour), the node's channel marks Nuke draws under its name, the Tab menu's favourites and weights,
-a few icons (combo box arrows, cursors, the application's).
+Done in `.sng6` (1 November 2026, patches 0007 and 0008, measured against Foundry's guide pictures): the viewer's info bar
+worded and ordered as Nuke's ("bbox:", "channels: rgba" after it, Nuke's brighter red, green and blue values with a
+white alpha, "H: 51 S:0.05 V:0.86  L: 0.84822"); the r, g, b and a curves red, green, blue and white, the dope
+sheet's keys as narrow grey bars; a selected node filled flat with Nuke's selection colour inside a rim of its own
+colour, its links the same colour; the Tab search with favourites first (a star on each row, a line under the last
+one), a green dot for the nodes made most often, the typed letters in bold.
+
+Still Natron's (next): the info bar's spacing (Natron spreads its parts across the bar, Nuke packs them from the
+left) and its values' five decimals, the curve editor's own drawing (grid, labels), the node's channel marks Nuke
+draws under its name, the Tab menu's menu-path column, a few icons (combo box arrows, cursors, the application's).
 
 ## Roadmap (research section 2.7), and where this layer is
 
@@ -124,7 +130,7 @@ a few icons (combo box arrows, cursors, the application's).
    tool library is the Singerie side, to build).
 8. Shortcut import and export in Natron's shortcut editor (C, about 150–300 lines, offered to Niik-l and
    NatronGitHub).
-9. Tab search favourites and a menu-path column (C).
+9. Tab search favourites (C) — **done** (`.sng6`, patch 0008); a menu-path column (C) still to do.
 10. Cryptomatte OpenFX plug-in.
 11. Text and burn-ins: Arena's Text ships with Niik-l's 2026.10.02 release and renders headless (checked, above);
     next, a slate and burn-in ToolSet or gizmo on it.
