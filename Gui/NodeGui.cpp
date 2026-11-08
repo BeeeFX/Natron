@@ -39,6 +39,7 @@ CLANG_DIAG_OFF(uninitialized)
 #include <QFontMetrics>
 #include <QTextBlockFormat>
 #include <QTextCursor>
+#include <QTextDocument>
 #include <QGridLayout>
 #include <QCursor>
 #include <QFile>
@@ -126,6 +127,15 @@ using std::make_pair;
 // are NODE_WIDTH, NODE_HEIGHT and Natron's light yellow).
 static int nodeTileWidth() { return appPTR->getCurrentSettings()->getNodeTileWidth(); }
 static int nodeTileHeight() { return appPTR->getCurrentSettings()->getNodeTileHeight(); }
+
+// Preference nodeLabelTight (read by name): a node as tall as its name needs, as Nuke's, and no operation picture on Merge.
+static bool
+nodeLabelTight()
+{
+    KnobBool* tight = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("nodeLabelTight").get() );
+
+    return tight && tight->getValue();
+}
 
 static QColor
 settingsColor(void (Settings::*getter)(double*, double*, double*) const)
@@ -724,6 +734,9 @@ NodeGui::createGui()
 
 
     _nameItem = new NodeGraphTextItem(getDagGui(), this, false);
+    if ( nodeLabelTight() ) {
+        _nameItem->document()->setDocumentMargin(1); // Qt's 4 around the name made every node taller than the tile
+    }
     _nameItem->setPlainText( QString::fromUtf8( node->getLabel().c_str() ) );
     _nameItem->setDefaultTextColor( QColor(0, 0, 0, 255) );
     //_nameItem->setFont( QFont(appFont,appFontSize) );
@@ -980,9 +993,13 @@ NodeGui::adjustSizeToContent(int* w,
             int pw, ph;
             getSizeWithPreview(&pw, &ph);
             *h = ph;
+        } else if ( nodeLabelTight() ) {
+            *h = std::max( TO_DPIY( nodeTileHeight() ), (int)std::ceil( labelBbox.height() ) + TO_DPIY(3) );
         } else {
             *h = labelBbox.height() * 1.2;
         }
+    } else if ( nodeLabelTight() ) {
+        *h = std::max( *h, (int)std::ceil( labelBbox.height() ) + TO_DPIY(3) );
     } else {
         *h = std::max( (double)*h, labelBbox.height() * 1.2 );
     }
@@ -3420,7 +3437,7 @@ NodeGui::refreshNodeText(const QString & label)
         if (_presetIcon) {
             QPixmap pix;
             getPixmapForMergeOperator(subLabelContent, &pix);
-            if ( pix.isNull() ) {
+            if ( pix.isNull() || nodeLabelTight() ) {
                 _presetIcon->setVisible(false);
             } else {
                 _presetIcon->setVisible(true);

@@ -20,7 +20,8 @@ it expects (a release that changed them): nothing breaks, that part just stays N
   frame, previous keyframe, previous frame, play backward, the current frame, play, next frame, next keyframe, last
   frame and the set-out button, then the frame increment; the viewers' lock on the right. The ruler itself is drawn
   by Natron (core patch 0006's ``timelineRulerNuke``); with it the ruler and the bar are as compact as Nuke's (the
-  current frame's number beside its marker, the bar as tall as its 18-pixel buttons).
+  current frame's number beside its marker). Since round 6 (.sng9) at Nuke's sizes: the viewer's bars 26 pixels
+  high, the info bar 20, the playback buttons 30 x 24 in a 30-pixel row.
 - **The properties panels' header in Nuke's order**: the collapse button first, the name field taking the width,
   the colour, undo, redo and revert buttons after it, help, float and close at the right end. Panels opened later
   are arranged too (``watch``).
@@ -184,6 +185,10 @@ def arrange_viewer(viewer: Any, qt: Any) -> bool:
     relayout(qt, second, NUKE_ROW2, widgets)
     first.setObjectName("SngViewerBar1")
     second.setObjectName("SngViewerBar2")
+    for row in (first, second):
+        row.setFixedHeight(VIEWER_ROW)
+    for info in [w for w in viewer.findChildren(qt.QtWidgets.QWidget) if kind(w) == "InfoViewerWidget"]:
+        info.setFixedHeight(INFO_ROW)
     bar = player_bar(viewer, qt)
     if bar is not None:
         bar.setObjectName("SngPlayerBar")
@@ -210,8 +215,11 @@ PLAYER_NAMES = ("in_button", "in_point", "fps_switch", "fps_label", "fps", "time
 NUKE_PLAYER = ("fps_switch", 3, "fps_label", "fps", "time_format", "|", "loop", "turbo", "~", "in_button", "first",
                "prev_key", "prev_frame", "play_back", "current", "play", "next_frame", "next_key", "last",
                "out_button", 8, "prev_incr", "incr", "next_incr", "~", "sync")
-PLAYER_BUTTON = (24, 18)  # Nuke's playback buttons: a little wider than tall
-PLAYER_ROW = 20  # the playback bar's height: its buttons and fields, a pixel above and below
+PLAYER_BUTTON = (30, 24)  # Nuke's playback buttons, flat boxes a little wider than tall (round 6, .sng9: measured at
+# about 34 x 27 on Foundry's newest timeline picture and 24 high on its older viewer picture; 18 high until .sng8)
+PLAYER_ROW = 30  # the playback bar's height: its buttons and fields, three pixels above and below (Nuke's row: 36)
+VIEWER_ROW = 26  # each of the viewer's two bars, as Nuke's (Foundry's viewer pictures at 1x: 26 and a one-pixel line)
+INFO_ROW = 20  # the viewer's info bar under the picture (Nuke's: 26; Natron's: the font's height, 14 at 11 pixels)
 POINT_WIDTH = 46  # the in and out fields at the ruler's ends
 RULER_HEIGHT = 54  # Natron's ruler drawn as Natron's (current frame's number over its marker): room for both lines
 

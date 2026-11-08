@@ -1127,6 +1127,14 @@ Settings::initializeKnobsNodeGraphDrawing()
                                        "otherwise Ctrl+wheel enlarges the node last clicked while Ctrl is held.") );
     ctrlWheelZooms->setDefaultValue(false);
     _nodegraphColorsTab->addKnob(ctrlWheelZooms);
+    // Read by NodeGui through its name (no member, so this header stays as it is).
+    KnobBoolPtr labelTight = AppManager::createKnob<KnobBool>( this, tr("Nodes as tall as their name") );
+    labelTight->setName("nodeLabelTight");
+    labelTight->setHintToolTip( tr("When checked, a node is only as tall as its name needs (the node height above for a "
+                                   "one-line name) and a Merge shows its operation in words only; otherwise Natron "
+                                   "leaves room around the name and draws the operation's picture on the node.") );
+    labelTight->setDefaultValue(false);
+    _nodegraphColorsTab->addKnob(labelTight);
 
     struct IntDef { KnobIntPtr* knob; const char* name; QString label; int def, min, max; QString hint; };
     const IntDef ints[] = {

@@ -1,8 +1,8 @@
 # Core patches
 
-Changes to Natron's own files (its C++ code, its build), carried on top of Niik-l's releases. **Eight**: three since
-`.sng3` (31 October 2026), two more since `.sng4`, one more since `.sng5`, two more since `.sng6` (1 November 2026);
-about 1,190 changed lines in all, all written so Niik-l can take them as they are: new preferences whose
+Changes to Natron's own files (its C++ code, its build), carried on top of Niik-l's releases. **Nine for the look**:
+three since `.sng3` (31 October 2026), two more since `.sng4`, one more since `.sng5`, two more since `.sng6` (1 November
+2026), one more since `.sng9` (8 November 2026); about 1,250 changed lines in all, and two fixes counted apart, all written so Niik-l can take them as they are: new preferences whose
 defaults are Natron's own behaviour (nothing changes for anyone who doesn't set them), and a name for the stylesheet.
 The layer sets the Nuke-like values for the session, like its other preferences.
 
@@ -20,9 +20,14 @@ The layer sets the Nuke-like values for the session, like its other preferences.
 | `0007-Viewer-info-bar-curves-and-dope-sheet.patch` | `viewerInfoNuke` (the viewer's info bar as Nuke's: "bbox:", "channels: rgba" after it, the values in Nuke's brighter red, green and blue with a white alpha, "H: 51 S:0.05 V:0.86  L: 0.84822"), `animationEditorsNuke` (the r, g, b and a curves red, green, blue and white; the dope sheet's keys as narrow grey bars). | `Engine/Settings.cpp`, `Gui/InfoViewerWidget.cpp`, `Gui/CurveEditor.cpp`, `Gui/DopeSheetView.cpp`; 112 lines added, 18 removed | not offered (kept private for now, Baptiste) |
 | `0008-Selected-node-fill-and-Tab-favourites.patch` (on top of 0001, 0003 and 0005) | `nodeSelectedFill` (a selected node filled flat with the selection colour inside a rim of its own colour, as Nuke's), `tabSearchNuke` and `tabFavourites` (the Tab search with favourites first and a star on each row, a green dot for the nodes made most often, the typed letters bold); since `.sng8` `nodeGraphCtrlWheelZooms` (Ctrl+wheel zooms the node graph like the wheel alone, as Nuke's, instead of Natron's magnifier enlarging the node last clicked). | `Engine/Settings.cpp`, `Gui/NodeGraphRectItem.{h,cpp}`, `Gui/NodeGui.cpp`, `Gui/NodeCreationDialog.cpp`, `Gui/NodeGraph30.cpp`; 193 lines added, 12 removed | not offered (kept private for now, Baptiste) |
 | `0009-Viewer-B-input-freeze.patch` (a fix, since `.sng7`) | **Shift+1 in the viewer froze Natron** (the B side): `InspectorNode::refreshActiveInputs` turned the compare operation on (Wipe) while holding the viewer's active-inputs lock; that shows the B info bar, Qt 6 repaints the viewer at once, and its drawing waited for the same lock forever. The operation is now changed once the lock is released. Reproduced on Niik-l's own 2026.10.02 release, without the layer: a bug of his, not ours. No preference (a fix, not a look). | `Engine/NodeInputs.cpp`; 12 lines added, 10 removed | not offered yet (the first to offer when Baptiste says so) |
+| `0011-Node-graph-nodes-as-tall-as-their-name.patch` (since `.sng9`, round 6) | `nodeLabelTight` (Appearance > Node Graph, read by name): a node only as tall as its name needs, so a one-line node is the tile's height (Nuke's 80 x 18; Natron kept Qt's 4-pixel margin around the name and 20 % more, 28 pixels at 100 % with an 11-pixel font), a taller name the name's height and 3 pixels; and a Merge says its operation in words only, without Natron's picture of it over the name. | `Engine/Settings.cpp`, `Gui/NodeGui.cpp`; 26 lines added, 1 removed | not offered (kept private for now, Baptiste) |
 | `0010-Node-graph-Ctrl-wheel-magnifier-stuck.patch` (a fix, since `.sng8`) | **A node enlarged by Ctrl+wheel stayed enlarged**: Natron's magnifier shrank the node back only on a Ctrl release the node graph itself heard, and the wheel reaches the node graph under the mouse whatever has the keyboard, so with the keyboard in the viewer or the properties the node stayed 1.2 times larger a notch until clicked again. A mouse move or a wheel over the node graph without Ctrl now puts it back. Reproduced on Niik-l's own 2026.10.02 release. No preference. | `Gui/NodeGraph20.cpp`, `Gui/NodeGraph30.cpp`; 12 lines added | not offered yet |
 
-**The budget is full again** (8 of 8 patches for the look, about 1,225 lines for about 1,200: a little over since `.sng7`'s compact ruler and `.sng8`'s Ctrl+wheel preference in 0008; the fixes 0009 and 0010 count apart). It grew for `.sng6` by two patches and
+**Round 6 (`.sng9`, 8 November 2026) grew the look's budget by one patch and 100 lines, to 9 patches and about 1,300
+lines** (about 1,250 used): a node's height comes from Natron's own text item for its name, whose margin no stylesheet
+reaches and which the layer's Python can't touch (wrapping Natron's node graph items in PySide crashes Natron). Every
+other size of round 6 (the font, buttons, fields, bars, the playback buttons) is the layer's. Before it: **the budget
+was full** (8 of 8 patches for the look, about 1,225 lines for about 1,200: a little over since `.sng7`'s compact ruler and `.sng8`'s Ctrl+wheel preference in 0008; the fixes 0009 and 0010 count apart). It grew for `.sng6` by two patches and
 300 lines (1 November 2026, round 5): the viewer's info bar, the curve editor's colours, the dope sheet's keys, the
 node graph's selected node and the Tab search's list are all painted by Natron's C++ code, four places a stylesheet
 or the Python layer can't reach (the info bar's labels get their text from C++ with no signal Python could follow).
@@ -45,8 +50,10 @@ the mutex is now made on first use), to offer to Niik-l's Cycles. They don't cou
 A core patch has to be redone or rebased every time Niik-l publishes a release (every one to three weeks), so each
 one is costly. The budget:
 
-- **At most 8 core patches**, and **about 1,200 changed lines in Natron's files in total**, none over 300 lines (6 and
-  900 until `.sng6`, 5 and 800 until `.sng5`).
+- **At most 9 core patches for the look**, and **about 1,300 changed lines in Natron's files in total**, none over 300
+  lines (8 and 1,200 until `.sng9`, 6 and 900 until `.sng6`, 5 and 800 until `.sng5`); fixes of Niik-l's bugs count
+  apart. (Singerie's decisions/2026-11-03-natron-patch-budget.md: no fixed number, each patch small and justified;
+  the count here is the guard we keep.)
 - **None in the files the fork is busy rewriting** (the viewer's colour path, the 3D workspace, the properties panels
   of 3D nodes) unless Niik-l takes it.
 - When the budget is full, a new patch replaces an old one or waits.

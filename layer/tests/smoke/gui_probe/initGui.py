@@ -375,16 +375,29 @@ def _layer_probe():
                 and bars[0].height() == arrange.PLAYER_ROW,
                 "the timeline is as compact as Nuke's: the ruler " + str(ruler.height()) + " px (wanted " + str(wanted)
                 + ", Natron's own 45), the playback bar " + (str(bars[0].height()) if bars else "?") + " px")
+        # Round 6 (.sng9): Nuke's sizes, the layer's (arrange.py, nuke.qss, nuke_look.toml's font size).
+        from natron_layer import arrange, skin
+
+        rows = [w for w in window.findChildren(QtWidgets.QWidget) if w.objectName() in ("SngViewerBar1", "SngViewerBar2")]
+        say(len(rows) == 2 and all(r.height() == arrange.VIEWER_ROW for r in rows),
+            "the viewer's bars are Nuke's " + str(arrange.VIEWER_ROW) + " px high: " + str([r.height() for r in rows]))
+        players = [w for w in window.findChildren(QtWidgets.QWidget) if w.objectName() == "SngPlayerBar"]
+        buttons = players[0].findChildren(QtWidgets.QPushButton) if players else []
+        sizes = sorted({(b.width(), b.height()) for b in buttons if b.isVisible()})
+        say(sizes == [tuple(arrange.PLAYER_BUTTON)], "the playback buttons are " + str(arrange.PLAYER_BUTTON) + ": " + str(sizes))
+        wanted_size = float(skin.settings().get("font_size") or 0)
+        say(abs(app.font().pointSizeF() - wanted_size) < 0.01, "the interface font is the look's " + str(wanted_size)
+            + " pt (Nuke's 11 px): " + str(app.font().pointSizeF()))
         # This fork's builds draw the properties rows and parts of the node graph like Nuke's (core patches 0004, 0005).
         if patched:
             settings = NatronEngine.natron.getSettings()
             wanted = ("sliderHandleBar", "knobDimensionButtonLast", "knobAnimationButton", "pageTabNodeName",
                       "linkLabelNearInput", "viewerNodePointed", "backdropLabelOnly", "nodeBadgesFlat", "nodeNameKeepsSize",
                       "timelineRulerNuke", "knobWidgetsShaded", "nodeSelectedFill", "viewerInfoNuke",
-                      "animationEditorsNuke", "tabSearchNuke")
+                      "animationEditorsNuke", "tabSearchNuke", "nodeLabelTight")
             missing = [n for n in wanted if settings.getParam(n) is None]
             off = [n for n in wanted if n not in missing and not settings.getParam(n).get()]
-            say(not missing and not off, "the Nuke drawing preferences of patches 0004 to 0008 are on for the session"
+            say(not missing and not off, "the Nuke drawing preferences of patches 0004 to 0008 and 0011 are on for the session"
                 + (" (missing: " + ", ".join(missing) + ")" if missing else "") + (" (off: " + ", ".join(off) + ")" if off else ""))
             favourites = settings.getParam("tabFavourites")
             say(favourites is not None and favourites.get() == "", "the Tab search's favourites are the artist's: the look "
@@ -495,9 +508,16 @@ def _layer_probe():
         port = graph.viewport()
         pref = NatronEngine.natron.getSettings().getParam("nodeGraphCtrlWheelZooms")
 
+        offscreen = QtGui.QGuiApplication.platformName() == "offscreen"
+
         def wheel(widget, pos, modifiers, notches=1):
             for n in range(notches):
                 mark("a wheel notch %d over %s at %d,%d" % (n + 1, class_name(widget), pos.x(), pos.y()))
+                if offscreen:
+                    # Qt's view zooms around the pointer (QCursor::pos), which the real mouse gives on a screen. With
+                    # QT_QPA_PLATFORM=offscreen (someone at the PC) the pointer is Qt's own: put it where the wheel
+                    # turns. Never on a real screen: that would move the person's mouse.
+                    QtGui.QCursor.setPos(widget.mapToGlobal(pos))
                 event = QtGui.QWheelEvent(QtCore.QPointF(pos), QtCore.QPointF(widget.mapToGlobal(pos)), QtCore.QPoint(),
                                           QtCore.QPoint(0, 120), Qt.MouseButton.NoButton, modifiers,
                                           Qt.ScrollPhase.NoScrollPhase, False)

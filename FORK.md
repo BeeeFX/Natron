@@ -26,14 +26,16 @@ can take it as it is.
 
 ## What the layer does (all in `layer/`)
 
-- **The Nuke look, by default.** Nuke's greys and orange highlight, flat tabs, Nuke-like node colours per class
-  (blue Merge, orange filters, purple transforms…), no icons on nodes, a new Merge taking the selected node in A,
+- **The Nuke look, by default.** Nuke's greys and orange highlight, flat tabs, Nuke's node colours per class
+  (measured since `.sng9`: grey Read and Viewer, yellow Write, light blue Grade, orange filters, lilac transforms, blue
+  Merge, plum Copy and Shuffle, green keyers, khaki time nodes), no icons on nodes, a new Merge taking the selected node in A,
   mask inputs hidden, ten properties panels at most, no file browser when a Write is made. It's this build's default:
   a preference the artist changes in Natron's Preferences window is theirs and wins. Nothing is written to the
   artist's Natron settings by the layer.
 - **The skin: Natron drawn like Nuke** (since `.sng2`). Our own flat, light grey icons in the toolbar, the viewer's
   bars, the playback bar and the panels' headers (110 pictures drawn for this fork in Nuke's spirit, never copied;
-  orange when a toggle is on), a free Verdana-like font (DejaVu Sans) at 10 pt everywhere, the node names included, a
+  orange when a toggle is on), a free Verdana-like font (DejaVu Sans) at Nuke's 11 pixels everywhere (since `.sng9`),
+  the node names included, a
   complete flat stylesheet (square buttons, darker value fields, thin scrollbars, tight menus with the orange
   highlight), Nuke-like greys, a grey timeline with an orange current frame, blue keyframed values, and the
   properties pane at Nuke's narrower share of the window. All set from Python while Natron starts, for the session:
@@ -81,10 +83,18 @@ kept for the day Actions come back.
 The details, the reasons and how to work on it: [`layer/README.md`](layer/README.md). What's still missing compared
 with Nuke, ranked: [`layer/GAPS.md`](layer/GAPS.md).
 
+- **Nuke's sizes and buttons** (since `.sng9`, round 6, measured on Foundry's guide pictures at a known scale):
+  Verdana-sized text (11 pixels), Nuke's raised buttons (22 to 24 pixels high, a near-black edge, rounded 2 pixels,
+  light to dark), 19-pixel value fields and knob rows, 20-pixel menu rows with Nuke's shaded orange highlight, the
+  viewer's bars 26 pixels high, the playback buttons flat 30 x 24 boxes, nodes as tall as their name (Nuke's 80 x 18
+  tiles, core patch 0011) shaded as strongly as Nuke's, and Singerie's SNG nodes in the colour of the class they
+  stand for (Singerie's add-on reads it from the same preferences).
+
 ## Core patches
 
-Six (three since `.sng3`, 31 October 2026, two more since `.sng4`, one more since `.sng5`), also carried as commits on `sng/main`, so our
-builds are made from source
+Eleven since `.sng9` (nine for the look, two fixes of Niik-l's bugs; the list below names the first six; all are in
+[`layer/patches/README.md`](layer/patches/README.md)), also carried as commits on `sng/main`, so our builds are made
+from source
 (`layer/README.md`, "Building from source", with Niik-l's own build scripts):
 
 1. `layer/patches/0001-Node-graph-drawing-preferences.patch`: the node graph's drawing as preferences (node size,
@@ -113,7 +123,10 @@ builds are made from source
    `Gui/AnimatedCheckBox.cpp`, `Gui/ComboBox.cpp`.
 
 Changing Natron's own code makes every one of Niik-l's releases (every one to three weeks) harder to take, so the
-budget is at most 6 small patches (about 900 lines; 5 and 800 until `.sng5`), each offered to him first: [`layer/patches/`](layer/patches/README.md).
+look's budget is at most **9 small patches, about 1,300 lines** (since `.sng9`, 8 November 2026: one patch and 100
+lines more than `.sng6`'s 8 and 1,200, for patch 0011, the nodes' height, which no stylesheet or Python reaches; 6 and
+900 until `.sng6`, 5 and 800 until `.sng5`), each offered to him first; fixes of his bugs count apart:
+[`layer/patches/`](layer/patches/README.md).
 
 The corresponding source of a build (GPL): this repository at the commit its `Resources/layer/SOURCE.txt` names,
 Niik-l's build scripts in it (`tools/win-build/`), the plug-ins at the commits those scripts pin, and the MSYS2
