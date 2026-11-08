@@ -508,9 +508,16 @@ def _layer_probe():
         port = graph.viewport()
         pref = NatronEngine.natron.getSettings().getParam("nodeGraphCtrlWheelZooms")
 
+        offscreen = QtGui.QGuiApplication.platformName() == "offscreen"
+
         def wheel(widget, pos, modifiers, notches=1):
             for n in range(notches):
                 mark("a wheel notch %d over %s at %d,%d" % (n + 1, class_name(widget), pos.x(), pos.y()))
+                if offscreen:
+                    # Qt's view zooms around the pointer (QCursor::pos), which the real mouse gives on a screen. With
+                    # QT_QPA_PLATFORM=offscreen (someone at the PC) the pointer is Qt's own: put it where the wheel
+                    # turns. Never on a real screen: that would move the person's mouse.
+                    QtGui.QCursor.setPos(widget.mapToGlobal(pos))
                 event = QtGui.QWheelEvent(QtCore.QPointF(pos), QtCore.QPointF(widget.mapToGlobal(pos)), QtCore.QPoint(),
                                           QtCore.QPoint(0, 120), Qt.MouseButton.NoButton, modifiers,
                                           Qt.ScrollPhase.NoScrollPhase, False)
