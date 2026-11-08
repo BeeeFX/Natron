@@ -33,8 +33,9 @@ qt_binding = "PySide6 6.11 through qtpy 2.4.3 (both bundled with the release)"
 # 314 of 316 checks on the .sng9 source build (patches 0001 to 0011); the one check left (Natron's own Ctrl+wheel
 # magnifier with the preference off) and its summary fail the same way on .sng8 in that mode, and want a visible
 # window. Singerie's Natron suite (--no-window, 1,000 checks inside) passed on .sng9.
+# run_smoke.py --gui --offscreen with a real window (8 November 2026, the screen free): all 316 checks on .sng9.
 checks = 261
-source_build_checks = 297
+source_build_checks = 316
 # Earlier releases the layer passed on (before the skin, 5 October 2026).
 also_passed = ["natron-2.6-2026.09.20"]
 
