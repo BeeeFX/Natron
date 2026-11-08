@@ -669,6 +669,77 @@ otherwise. So, with the Nuke look:
   node's size is read from pixels, not from its `QGraphicsItem`: PySide's wrapper of an item Natron owns can delete
   it when the wrapper goes (the probe crashed Natron that way while it was being written).
 
+## Nuke's sizes, buttons and node colours (round 6, `.sng9`)
+
+Baptiste, after `.sng8`: one last pass for the size of things (buttons, text, timeline), the look of widgets (buttons
+above all) and the default look and colour of nodes (Write nodes, for example). **Measured, not guessed**: Foundry's
+public guide pictures come at different scales, so each picture's scale is read from its text (Nuke's interface font
+is Verdana at 11 pixels: its capitals are 8 pixels high at 1x), then every size is divided by it. Pictures looked at
+(Foundry's pages, nothing copied into the build): "Setting Preferences" preferences.png (1x), "Using the Viewer
+Controls" layers.png (1x) and comp_timeline.png (2.75x), "Properties Panels" node_properties.png (3x), "Nuke Studio
+Environments" viewer_focus.png (3.1x), "Output (Write) Nodes" write_node.png and render_views1.png (1x), "Working with
+Nodes" nodes01.png and using_dot.png, custom_nodes2.png. Ours measured on offscreen pictures of the build (the
+window drawn with `QT_QPA_PLATFORM=offscreen`, widgets grabbed, at 96 dpi).
+
+| | Nuke (measured, 1x) | `.sng8` | `.sng9` |
+|---|---|---|---|
+| Interface font | Verdana 11 px (capitals 8) | DejaVu Sans 12 px (9 pt) | DejaVu Sans 11 px (8.25 pt) |
+| Dialog buttons (OK, Cancel) | 23 to 24 px high, at least 75 wide | 20 high, as wide as the word | 24 high, 75 wide |
+| Properties panel buttons | about 20 to 25 | 18 | 20 |
+| Value fields, drop-downs | 19 | 22 | 19 |
+| A knob row (fields, slider, swatch, wheel, "4", animation) | about 20 | 25 | 23 (the last 3 px are Natron's row spacing) |
+| Menu rows | 20, orange shaded 253,152,34 to 232,139,29, edge 28 | 20, flat orange, edge 90 | 20, Nuke's shading, edge 28 |
+| Viewer bars | 26 (and a one-pixel line) | 22 | 26 |
+| Viewer info bar | 26 | 14 | 20 |
+| Playback buttons | about 34 x 27 (newest picture), 24 high (older), flat 70 grey, near-black edge | 24 x 18 | 30 x 24, flat 70, edge 35 |
+| Playback row | 36 | 20 | 30 |
+| Frame ruler | about 37 | 40 | 40 (unchanged: patch 0006 sizes it from the ruler's font) |
+| Pane tab strip | 20 | 26 to 27 | 24 to 25 |
+| Node (one line) at 100 % | 80 x 18, outline outside: 82 x 20 | 82 x 28 | 82 x 20 |
+| Node names | Verdana 11 px | 12 px | 11 px |
+| Node shading | 1.15 x its colour at the top, 0.61 x at the bottom | 1.1 x, 0.93 x | 1.15 x, 0.61 x (relative to Nuke's colour) |
+| Dot | about 12 across | 11 | 12 |
+
+**Buttons** (`nuke.qss`, the "Round 6" section, last so it wins): Nuke's raised button everywhere: a one-pixel
+near-black edge (15; 30 in the properties panels, as Nuke's), rounded 2 pixels, light to dark (82 on the top row, 78
+to 70 down, 67 on the bottom row), lighter under the mouse, dark and sunken when pressed, a switched-on text button
+sunken with its name orange (Nuke's toggles light up orange), a disabled one flat and dim. Icon buttons in the
+viewer's bars and the pane headers stay frameless until the mouse is over them; the properties panels' header
+buttons stay small and flat. Natron fixes its knob widgets at 22 pixels in its code (`NATRON_MEDIUM_BUTTON_SIZE`); a
+stylesheet's `min-height` and `max-height` are applied when a widget is first drawn, after Natron's own size, so the
+19-pixel rows need no core patch (the stylesheet's height is the inside: 17 plus the one-pixel edges for fields).
+
+**Node colours per class** (`nuke_look.toml`), measured at a quarter of a node's height, where Nuke's shading
+crosses its own colour (Blur's 204, 128, 78 checks it: the colour Nuke's Blur panel header shows): Read, Viewer and
+the others light grey (202), **Write yellow** (193, 193, 0), Grade and ColorCorrect light blue (143, 166, 210), Blur
+orange, Transform and Reformat lilac (165, 122, 170), Merge blue (75, 94, 198), Copy and Shuffle plum (158, 61, 99),
+keyers green (42, 209, 42), time nodes khaki (178, 165, 94). Until `.sng8` the Write was red and the colour nodes
+green: wrong. Roto (Draw) isn't on any picture found: its earlier colour stays; the backdrop keeps Nuke's olive, drawn
+flat. **The shading**: Natron's (patch 0001) lightens the top by 30 % and darkens the bottom by 20 % times
+`nodeShading`; no strength gives Nuke's uneven gradient from Nuke's own colour, so the look stores Nuke's colours
+times 0.793 with `nodeShading` 1.5: the top is then 1.45 x 0.793 = 1.15 times Nuke's colour and the bottom 0.793 /
+1.3 = 0.61, Nuke's (checked on the pictures: a Grade's top 158, 183, 232 for Nuke's 164, 191, 242, its bottom 94,
+109, 138 for Nuke's 93, 111, 141). The cost: the colour a node's panel shows is that base, a little darker than
+Nuke's number. Singerie's SNG nodes read these preferences (its add-on's `graph.class_colour`): an SNG Read a Read's,
+an SNG Write, Cache and Farm a Write's.
+
+**Nodes as tall as their name: core patch 0011** (`nodeLabelTight`, 26 lines in `Engine/Settings.cpp` and
+`Gui/NodeGui.cpp`). Natron makes a node 1.2 times as tall as its name's text item, which keeps Qt's 4-pixel document
+margin around the text: every one-line node was 28 pixels high at 100 %. With the preference the margin is 1 pixel
+and a node is the tile's height (18), or its name's and 3 pixels when taller (two lines: about 31; Nuke's about 30); a
+Merge then says its operation in words only ("Merge1 (over)", Natron also drew its picture over the name). The text
+item lives inside the node graph's C++ drawing: no stylesheet reaches it, and the layer's Python can't touch Natron's
+node graph items (wrapping them in PySide crashes Natron). **The look's budget grows to 9 patches and about 1,300
+lines** (`patches/README.md`).
+
+**The bars** (`arrange.py`): `VIEWER_ROW` 26 for each viewer bar, `INFO_ROW` 20 for the info bar, `PLAYER_BUTTON` 30 x
+24 and `PLAYER_ROW` 30 for the playback bar. The info bar and the playback row stay a little under Nuke's (26 and 36)
+to leave the picture its room on a 1080-line screen.
+
+**The smoke test** checks the bars' and the playback buttons' sizes, the font's size and that `nodeLabelTight` is on.
+Still Natron's (GAPS.md): the knob rows' last 3 pixels, the knob check boxes (15, Nuke 13), the pane tab strip (24, Nuke
+20).
+
 ## Writing code here
 
 - Natron and Qt only through `compat` (the adapter): one place to fix when the fork's API moves.
