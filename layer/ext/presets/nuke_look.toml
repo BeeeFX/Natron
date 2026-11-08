@@ -24,9 +24,11 @@ name = "Nuke"
 # drawn on Verdana-like proportions, standing in for Nuke's. Not used when the artist chose a font in Natron's
 # Preferences.
 font = "@layer/ext/fonts/DejaVuSans.ttf"
-# Its size in points (Natron's is 11): Nuke's interface text is small and dense (Foundry's guide pictures); not used
-# when the artist chose a size in Natron's Preferences.
-font_size = 9
+# Its size in points (Natron's is 11): Nuke's interface font is Verdana at 11 pixels (capitals 8 pixels high on
+# Foundry's 1x guide pictures, "Setting Preferences" and "Using the Viewer Controls"), 8.25 points at 96 dpi; 9 points
+# (12 pixels) until .sng8. Also the node names' size in the node graph. Not used when the artist chose a size in
+# Natron's Preferences.
+font_size = 8.25
 # Our own icons (ext/icons/, drawn by tools/make_icons.py) instead of Natron's pictures they stand for.
 icons = true
 # The left toolbar's icons, in pixels at 96 dpi.
@@ -75,21 +77,34 @@ dopesheetKnobSectionBackground = [0.19, 0.19, 0.19]
 dopesheetScale = [0.55, 0.55, 0.55]
 dopesheetGrid = [0.30, 0.30, 0.30]
 
-# Appearance > Node Graph: node colours per class, like Nuke's defaults.
+# Appearance > Node Graph: node colours per class, like Nuke's defaults. Round 6 (.sng9) measured them on Foundry's
+# guide pictures (a node's colour at a quarter of its height, where Nuke's shading crosses its own colour; Blur's
+# 204, 128, 78 checks it, the colour Nuke's Blur panel header shows): Read, Viewer and the others light grey (202),
+# Write yellow (193, 193, 0), Grade and ColorCorrect light blue (143, 166, 210), Blur orange (204, 128, 78), Transform
+# and Reformat lilac (165, 122, 170), Merge blue (75, 94, 198), Copy and Shuffle plum (158, 61, 99), keyers green
+# (42, 209, 42), FrameRange and TimeOffset khaki (178, 165, 94) ("Output (Write) Nodes" write_node.png and
+# render_views1.png, "Working with Nodes" nodes01.png and using_dot.png, custom_nodes2.png, "Nuke Studio
+# Environments" viewer_focus.png). Until .sng8 the Write was red and the colour nodes green: wrong. Draw (Roto) isn't
+# on any picture we found: kept from earlier rounds; the backdrop is Nuke's olive (drawn flat).
+#
+# Each colour below is Nuke's times 0.793: with nodeShading 1.5 ([drawing]), Natron's shading draws a node 1.45 times
+# its colour at the top and 1/1.3 at the bottom, which is then exactly Nuke's gradient (1.15 and 0.61 times its colour,
+# measured on the same pictures). A Singerie SNG node takes its class's colour from here too (SNG Read a Read's,
+# SNG Write, Cache and Farm a Write's).
 usePluginIcons = false
-defaultNodeColor = [0.7, 0.7, 0.7]
+defaultNodeColor = [0.627, 0.627, 0.627]
 backdropColor = [0.557, 0.557, 0.22]
-readerColor = [0.7, 0.7, 0.7]
-writerColor = [0.75, 0.33, 0.33]
-generatorColor = [0.6, 0.6, 0.6]
-colorNodesColor = [0.47, 0.72, 0.45]
-filterNodesColor = [0.8, 0.5, 0.31]
-transformNodesColor = [0.66, 0.47, 0.69]
-timeNodesColor = [0.70, 0.65, 0.37]
-drawNodesColor = [0.44, 0.72, 0.62]
-keyerNodesColor = [0.33, 0.72, 0.42]
-channelNodesColor = [0.58, 0.42, 0.72]
-defaultMergeColor = [0.29, 0.37, 0.78]
+readerColor = [0.627, 0.627, 0.627]
+writerColor = [0.60, 0.60, 0.0]
+generatorColor = [0.627, 0.627, 0.627]
+colorNodesColor = [0.445, 0.516, 0.653]
+filterNodesColor = [0.634, 0.398, 0.243]
+transformNodesColor = [0.513, 0.379, 0.529]
+timeNodesColor = [0.553, 0.513, 0.293]
+drawNodesColor = [0.349, 0.571, 0.492]
+keyerNodesColor = [0.13, 0.65, 0.13]
+channelNodesColor = [0.492, 0.19, 0.308]
+defaultMergeColor = [0.233, 0.293, 0.616]
 
 [drawing]
 # Appearance > Node Graph > Node and link drawing: preferences this fork's own builds add (core patch 0001, every
@@ -104,11 +119,14 @@ nodeTileHeight = 18
 # A node grows to fit a longer label (a Read's file name, ColorCorrect1), as Nuke's do; Natron keeps one width.
 nodeFitLabel = true
 nodeCornerRadius = 3
-nodeShading = 0.35
+# Round 6 (.sng9): Nuke's nodes are shaded strongly, 1.15 times their colour at the top to 0.61 at the bottom
+# (Foundry's pictures); 1.5 here with the colours above gives exactly that (0.35, a light shading, until .sng8).
+nodeShading = 1.5
 nodeOutlineColor = [0.08, 0.08, 0.08]
 nodeSelectedColor = [0.99, 0.73, 0.39]
 nodeSelectedTint = 0.6
-dotDiameter = 11
+# Nuke's Dot: about 12 pixels across at 100 % ("Working with Nodes" using_dot.png; 11 until .sng8).
+dotDiameter = 12
 linkWidth = 1.3
 linkColor = [0.06, 0.06, 0.06]
 linkSelectedColor = [0.99, 0.73, 0.39]
@@ -156,6 +174,10 @@ knobWidgetsShaded = true
 # first (a star on each row), a green dot for the nodes made most often, the typed letters in bold. The favourites
 # themselves (tabFavourites) are the artist's: the look never sets them.
 nodeSelectedFill = true
+# Round 6 (.sng9), core patch 0011: a node only as tall as its name needs, so a one-line node is Nuke's 80 x 18 tile
+# (Natron left Qt's 4-pixel margin around the name and 20 % more: 28 pixels high at 100 %), and a Merge says its
+# operation in words only ("Merge1 (over)"), without Natron's picture of it on the node, as Nuke's.
+nodeLabelTight = true
 viewerInfoNuke = true
 animationEditorsNuke = true
 tabSearchNuke = true

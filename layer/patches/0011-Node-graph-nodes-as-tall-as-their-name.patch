@@ -1,0 +1,112 @@
+From 146b59129264bf36d0edc740f3e59c23402a78f3 Mon Sep 17 00:00:00 2001
+From: "Baptiste G." <70719480+BeeeFX@users.noreply.github.com>
+Date: Sun, 8 Nov 2026 13:27:39 +0000
+Subject: [PATCH] Node graph: nodes as tall as their name with nodeLabelTight,
+ no operation picture on Merge
+
+Natron makes a node 1.2 times as tall as its name's text item, which keeps Qt's 4-pixel
+document margin above and below the text: with an 11-pixel font every one-line node was
+28 pixels high at 100 %, where Nuke's tile is 80 x 18 (Foundry's "Output (Write) Nodes"
+picture: a one-line node 19 pixels high with its outline at 100 %, its name 8 pixels
+tall). With the new preference nodeLabelTight (Appearance > Node Graph, read by name, off
+by default) the name's margin is 1 pixel and a node is the tile's height, or the name's
+height and 3 pixels when the name is taller (two lines: about 31, Nuke's about 30). A
+Merge then shows its operation in words only ("Merge1 (over)"), without Natron's
+picture of it over the name, as Nuke's.
+
+Core patch 0011 of the BeeeFX fork (layer/patches/). Off by default: Natron's own drawing
+for anyone who doesn't set it.
+
+Gap: GAPS.md, "Nuke's look" (the node graph's sizes).
+Size: 2 files, 26 lines added, 1 removed.
+upstream: not offered (Baptiste: keep the fork private for now).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ Engine/Settings.cpp |  8 ++++++++
+ Gui/NodeGui.cpp     | 19 ++++++++++++++++++-
+ 2 files changed, 26 insertions(+), 1 deletion(-)
+
+diff --git a/Engine/Settings.cpp b/Engine/Settings.cpp
+index f5faf7ab7..c22cbd8a2 100644
+--- a/Engine/Settings.cpp
++++ b/Engine/Settings.cpp
+@@ -1127,6 +1127,14 @@ Settings::initializeKnobsNodeGraphDrawing()
+                                        "otherwise Ctrl+wheel enlarges the node last clicked while Ctrl is held.") );
+     ctrlWheelZooms->setDefaultValue(false);
+     _nodegraphColorsTab->addKnob(ctrlWheelZooms);
++    // Read by NodeGui through its name (no member, so this header stays as it is).
++    KnobBoolPtr labelTight = AppManager::createKnob<KnobBool>( this, tr("Nodes as tall as their name") );
++    labelTight->setName("nodeLabelTight");
++    labelTight->setHintToolTip( tr("When checked, a node is only as tall as its name needs (the node height above for a "
++                                   "one-line name) and a Merge shows its operation in words only; otherwise Natron "
++                                   "leaves room around the name and draws the operation's picture on the node.") );
++    labelTight->setDefaultValue(false);
++    _nodegraphColorsTab->addKnob(labelTight);
+ 
+     struct IntDef { KnobIntPtr* knob; const char* name; QString label; int def, min, max; QString hint; };
+     const IntDef ints[] = {
+diff --git a/Gui/NodeGui.cpp b/Gui/NodeGui.cpp
+index 1517e7e22..5c9c227e8 100644
+--- a/Gui/NodeGui.cpp
++++ b/Gui/NodeGui.cpp
+@@ -39,6 +39,7 @@ CLANG_DIAG_OFF(uninitialized)
+ #include <QFontMetrics>
+ #include <QTextBlockFormat>
+ #include <QTextCursor>
++#include <QTextDocument>
+ #include <QGridLayout>
+ #include <QCursor>
+ #include <QFile>
+@@ -127,6 +128,15 @@ using std::make_pair;
+ static int nodeTileWidth() { return appPTR->getCurrentSettings()->getNodeTileWidth(); }
+ static int nodeTileHeight() { return appPTR->getCurrentSettings()->getNodeTileHeight(); }
+ 
++// Preference nodeLabelTight (read by name): a node as tall as its name needs, as Nuke's, and no operation picture on Merge.
++static bool
++nodeLabelTight()
++{
++    KnobBool* tight = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("nodeLabelTight").get() );
++
++    return tight && tight->getValue();
++}
++
+ static QColor
+ settingsColor(void (Settings::*getter)(double*, double*, double*) const)
+ {
+@@ -724,6 +734,9 @@ NodeGui::createGui()
+ 
+ 
+     _nameItem = new NodeGraphTextItem(getDagGui(), this, false);
++    if ( nodeLabelTight() ) {
++        _nameItem->document()->setDocumentMargin(1); // Qt's 4 around the name made every node taller than the tile
++    }
+     _nameItem->setPlainText( QString::fromUtf8( node->getLabel().c_str() ) );
+     _nameItem->setDefaultTextColor( QColor(0, 0, 0, 255) );
+     //_nameItem->setFont( QFont(appFont,appFontSize) );
+@@ -980,9 +993,13 @@ NodeGui::adjustSizeToContent(int* w,
+             int pw, ph;
+             getSizeWithPreview(&pw, &ph);
+             *h = ph;
++        } else if ( nodeLabelTight() ) {
++            *h = std::max( TO_DPIY( nodeTileHeight() ), (int)std::ceil( labelBbox.height() ) + TO_DPIY(3) );
+         } else {
+             *h = labelBbox.height() * 1.2;
+         }
++    } else if ( nodeLabelTight() ) {
++        *h = std::max( *h, (int)std::ceil( labelBbox.height() ) + TO_DPIY(3) );
+     } else {
+         *h = std::max( (double)*h, labelBbox.height() * 1.2 );
+     }
+@@ -3420,7 +3437,7 @@ NodeGui::refreshNodeText(const QString & label)
+         if (_presetIcon) {
+             QPixmap pix;
+             getPixmapForMergeOperator(subLabelContent, &pix);
+-            if ( pix.isNull() ) {
++            if ( pix.isNull() || nodeLabelTight() ) {
+                 _presetIcon->setVisible(false);
+             } else {
+                 _presetIcon->setVisible(true);
+-- 
+2.48.1.windows.1
+

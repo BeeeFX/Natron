@@ -1610,3 +1610,246 @@ QTabBar#DockablePanelTabWidget::tab {
 QTabBar#DockablePanelTabWidget::tab:selected {
     color: rgb(232, 232, 232);
 }
+
+/* -- Round 6 (.sng9): Nuke's sizes and its buttons, measured on Foundry's guide pictures at a known scale (Verdana
+      11 px, capitals 8 px high, is the yardstick: "Setting Preferences" preferences.png at 1x, "Using the Viewer
+      Controls" layers.png at 1x and comp_timeline.png at 2.75x, "Properties Panels" node_properties.png at 3x,
+      "Output (Write) Nodes" render_views1.png at 1x): push buttons 22 to 24 pixels high, a one-pixel near-black
+      edge, rounded 2 pixels, filled light to dark (82 on the top row, 78 to 70 down, 67 on the bottom row); value
+      fields 19 high; check boxes 13; menu rows 20 with an orange highlight shaded top to bottom; pane tab strips 20;
+      the viewer's bars 26; the playback buttons flat boxes about 30 x 24. The later rules win over the earlier
+      rounds' above. -- */
+
+/* Push buttons everywhere: Nuke's raised button. */
+QPushButton {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 rgb(82, 82, 82), stop: 0.08 rgb(78, 78, 78),
+                                      stop: 0.92 rgb(70, 70, 70), stop: 1 rgb(67, 67, 67));
+    color: %5;
+    border: 1px solid rgb(15, 15, 15);
+    border-radius: 2px;
+    padding: 2px 8px;
+    min-height: 16px;
+}
+
+QPushButton:hover {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 rgb(98, 98, 98), stop: 0.08 rgb(93, 93, 93),
+                                      stop: 0.92 rgb(84, 84, 84), stop: 1 rgb(80, 80, 80));
+    border: 1px solid rgb(15, 15, 15);
+}
+
+QPushButton:pressed {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 rgb(36, 36, 36), stop: 1 rgb(46, 46, 46));
+    border: 1px solid rgb(15, 15, 15);
+}
+
+/* A switched-on text button: sunken, its name in the selection orange (Nuke's toggles light up orange). */
+QPushButton:checked {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 rgb(40, 40, 40), stop: 1 rgb(50, 50, 50));
+    color: %1;
+    border: 1px solid rgb(15, 15, 15);
+}
+
+QPushButton:!enabled {
+    background-color: rgb(58, 58, 58);
+    color: rgb(105, 105, 105);
+    border: 1px solid rgb(36, 36, 36);
+}
+
+QPushButton:focus {
+    border: 1px solid rgb(15, 15, 15);
+}
+
+/* Dialog buttons (OK, Cancel): Nuke's are 24 high and at least 75 wide. */
+QDialogButtonBox QPushButton,
+QMessageBox QPushButton {
+    min-height: 18px;
+    min-width: 57px;
+    padding: 2px 8px;
+}
+
+/* Icon buttons in the viewer's bars and the pane headers stay frameless until the mouse is over them. */
+ViewerTab QPushButton,
+Natron--ViewerTab QPushButton,
+TabWidget QPushButton,
+Natron--TabWidget QPushButton {
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    padding: 0px;
+    min-height: 0px;
+}
+
+ViewerTab QPushButton:hover,
+Natron--ViewerTab QPushButton:hover,
+TabWidget QPushButton:hover,
+Natron--TabWidget QPushButton:hover {
+    background-color: rgb(80, 80, 80);
+    border: 1px solid rgb(30, 30, 30);
+}
+
+ViewerTab QPushButton:pressed,
+Natron--ViewerTab QPushButton:pressed,
+ViewerTab QPushButton:checked,
+Natron--ViewerTab QPushButton:checked,
+TabWidget QPushButton:pressed,
+Natron--TabWidget QPushButton:pressed {
+    background-color: rgb(30, 30, 30);
+    border: 1px solid rgb(30, 30, 30);
+    color: %5;
+}
+
+/* Properties panels: the same buttons, 20 high ("Render", "Normalize", the "4" and the animation buttons; Natron
+   makes them 22). These come after the icon buttons' rule: a panel sits in a pane (TabWidget). */
+NodeSettingsPanel QPushButton,
+Natron--NodeSettingsPanel QPushButton,
+DockablePanel QPushButton,
+Natron--DockablePanel QPushButton {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 rgb(82, 82, 82), stop: 0.08 rgb(78, 78, 78),
+                                      stop: 0.92 rgb(70, 70, 70), stop: 1 rgb(67, 67, 67));
+    border: 1px solid rgb(30, 30, 30);
+    border-radius: 2px;
+    padding: 1px 6px;
+    min-height: 16px;
+    max-height: 16px;
+}
+
+NodeSettingsPanel QPushButton:hover,
+Natron--NodeSettingsPanel QPushButton:hover,
+DockablePanel QPushButton:hover,
+Natron--DockablePanel QPushButton:hover {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 rgb(98, 98, 98), stop: 1 rgb(80, 80, 80));
+}
+
+NodeSettingsPanel QPushButton:pressed,
+Natron--NodeSettingsPanel QPushButton:pressed,
+DockablePanel QPushButton:pressed,
+Natron--DockablePanel QPushButton:pressed {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 rgb(36, 36, 36), stop: 1 rgb(46, 46, 46));
+}
+
+NodeSettingsPanel QPushButton:checked,
+Natron--NodeSettingsPanel QPushButton:checked,
+DockablePanel QPushButton:checked,
+Natron--DockablePanel QPushButton:checked {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 rgb(40, 40, 40), stop: 1 rgb(50, 50, 50));
+}
+
+/* Properties panels: value fields and drop-downs 19 high, as Nuke's knob rows (Natron makes them 22; a stylesheet's
+   height is the inside, without the one-pixel edges). */
+NodeSettingsPanel LineEdit,
+Natron--NodeSettingsPanel Natron--LineEdit,
+NodeSettingsPanel SpinBox,
+Natron--NodeSettingsPanel Natron--SpinBox,
+NodeSettingsPanel ComboBox,
+Natron--NodeSettingsPanel Natron--ComboBox {
+    min-height: 17px;
+    max-height: 17px;
+}
+
+/* The rest of a knob row 19 high too: the slider, the colour swatch and the colour wheel button (Natron: 22). */
+NodeSettingsPanel ScaleSliderQWidget,
+Natron--NodeSettingsPanel Natron--ScaleSliderQWidget,
+NodeSettingsPanel ColorPickerLabel,
+Natron--NodeSettingsPanel Natron--ColorPickerLabel {
+    min-height: 19px;
+    max-height: 19px;
+}
+
+NodeSettingsPanel ColorPickerLabel,
+Natron--NodeSettingsPanel Natron--ColorPickerLabel {
+    min-width: 19px;
+    max-width: 19px;
+}
+
+NodeSettingsPanel QToolButton#ColorSelectorButton,
+Natron--NodeSettingsPanel QToolButton#ColorSelectorButton {
+    min-height: 17px;
+    max-height: 17px;
+    min-width: 17px;
+    max-width: 17px;
+}
+
+/* The header keeps its small flat buttons (Nuke's header), after the rules above. */
+QFrame#DockablePanelHeader QPushButton {
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    padding: 0px;
+    min-height: 0px;
+    max-height: 1000px;
+}
+
+QFrame#DockablePanelHeader QPushButton:hover {
+    background-color: rgb(70, 70, 70);
+    border: 1px solid rgb(24, 24, 24);
+}
+
+QFrame#DockablePanelHeader QPushButton:pressed,
+QFrame#DockablePanelHeader QPushButton:checked {
+    background-color: rgb(34, 34, 34);
+    border: 1px solid rgb(24, 24, 24);
+}
+
+/* The playback bar: Nuke's flat grey boxes (70) side by side with a near-black edge, rounded 2 pixels; the frame
+   step and key buttons a shade darker (61), as on Foundry's timeline picture. arrange.py sizes them 30 x 24. */
+QWidget#SngPlayerBar QPushButton {
+    background-color: rgb(70, 70, 70);
+    border: 1px solid rgb(35, 31, 32);
+    border-radius: 2px;
+    margin: 0px;
+    padding: 0px;
+}
+
+QWidget#SngPlayerBar QPushButton:hover {
+    background-color: rgb(88, 88, 88);
+}
+
+QWidget#SngPlayerBar QPushButton:pressed,
+QWidget#SngPlayerBar QPushButton:checked {
+    background-color: rgb(36, 36, 36);
+    border: 1px solid rgb(35, 31, 32);
+}
+
+QWidget#SngPlayerBar QLineEdit,
+QLineEdit#SngCurrentFrame,
+#SngCurrentFrame {
+    background-color: rgb(58, 58, 58);
+    border: 0px;
+    border-radius: 2px;
+}
+
+#SngCurrentFrame {
+    color: %1;
+}
+
+/* Pane tabs: Nuke's strip is 20 high. */
+QTabBar::tab {
+    padding-top: 1px;
+    padding-bottom: 1px;
+}
+
+QTabBar::tab:selected {
+    padding-bottom: 2px;
+}
+
+/* Menus: rows 20 high, the highlight Nuke's orange shaded from its light top (253, 152, 34) to (232, 139, 29). */
+QMenu::item {
+    padding: 4px 26px 3px 24px;
+}
+
+QMenu::item:selected,
+QMenuBar::item:selected {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 rgb(253, 152, 34), stop: 1 rgb(232, 139, 29));
+    color: rgb(20, 20, 20);
+}
+
+/* Menus: a near-black edge (28), as Nuke's (layers.png), not the earlier rounds' light grey one. */
+QMenu {
+    border: 1px solid rgb(28, 28, 28);
+}
+
+/* Check boxes: 13 pixels, as Nuke's. */
+QCheckBox::indicator {
+    width: 11px;
+    height: 11px;
+}

@@ -94,7 +94,7 @@ Python acting on Natron's live interface, nothing of Natron's changed.
   node graph's labels included. The skin registers DejaVu Sans (`ext/fonts/`, Bitstream Vera licence: a free font on
   Verdana-like proportions, standing in for Nuke's), takes Natron's registration out
   (`QFontDatabase.removeAllApplicationFonts`) and tells Qt to use ours wherever Droid Sans is asked for
-  (`QFont.insertSubstitution`), then sets the application font at the look's size (10 pt). No hinting: with it,
+  (`QFont.insertSubstitution`), then sets the application font at the look's size (8.25 pt, Nuke's 11 pixels, since `.sng9`). No hinting: with it,
   node names scaled by the node graph's zoom showed gaps inside words (checked on the fork). **Not when the artist
   chose a font in Natron's Preferences** (`systemFont` stored); their `fontSize` likewise keeps the skin's size out.
 - **The session stylesheet.** Natron reads a stylesheet file by itself, so the look's `nuke.qss` is written for the

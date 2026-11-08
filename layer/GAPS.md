@@ -110,7 +110,15 @@ sheet's keys as narrow grey bars; a selected node filled flat with Nuke's select
 colour, its links the same colour; the Tab search with favourites first (a star on each row, a line under the last
 one), a green dot for the nodes made most often, the typed letters in bold.
 
-Still Natron's (next): the info bar's spacing (Natron spreads its parts across the bar, Nuke packs them from the
+Done in `.sng9` (8 November 2026, round 6, measured against Foundry's guide pictures at a known scale, Verdana 11 px as
+the yardstick): Nuke's sizes (the font at 11 px, dialog buttons 24 px, panel buttons 20, knob rows 19, the viewer's
+bars 26, its info bar 20, the playback buttons 30 x 24, menu rows 20), Nuke's raised buttons (near-black edge, rounded
+2 px, light to dark; toggles orange), the menus' shaded orange highlight, Nuke's node colours per class measured (Write
+yellow, colour nodes light blue: the earlier red and green were wrong), Nuke's strong node shading, nodes as tall as
+their name (80 x 18, patch 0011) and Merge's operation in words only.
+
+Still Natron's (next): the knob rows' last 3 px (Natron's spacing between rows: 23 px a row, Nuke about 20), the knob
+check boxes (15 px, Nuke 13: drawn by Natron), the pane tab strip (about 24 px, Nuke 20), the info bar's spacing (Natron spreads its parts across the bar, Nuke packs them from the
 left) and its values' five decimals, the curve editor's own drawing (grid, labels), the node's channel marks Nuke
 draws under its name, the Tab menu's menu-path column, a few icons (combo box arrows, cursors, the application's).
 

@@ -46,11 +46,14 @@ also_passed = ["natron-2.6-2026.09.20"]
 # count apart from the look's budget (fixes), since one can't wait for a free place (patches/README.md). Since .sng8
 # a second (patch 0010: a node enlarged by Natron's Ctrl+wheel magnifier stayed enlarged when Ctrl was let go in another
 # panel), and patch 0008 also carries nodeGraphCtrlWheelZooms (Ctrl+wheel zooms the node graph, as Nuke's).
-count = 8
+# Since .sng9 (round 6, 8 November 2026) patch 0011, nodeLabelTight: a node as tall as its name needs (Nuke's 80 x 18
+# tiles; Natron's text item keeps a margin no stylesheet or Python reaches). The look's budget grew by one patch and
+# about 100 lines for it (27 lines used; patches/README.md).
+count = 9
 fixes = 2
-budget_count = 8
-budget_lines = 1200
+budget_count = 9
+budget_lines = 1300
 
 [build]
 # How a packaged build is named (tools/package_build.py): 2.6.0+<release date>.sng<n>.
-version = "2.6.0+2026.10.02.sng8"
+version = "2.6.0+2026.10.02.sng9"
