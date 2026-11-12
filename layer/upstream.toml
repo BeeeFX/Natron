@@ -34,6 +34,12 @@ qt_binding = "PySide6 6.11 through qtpy 2.4.3 (both bundled with the release)"
 # magnifier with the preference off) and its summary fail the same way on .sng8 in that mode, and want a visible
 # window. Singerie's Natron suite (--no-window, 1,000 checks inside) passed on .sng9.
 # run_smoke.py --gui --offscreen with a real window (8 November 2026, the screen free): all 316 checks on .sng9.
+# The audit of 11 November 2026 (WP-19, 12 November): run_smoke.py --gui --offscreen with QT_QPA_PLATFORM=offscreen
+# on a source build of sng/audit-wp19 (built on Baptiste's PC into a folder of its own, qoffscreen.dll added to its
+# bin/platforms: Niik-l's install stages only qwindows.dll, and without it an offscreen Natron waits on Qt's error box):
+# 342 checks pass; the one failing (and its summary) is Natron's own Ctrl+wheel magnifier with the preference off, as
+# on .sng8 and .sng9 in that mode. With --big: 3,000 nodes made in 164 s, select all 0.08 s, a drag step 0.86 s.
+# Headless on this release, every check.
 checks = 261
 source_build_checks = 316
 # Earlier releases the layer passed on (before the skin, 5 October 2026).
@@ -56,8 +62,14 @@ also_passed = ["natron-2.6-2026.09.20"]
 # about 100 lines for it (27 lines used; patches/README.md).
 count = 9
 fixes = 2
+# The fixes by file (they count apart from budget_lines; tests/smoke/repository_guards.py).
+fix_files = ["0009-Viewer-B-input-freeze.patch", "0010-Node-graph-Ctrl-wheel-magnifier-stuck.patch"]
 budget_count = 9
-budget_lines = 1300
+# 1,300 until the audit of 11 November 2026 (WP-19): its hardening added about 45 lines, the Read's file check made
+# off the interface's thread (NAT-7, patch 0003), the preferences found once by name (NAT-6, Settings::cachedKnob in
+# patch 0001) and the guards of NAT-15. Checked by tests/smoke/repository_guards.py, with patch_lines per patch.
+budget_lines = 1350
+patch_lines = 300
 
 [build]
 # How a packaged build is named (tools/package_build.py): 2.6.0+<release date>.sng<n>.

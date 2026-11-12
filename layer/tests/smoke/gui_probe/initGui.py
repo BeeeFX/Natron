@@ -166,6 +166,11 @@ def _layer_probe():
         except Exception:
             say(False, "the tools' checks in the window raised:\n" + traceback.format_exc())
         try:
+            with compat.kept_clipboard():
+                audit_checks(app, window, natron_app)
+        except Exception:
+            say(False, "the audit's checks in the window raised:\n" + traceback.format_exc())
+        try:
             skin_checks(app, window)
         except Exception:
             say(False, "the skin's checks in the window raised:\n" + traceback.format_exc())
@@ -364,7 +369,7 @@ def _layer_probe():
                                                          - rulers[0].mapTo(window, QtCore.QPoint(0, 0)).y()) <= 4
                                                      for p in points)
         say(bool(beside), "the playback in and out points sit at the frame ruler's ends (" + str(len(points)) + " fields)")
-        compact = NatronEngine.natron.getSettings().getParam("timelineRulerNuke")
+        compact = NatronEngine.natron.getSettings().getParam("timelineRulerCompact")
         if compact is not None and compact.get() and rulers:
             from natron_layer import arrange
 
@@ -393,8 +398,8 @@ def _layer_probe():
             settings = NatronEngine.natron.getSettings()
             wanted = ("sliderHandleBar", "knobDimensionButtonLast", "knobAnimationButton", "pageTabNodeName",
                       "linkLabelNearInput", "viewerNodePointed", "backdropLabelOnly", "nodeBadgesFlat", "nodeNameKeepsSize",
-                      "timelineRulerNuke", "knobWidgetsShaded", "nodeSelectedFill", "viewerInfoNuke",
-                      "animationEditorsNuke", "tabSearchNuke", "nodeLabelTight")
+                      "timelineRulerCompact", "knobWidgetsShaded", "nodeSelectedFill", "viewerInfoCompact",
+                      "animationEditorsNuke", "tabSearchFavourites", "nodeLabelTight")
             missing = [n for n in wanted if settings.getParam(n) is None]
             off = [n for n in wanted if n not in missing and not settings.getParam(n).get()]
             say(not missing and not off, "the Nuke drawing preferences of patches 0004 to 0008 and 0011 are on for the session"
@@ -789,6 +794,146 @@ def _layer_probe():
                                                                                   if windows else "none"))
         for w in windows:
             w.close()
+
+    def audit_checks(app, window, natron_app):
+        """The audit of 11 November 2026 in the window: a new Merge takes the selected node in B (NAT-2), a ToolSet's
+        paste gives back copied files (NAT-9), the Nuke commands act in the Group the artist is in (NAT-10), the in and
+        out fields follow the frame ruler (NAT-11), panels arranged as Qt polishes them with no timer polling
+        (NAT-13), and with NATRON_LAYER_PROBE_BIG=1 the time of a select-all and a drag step on 3,000 nodes
+        (NAT-M5, reported, not asserted)."""
+        import OpenImageIO as oiio
+        from qtpy import QtGui
+
+        from natron_layer import aliases, arrange, compat, toolsets
+
+        # NAT-2
+        compat.select_nodes(natron_app, [])
+        plate = natron_app.createNode("net.sf.openfx.CheckerBoardPlugin")
+        app.processEvents()
+        compat.select_only(natron_app, plate)
+        app.processEvents()
+        # Natron's own M in the main node graph (its NodeGraph's key, not one of the layer's), as an artist presses it
+        from natron_layer import hotkeys
+
+        graphs = [g for g in widgets_named(app, "NodeGraph") if g.isVisible() and not g.objectName()]
+        before = {n.getScriptName() for n in compat.children(natron_app)}
+        if graphs:
+            graphs[0].setFocus(QtCore.Qt.FocusReason.OtherFocusReason)
+            app.processEvents()
+            hotkeys.pass_key_on("M", graphs[0])
+            app.processEvents()
+        made = [n for n in compat.children(natron_app) if n.getScriptName() not in before
+                and n.getPluginID() == "net.sf.openfx.MergePlugin"]
+        merge = made[0] if made else None
+        b_input, a_input = (merge.getInput(0), merge.getInput(1)) if merge is not None else (None, None)
+        say(b_input is not None and b_input.getScriptName() == plate.getScriptName() and a_input is None,
+            "a new Merge with a node selected takes it in B (input 0), as Nuke's: B "
+            + (b_input.getScriptName() if b_input else "empty") + ", A " + (a_input.getScriptName() if a_input
+                                                                              else "empty"))
+        # NAT-9: copied files on the clipboard come back after a ToolSet's paste
+        board = QtGui.QGuiApplication.clipboard()
+        files = [os.path.join(out, "plate.0001.exr"), os.path.join(out, "plate.0002.exr")]
+        data = QtCore.QMimeData()
+        data.setUrls([QtCore.QUrl.fromLocalFile(f) for f in files])
+        board.setMimeData(data)
+        app.processEvents()
+        studio = {t.name: t for t in toolsets.all_toolsets() if t.place == "Studio"}
+        compat.select_only(natron_app, plate)
+        if "Grain and lens" in studio:
+            toolsets.paste(natron_app, studio["Grain and lens"])
+            app.processEvents()
+        karma = studio.get("CG beauty rebuild (Karma passes)")
+        if karma is not None:
+            passes = ("combineddiffuse", "combinedglossyreflection", "glossytransmission", "combinedemission",
+                      "combinedvolume", "sss")
+            channels = ["R", "G", "B", "A"] + [name + "." + letter for name in passes for letter in "RGB"]
+            spec = oiio.ImageSpec(32, 32, len(channels), oiio.FLOAT)
+            spec.channelnames = tuple(channels)
+            image = oiio.ImageBuf(spec)
+            oiio.ImageBufAlgo.fill(image, tuple([0.35, 0.35, 0.35, 1.0] + [0.05] * (3 * len(passes))))
+            exr = os.path.join(out, "window_karma_passes.exr")
+            image.write(exr)
+            render = natron_app.createReader(exr.replace("\\", "/"))
+            app.processEvents()
+            compat.select_only(natron_app, render)
+            pasted = toolsets.paste(natron_app, karma)
+            app.processEvents()
+            say(sorted(pasted.matched) == sorted(passes) and pasted.connected_to == render.getScriptName(),
+                "Natron's paste of the Karma beauty rebuild finds Karma's six passes: " + pasted.summary("Karma"))
+        back = [os.path.normcase(os.path.normpath(u.toLocalFile())) for u in board.mimeData().urls()]
+        say(back == [os.path.normcase(os.path.normpath(f)) for f in files],
+            "a ToolSet's paste gives back the copied files the clipboard held (every format): " + str(back))
+        # NAT-10: inside a Group's node graph, K makes its Copy there
+        group = natron_app.createNode("fr.inria.built-in.Group")
+        app.processEvents()
+        graph = QtWidgets.QWidget()
+        graph.setObjectName(str(group.getLabel()))  # how Natron names a Group's node graph (Gui/Gui05.cpp)
+        found = compat.focused_group(natron_app, graph)
+        copy = aliases.make("Copy", natron_app, found)
+        app.processEvents()
+        inside = [n.getScriptName() for n in compat.children(group)]
+        say(found is not natron_app and copy is not None and copy.getScriptName() in inside,
+            "inside a Group's node graph, K makes its Copy among the Group's nodes: " + ", ".join(inside))
+        say(compat.focused_group(natron_app, QtWidgets.QWidget()) is natron_app,
+            "the main node graph (no name) is the comp's top level")
+        # NAT-11: hiding the frame ruler hides the in and out fields beside it
+        points = [w for w in window.findChildren(QtWidgets.QWidget) if w.objectName() in ("SngInPoint", "SngOutPoint")]
+        rulers = [w for w in window.findChildren(QtWidgets.QWidget) if class_name(w).rsplit(":", 1)[-1]
+                  == "TimeLineGui"]
+        if points and rulers:
+            ruler = rulers[0]
+            ruler.hide()
+            app.processEvents()
+            hidden = all(p.isHidden() for p in points)
+            ruler.show()
+            app.processEvents()
+            say(hidden and not any(p.isHidden() for p in points),
+                "hiding the timeline hides the in and out fields beside it; showing it shows them again")
+        else:
+            state["results"].append([True, "(not checked: no in and out fields beside the ruler in this window)"])
+        # NAT-13: no timer polls the window; a new panel's header is arranged as Qt polishes it
+        say(not arrange._watchers and arrange._filters, "no timer polls the window (the layer watches Qt's Polish "
+            "events instead): " + str(len(arrange._filters)) + " event filters")
+        blur = natron_app.createNode("net.sf.cimg.CImgBlur")
+        app.processEvents()
+        app.processEvents()
+        headers = [h for h in window.findChildren(QtWidgets.QFrame, arrange.HEADER) if h.isVisible()]
+        if headers:
+            say(all(h.property(arrange.HEADER_ARRANGED) for h in headers),
+                "a new properties panel's header is arranged within two turns of the event loop ("
+                + str(len(headers)) + " headers)")
+        else:
+            state["results"].append([True, "(not checked: a node made by a script opens no properties panel here, so "
+                                           "no new header was polished)"])
+        for node in (merge, plate, group, blur):
+            if node is not None:
+                node.destroy()
+        app.processEvents()
+        # NAT-M5: a big graph's speed, reported
+        if os.environ.get("NATRON_LAYER_PROBE_BIG") == "1":
+            made = []
+            started = time.monotonic()
+            for number in range(3000):
+                node = natron_app.createNode("net.sf.openfx.NoOpPlugin")
+                node.setPosition(110 * (number % 60), 24 * (number // 60))
+                made.append(node)
+            app.processEvents()
+            built = time.monotonic() - started
+            started = time.monotonic()
+            natron_app.selectAllNodes()
+            app.processEvents()
+            selected = time.monotonic() - started
+            started = time.monotonic()
+            for node in made:
+                x, y = node.getPosition()
+                node.setPosition(x + 10, y)
+            app.processEvents()
+            dragged = time.monotonic() - started
+            state["results"].append([True, "(3,000 nodes: made in %.1f s, select all %.2f s, a drag step %.2f s; "
+                                           "reported, not asserted)" % (built, selected, dragged)])
+            for node in made:
+                node.destroy()
+            app.processEvents()
 
     def tick():
         try:

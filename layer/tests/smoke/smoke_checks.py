@@ -183,6 +183,9 @@ def check_look(layer):
     for name in ("mergeConnectToA", "autoHideInputs", "writeUseDialog", "usePluginIcons"):
         if name not in report.kept:
             say(compat.setting_value(name) == wanted[name], name + " is " + str(wanted[name]))
+    say(wanted["mergeConnectToA"] is False and (compat.setting_value("mergeConnectToA") is False
+                                                or "mergeConnectToA" in report.kept),
+        "a new Merge takes the selected node in B, the trunk, as Nuke's (mergeConnectToA off for the session)")
     # The node graph's drawing: preferences of this fork's own builds (core patch 0001). On Niik-l's plain release
     # they're absent and the node graph keeps Natron's drawing; on a build from this fork they're all there and set.
     drawing = look.drawing_names()
@@ -366,6 +369,15 @@ def check_hotkeys(app):
     moved = hotkeys.snap_nodes(nodes)
     say(moved == 2 and [n.position for n in nodes] == [(110, 48), (220, 24), (-110, -24)],
         "snap to grid puts nodes on the 110 x 24 grid: " + str([n.position for n in nodes]))
+    back = hotkeys.undo_snap()
+    say(back == 2 and [n.position for n in nodes] == [(103, 50), (220, 24), (-60, -13)],
+        "snap then Undo snap to grid gives the same positions: " + str([n.position for n in nodes]))
+    close_pair = [FakeNode(105, 48), FakeNode(115, 48), FakeNode(330, 24)]
+    hotkeys.snap_nodes(close_pair)
+    positions = [n.position for n in close_pair]
+    say(len(set(positions)) == 3 and positions[0] == (110, 48) and positions[1] == (115, 48),
+        "two nodes 10 px apart keep two positions (the second stays where it was): " + str(positions))
+    say(hotkeys.undo_snap() == 1 and hotkeys.undo_snap() == 0, "Undo snap to grid puts back only the last snap, once")
     plate = constant(app, (0.5, 0.5, 0.5, 1.0), "InfoPlate")
     grade = compat.create_node(app, "net.sf.openfx.GradePlugin")
     compat.connect(grade, 0, plate)
