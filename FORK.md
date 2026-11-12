@@ -2,8 +2,9 @@
 
 This repository is a copy of **Niik-l's Natron 2.6** ([github.com/Niik-l/Natron](https://github.com/Niik-l/Natron),
 branch `RB-2.6`), the fork of Natron with a 3D workspace, Python 3.14 and Qt 6. On top of it we add a **layer**
-that makes Natron look and behave like Nuke **by default**, so compositors coming from Nuke feel at home at once,
-without changing Natron's own code.
+that makes Natron look and behave like Nuke **by default**, so compositors coming from Nuke feel at home at once:
+mostly from outside Natron's code (Python, presets, a stylesheet), plus eleven small changes to Natron's own files
+(the core patches below), each one a preference that defaults to Natron's own behaviour, or a fix.
 
 ## The two branches
 
@@ -20,15 +21,15 @@ That page compares his branch with ours and shows only our changes: the list of 
 file we added or changed, line by line (green for what we added). Most changes are new files: the `layer/` folder,
 this page, a short introduction GitHub shows on the repository's front page when it opens on `sng/main`
 (`.github/README.md`), and one small workflow (`.github/workflows/upstream-watch.yml`, which doesn't run since
-GitHub Actions are off, see below). **Since `.sng3`, two small changes to Niik-l's own files** (the core patches
-below: the node graph's drawing as preferences, and a name for the properties panels' header), each written so he
-can take it as it is.
+GitHub Actions are off, see below). **And eleven changes to Niik-l's own files** (the core patches below: nine for
+the look, each a preference whose default is Natron's own drawing, and two fixes of bugs in his code), each written
+so he can take it as it is.
 
 ## What the layer does (all in `layer/`)
 
 - **The Nuke look, by default.** Nuke's greys and orange highlight, flat tabs, Nuke's node colours per class
   (measured since `.sng9`: grey Read and Viewer, yellow Write, light blue Grade, orange filters, lilac transforms, blue
-  Merge, plum Copy and Shuffle, green keyers, khaki time nodes), no icons on nodes, a new Merge taking the selected node in A,
+  Merge, plum Copy and Shuffle, green keyers, khaki time nodes), no icons on nodes, a new Merge taking the selected node in B (the trunk, as Nuke's),
   mask inputs hidden, ten properties panels at most, no file browser when a Write is made. It's this build's default:
   a preference the artist changes in Natron's Preferences window is theirs and wins. Nothing is written to the
   artist's Natron settings by the layer.
@@ -69,8 +70,9 @@ can take it as it is.
   offers to bring them in; the same is in the Nuke menu. It reads their `preferences*.nk` and `menu.py` (never runs
   them, never changes them) and uses what maps: some preferences, and their node shortcuts. Not yet tried on a real
   Nuke preferences file.
-- **A smoke test** against Niik-l's portable releases (`layer/tests/smoke/`: 235 checks, pixels compared, the saved
-  comps rendered again without the layer), and **an upstream watch** that says when he publishes something new.
+- **A smoke test** against Niik-l's portable releases and our builds (`layer/tests/smoke/`: about 200 checks headless,
+  over 300 with the window probe, pixels compared, the saved comps rendered again without the layer, the patch files
+  proved to be the code), and **an upstream watch** that says when he publishes something new.
   **Tested on his 2026.09.20 and 2026.10.02 releases** (5 October 2026): every check passes on both, with the same
   pixel values, and on a build of each; Singerie's own Natron pipeline suite passes on both too. 2026.10.02 adds
   openfx-arena (Text, SVG and PSD readers, ImageMagick filters), whose Text node renders headless.
@@ -92,10 +94,10 @@ with Nuke, ranked: [`layer/GAPS.md`](layer/GAPS.md).
 
 ## Core patches
 
-Eleven since `.sng9` (nine for the look, two fixes of Niik-l's bugs; the list below names the first six; all are in
+Eleven since `.sng9` (nine for the look, two fixes of Niik-l's bugs; all listed here, the details in
 [`layer/patches/README.md`](layer/patches/README.md)), also carried as commits on `sng/main`, so our builds are made
-from source
-(`layer/README.md`, "Building from source", with Niik-l's own build scripts):
+from source (`layer/README.md`, "Building from source", with Niik-l's own build scripts). The smoke test proves the
+patch files are the commits: taken off the branch, last to first, they leave Niik-l's code exactly.
 
 1. `layer/patches/0001-Node-graph-drawing-preferences.patch`: the node graph's drawing as preferences (node size,
    corners, shading, outline, selection colour and tint, Dots, link width, colours and arrow heads, the disabled
@@ -121,21 +123,48 @@ from source
    Nuke's, the sliders' scale as a dark groove with dark ticks, check boxes with a small cross and drop-downs shaded,
    as preferences. About 160 lines in `Engine/Settings.cpp`, `Gui/TimeLineGui.cpp`, `Gui/ScaleSliderQWidget.cpp`,
    `Gui/AnimatedCheckBox.cpp`, `Gui/ComboBox.cpp`.
+7. `layer/patches/0007-Viewer-info-bar-curves-and-dope-sheet.patch`: the viewer's info bar worded and ordered as
+   Nuke's (`viewerInfoCompact`), the curve editor's r, g, b, a curves in their colours and the dope sheet's keys as
+   narrow bars (`animationEditorsNuke`). About 130 lines in `Engine/Settings.cpp`, `Gui/InfoViewerWidget.cpp`,
+   `Gui/CurveEditor.cpp`, `Gui/DopeSheetView.cpp`.
+8. `layer/patches/0008-Selected-node-fill-and-Tab-favourites.patch` (on top of 0001, 0003 and 0005): a selected
+   node filled with the selection colour, the Tab search's favourites with a star on each row
+   (`tabSearchFavourites`; the Tab search's only, not Link to... or Pick parameter), and Ctrl+wheel zooming the
+   node graph. About 215 lines in `Engine/Settings.cpp`, `Gui/NodeCreationDialog.cpp`, `Gui/NodeGraph30.cpp`,
+   `Gui/NodeGraphRectItem.{h,cpp}`, `Gui/NodeGui.cpp`.
+9. `layer/patches/0009-Viewer-B-input-freeze.patch` (**a fix**): Shift+1 in the viewer froze Natron (a lock held
+   while the viewer repainted). 22 lines in `Engine/NodeInputs.cpp`. To offer to Niik-l now.
+10. `layer/patches/0010-Node-graph-Ctrl-wheel-magnifier-stuck.patch` (**a fix**): a node enlarged by Ctrl+wheel stayed
+    enlarged when Ctrl was let go elsewhere. 12 lines in `Gui/NodeGraph20.cpp`, `Gui/NodeGraph30.cpp`. To offer to
+    Niik-l now.
+11. `layer/patches/0011-Node-graph-nodes-as-tall-as-their-name.patch`: nodes only as tall as their name
+    (`nodeLabelTight`, Nuke's 80 x 18 tiles) and a Merge naming its operation in words. 27 lines in
+    `Engine/Settings.cpp`, `Gui/NodeGui.cpp`.
+
+The preferences the patches add are read by name through `Settings::cachedKnob` (patch 0001: found once, then kept),
+so the patches stay out of `Settings.h` beyond 0001 and cost nothing when the node graph or the dope sheet is drawn.
 
 Changing Natron's own code makes every one of Niik-l's releases (every one to three weeks) harder to take, so the
-look's budget is at most **9 small patches, about 1,300 lines** (since `.sng9`, 8 November 2026: one patch and 100
-lines more than `.sng6`'s 8 and 1,200, for patch 0011, the nodes' height, which no stylesheet or Python reaches; 6 and
-900 until `.sng6`, 5 and 800 until `.sng5`), each offered to him first; fixes of his bugs count apart:
+look's budget is at most **9 small patches, about 1,350 lines, none over 300** (since the audit of 11 November 2026:
+45 lines more for its hardening; 1,300 since `.sng9`, 8 November 2026, for patch 0011, the nodes' height, which no
+stylesheet or Python reaches; 1,200 until then, 900 until `.sng6`, 800 until `.sng5`), each offered to him first;
+fixes of his bugs count apart. The smoke test holds the budget (`layer/tests/smoke/repository_guards.py`):
 [`layer/patches/`](layer/patches/README.md).
 
 The corresponding source of a build (GPL): this repository at the commit its `Resources/layer/SOURCE.txt` names,
 Niik-l's build scripts in it (`tools/win-build/`), the plug-ins at the commits those scripts pin, and the MSYS2
-packages listed in its `Resources/layer/MSYS2-PACKAGES.lock` (sources in MSYS2's repositories).
+packages listed in its `Resources/layer/MSYS2-PACKAGES.lock` (MSYS2 keeps only some old source archives, so
+the GPL and LGPL ones are kept by the collective in the build folder's `sources/`: `layer/tools/msys2_snapshot.py
+--sources`).
 
 ## Licences
 
 - Natron and Niik-l's fork: GPL-2.0-or-later (see `LICENSE.txt`), with their bundled parts' own licences.
 - The layer: **GPL-3.0-or-later** (`layer/LICENSE`), each file says so in its first lines.
+- **A build carries the licences** (`layer/tools/package_build.py`, since the audit of 11 November 2026): Natron's
+  `LICENSE.txt` and the layer's `LICENSE-layer.txt` at its root, and for a build from source every bundled
+  library's licence text as MSYS2 installed it, Cycles' and wgpu-native's in `Resources/licenses/`, with
+  `PACKAGES.txt` naming each library's licence and home page (MSYS2 ships no text for some: they're marked).
 - `layer/ext/qss/nuke.qss` contains Natron's own stylesheet (GPL-2.0-or-later) unchanged, with our Nuke section
   after it (our own rules, written for this layer). It isn't derived from natron-python-scripting's `mainstyle_NUKE` (MPL-2.0): no MPL file is used.
 - **The gizmo pack is our own** (`layer/ext/python/natron_layer/gizmos.py`), built from Natron's own nodes; nothing

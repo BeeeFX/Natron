@@ -1,8 +1,9 @@
 # The layer
 
 Everything this fork adds to Niik-l's Natron lives in this folder (see `../FORK.md` for the short version). It makes
-Natron look and behave like Nuke **by default** with **no change to Natron's own code**, so every one of Niik-l's
-releases can be taken as it comes. GPL-3.0-or-later (`LICENSE`).
+Natron look and behave like Nuke **by default**, mostly **from outside Natron's own code** (Python, presets, a
+stylesheet), so Niik-l's releases come in with little work; eleven small core patches (`patches/`) do what nothing
+outside can. GPL-3.0-or-later (`LICENSE`).
 
 ## What's where
 
@@ -35,7 +36,11 @@ releases can be taken as it comes. GPL-3.0-or-later (`LICENSE`).
 
 ## The Nuke look
 
-Set from `ext/presets/nuke_look.toml` at every start (`look.apply`), with one rule for whose value wins:
+Set from `ext/presets/nuke_look.toml` at every start of Natron's window (`look.apply`), with one rule for whose value
+wins. **Not headless** (NatronRenderer, `Natron -t`: the farm, the flipbook's render, Singerie's render scripts):
+there the look is a window's colours and habits that would only make one render PC differ from another, so
+`natron_layer.start()` stands aside (since the audit of 11 November 2026); `NATRON_LAYER_LOOK=force` applies it
+anyway (the smoke test does, for its look checks), `NATRON_LAYER_LOOK=off` leaves Natron's own look everywhere.
 
 1. **The artist's own.** A preference the artist changed in Natron's Preferences window and saved is stored in
    Natron's settings (the registry on Windows); the layer leaves it alone. Natron stores a preference only when it's
@@ -159,7 +164,7 @@ default; the artist can change them in Natron's shortcut editor (group Global):
 |---|---|---|
 | K | Insert Copy node | none in the node graph; the viewer's stop, the curve editor's and dope sheet's constant interpolation |
 | I | Node info | none |
-| `\` | Snap all nodes to grid (110 × 24, our understanding of Nuke's default) | none |
+| `\` | Snap all nodes to grid (110 × 24, our understanding of Nuke's default): the node graph the artist is in, never two nodes on one point; **Nuke › Edit › Undo snap to grid** puts them back | none |
 | Shift+Y | Connect second selected to first | none in the node graph; the viewer's luminance of input A |
 | Alt+B | Duplicate and branch | none |
 | Alt+F | Render › Flipbook selected (see Workflow scripts) | none (Natron's menus have no Alt letters) |
@@ -169,8 +174,11 @@ in the shortcut editor.
 
 Natron gives such a command's key to its whole window, so **each command first looks where the keyboard is**: in a
 node graph it acts; anywhere else it hands the key to that widget as if the layer weren't there (checked in the
-window: K in the viewer makes no node). Natron's own default keys are compiled in and can't be changed from Python;
-the layer never writes the ones an artist stores.
+window: K in the viewer makes no node). **Inside a Group** (its own node graph open, with the keyboard), K, Alt+B,
+Shift+Y, I, the imported shortcuts, the workflow scripts, the expressions and the ToolSets act on that Group's nodes
+(`compat.focused_group`: Natron names a Group's node graph after the Group's label, `Gui/Gui05.cpp`); Alt+F (the
+flipbook) works on the comp's top level and says so. Natron's own default keys are compiled in and can't be changed
+from Python; the layer never writes the ones an artist stores.
 
 **Seeding Natron's own keys** (not done, documented for the core-patch decision): Natron stores an artist's keys
 in its settings, one group per shortcut group (`Global`, `NodeGraph`, `Viewer`, `Nodes/<menu>`…), with
@@ -231,7 +239,11 @@ How a gizmo travels: Natron saves a Group PyPlug's inner nodes with the comp and
 it from the comp (checked in `Engine/NodeGroupSerialization.cpp`): where the layer is installed the Group takes the
 gizmo's name and ID, elsewhere (the farm without our build, a plain Natron) it's a plain Group. Either way it renders
 the same pixels (the smoke test renders a comp of every gizmo in a NatronRenderer without the layer). The other side:
-**a later fix to a gizmo reaches new nodes, not the ones already in comps**. The rules that make this work are in
+**a later fix to a gizmo reaches new nodes, not the ones already in comps**: a comp opens its gizmos from its own inner
+nodes, never from the build's recipe, so a farm PC with a newer build renders an old comp the same (proved by the
+smoke test since the audit of 11 November 2026: Grain's recipe changed, a value and a node, the saved comp's pixels
+unchanged). A fix that must reach old comps too is a new gizmo under a new `getVersion()` in its PyPlug, the old one
+kept for the comps that name it. The rules that make this work are in
 `gizmo_kit.py`: only Natron's nodes inside, expressions using Natron's names only (`thisGroup.size.get()`), each
 expression reading one of the group's controls, fixed inner names, no NatronGui.
 
@@ -258,11 +270,11 @@ choice; none of its MPL-2.0 files is used):
 | Channel › Extract layers into Shuffles | One Shuffle per layer of the selected node's stream (an EXR's AOVs), named after the layer: its first three channels in R, G, B (one channel goes to all three), its alpha or the stream's own; marked premultiplied |
 | Other › PostageStamp (and Tab) | The alias above |
 | Roto › Link roto to track | With a Roto (or RotoPaint) and a Tracker selected: a Transform is inserted after the Roto (what it fed is fed by the Transform), its translate an expression giving the track's move since the current frame, its centre the track's position then. Natron takes no expression on a shape's own parameters (checked), hence the Transform, as a Nuke artist would do |
-| Edit › Bake expressions to keyframes | Every expression of the selected nodes becomes a keyframe on each frame of the project's range |
-| Edit › Select similar class, colour | The top-level nodes of the same plug-in, or of the same node colour (colours exist in the window only) |
+| Edit › Bake expressions to keyframes | Every expression of the selected nodes becomes a keyframe on each frame of the project's range; **Edit › Undo last bake** takes those keyframes out and puts each expression back (keys there before stay) |
+| Edit › Select similar class, colour | The nodes of the same plug-in, or of the same node colour, in the node graph the artist is in (colours exist in the window only) |
 | Merge › Next / Previous operation | The selected Merges through Nuke's common operations (over, under, plus, screen, multiply, minus, from, max, min, difference, stencil, mask, in, out, atop, divide, average, copy) |
-| File › Collect files… | Every file the comp reads copied into a chosen folder (`footage/<node>/`, sequences frame by frame) and a copy of the comp written there reading them as `[Project]/footage/…` (Natron's `[Project]` is the folder a comp opens from). The open comp isn't changed |
-| Render › Flipbook selected (Alt+F) | The selected node rendered over the project's frame range by NatronRenderer, in the background, from a copy of the comp (`saveTempProject`; `flipbook_job.py` puts `[Project]` back on the comp's own folder), then played: in **RV** when it's on this PC (`NATRON_RV_PATH`, the fork's own setting for its "Open in RV" buttons, then `RV_PATH`, `RV_HOME`, the PATH, the usual install folders), else as an MP4 (H.264) in the system's player. Natron's window stays free while it renders |
+| File › Collect files… | Every file the comp reads copied into a chosen folder (`footage/<node>/`, sequences frame by frame) and a copy of the comp written there reading them as `[Project]/footage/…` (Natron's `[Project]` is the folder a comp opens from). It says first how many files and how much it copies, then copies with a progress bar and Cancel (the window keeps drawing; a cancelled copy writes no comp). The open comp isn't changed |
+| Render › Flipbook selected (Alt+F) | The selected node rendered over the viewer's in and out points (the project's frame range when they're as wide or none) by NatronRenderer, in the background, from a copy of the comp (`saveTempProject`; `flipbook_job.py` puts `[Project]` back on the comp's own folder), then played: in **RV** when it's on this PC (`NATRON_RV_PATH`, the fork's own setting for its "Open in RV" buttons, then `RV_PATH`, `RV_HOME`, the PATH, the usual install folders), else as an MP4 (H.264) in the system's player. Natron's window stays free while it renders, and a line says when it's done ("Flipbook of Grade1: 120 frames in 43 s"). Only the newest two flipbooks stay in the temp folder (`%TEMP%\natron-layer-flipbook`, the tool's own: older ones are deleted at the next flipbook); **Render › Cancel flipbook** stops one still rendering and deletes its frames |
 
 Each script's work is a function taking its nodes, which the smoke test runs headless; the menu functions only read
 the selection and say what happened. Within Singerie, publishing and the archive collect a shot's files; Collect
@@ -272,13 +284,17 @@ files is for a comp handed on outside it.
 
 `toolsets.py`, menu bar › Nuke › ToolSets, as in Nuke. A ToolSet is a file of **Natron's own copied nodes**
 (`<name>.xml`: the text Natron's Copy puts on the clipboard, which its Paste reads), so pasting one is Natron's
-paste: the file's text goes on the clipboard, `pasteNodes`, and whatever the clipboard held (its text or picture) is
-put back. Pasting needs Natron's window. Three places, each its own submenu:
+paste: the file's text goes on the clipboard, `pasteNodes` (into the node graph the artist is in, a Group's too), and
+whatever the clipboard held is put back, every format of it (text, copied files, a picture, another program's own);
+an empty clipboard stays empty. Pasting needs Natron's window. Three places, each its own submenu:
 
-- **Studio**: the layer's, in `ext/toolsets/`. Two today: **CG beauty rebuild (Cycles passes)** (Blender Cycles'
+- **Studio**: the layer's, in `ext/toolsets/`. Three today: **CG beauty rebuild (Cycles passes)** (Blender Cycles'
   light passes added back up: (Dir + Ind) × Col for diffuse, glossy and transmission, plus volume, emission and the
-  environment, the beauty's alpha, and a Check that's black when the passes add up) and **Grain and lens** (a
-  LensDistortion to set to the plate's lens, ChromaticAberration, Vignette, Grain).
+  environment, the beauty's alpha, and a Check that's black when the passes add up), **CG beauty rebuild (Karma
+  passes)** (since the audit of 11 November 2026: Karma's lighting passes as Singerie's SNG Karma Output names them,
+  `combineddiffuse`, `combinedglossyreflection`, `glossytransmission`, `combinedemission`, `combinedvolume`, `sss`,
+  simply added, the same alpha and Check) and **Grain and lens** (a LensDistortion to set to the plate's lens,
+  ChromaticAberration, Vignette, Grain).
 - **Mine**: the artist's, saved with **Save selection as ToolSet…** (Natron's Copy of the selection, kept in
   `%APPDATA%\natron-layer\toolsets`).
 - **Project**: every folder listed in `NATRON_LAYER_TOOLSETS` (separated as on PATH). **This is the way in for
@@ -299,8 +315,9 @@ changes (a pasted gizmo carries its inner nodes), or when a Natron release chang
 pastes every file in the window and renders the result without the layer.
 
 Found on the fork: Windows lets one program at a time open the clipboard and programs watching it open it right
-after each change, so a set can fail; the layer tries again until the text reads back, and never calls Natron's
-paste on a clipboard that doesn't hold the ToolSet. A paste before Natron's node graph exists ended Natron.
+after each change, so a set can fail; the layer tries again (five times, letting Qt handle what's pending but never
+the artist's keys or clicks, no sleep) until the text reads back, and never calls Natron's paste on a clipboard that
+doesn't hold the ToolSet. A paste before Natron's node graph exists ended Natron.
 
 ## Expressions
 
@@ -398,8 +415,10 @@ checks) also passes on both, identically but for the last digits of a camera sol
 
 1. `python layer/tools/sync_upstream.py --watch` says what's new; `--push` fast-forwards `RB-2.6` and pushes his new
    tags. **Fast-forward only**: if his history was ever rewritten, nothing is pushed and a person looks.
-2. Merge his release tag into `sng/main` (`git merge --no-ff natron-2.6-<date>`). His files and ours never overlap,
-   so the merge is clean as long as there are no core patches.
+2. Merge his release tag into `sng/main` (`git merge --no-ff natron-2.6-<date>`). His files and ours overlap only in
+   the core patches' files (`patches/`): where a merge conflicts there, resolve it and regenerate those patches (the
+   smoke test proves the patch files are the code, `tests/smoke/repository_guards.py`). The layer's own files never
+   overlap his.
 3. Download that release's portable build and run the smoke test on it (with `--gui`).
 4. When it passes, update `upstream.toml` (`[upstream]` and `[tested]`), push `sng/main`, make the build
    (`tools/package_build.py`) and publish it on Singerie (an admin's step).
@@ -410,8 +429,9 @@ it's kept for the day Actions come back. Its job is `sync_upstream.py --watch`: 
 release tags, compares them with our copy of his branch (BeeeFX/Natron when the PC can read it, else the local
 branch) and with the release `sng/main` carries and was tested on (`upstream.toml`), prints what's new and the steps,
 writes the same text to `--report <file>` when asked, and exits with 3 when something is new (0 when not). It builds
-nothing, runs no Natron and pushes nothing. A weekly scheduled task on a PC with the working copy can run it, for
-instance (Windows; not set up by the layer):
+nothing, runs no Natron and pushes nothing. **The PC that builds checks once a week by itself** (Baptiste's yes, 12
+November 2026, audit NAT-5): a weekly scheduled task there runs it, made once by hand on that PC (the layer never
+makes it; Windows):
 
 ```
 schtasks /Create /SC WEEKLY /D MON /ST 09:00 /TN "Natron upstream watch" /TR "python \"%USERPROFILE%\.singerie\tools\natron-fork\layer\tools\sync_upstream.py\" --watch --report \"%USERPROFILE%\natron-upstream.txt\""
@@ -565,7 +585,7 @@ read by name (Settings.h unchanged), the look setting the Nuke-like value for th
 Measured against Foundry's timeline pictures ("Using the Viewer Controls", and the timeline in "Nuke Studio
 Environments"' viewer_focus.png) and its knob row ("Using the Color Controls"):
 
-- **0006** (Appearance > Main Window), each defaulting to Natron's drawing and read by name: `timelineRulerNuke` (the
+- **0006** (Appearance > Main Window), each defaulting to Natron's drawing and read by name: `timelineRulerCompact` (the
   frame ruler without its axis line, short ticks on every step and taller ones where a number sits, all rising from
   one baseline, the cached frames' line between the ticks and the numbers, the playback in and out points as upright
   lines through the ruler, the numbers in the regular weight), `knobWidgetsShaded` (a ticked check box shows a small
@@ -592,7 +612,7 @@ with Nodes"' nodes_branching_2.png for a selected node, "Animating Parameters"' 
 dope_sheet_intro.png, "Using the Tab Menu"' pictures), four more preferences, each defaulting to Natron's own drawing,
 read by name, the look setting the Nuke value for the session:
 
-- `viewerInfoNuke` (0007; Appearance > Main Window): the viewer's info bar reads as Nuke's: the format and size, "bbox:"
+- `viewerInfoCompact` (0007; Appearance > Main Window): the viewer's info bar reads as Nuke's: the format and size, "bbox:"
   (Natron's "RoD:"), "channels: rgba" after it (Natron puts "Color.RGBA32f" first), the pointer's position, the
   values in Nuke's brighter red, green and blue with a white alpha, the swatch, then "H: 51 S:0.05 V:0.86  L: 0.84822".
 - `animationEditorsNuke` (0007; Appearance > Curve Editor): the r, g, b and a curves red, green, blue and white (their
@@ -602,7 +622,7 @@ read by name, the look setting the Nuke value for the session:
 - `nodeSelectedFill` (0008; Appearance > Node Graph, with `nodeSelectedTint` above 0): a selected node is filled flat with
   the selection colour (Nuke's 252, 186, 99, measured; `nodeSelectedColor` in the look) inside a 2.5-unit rim of its
   own shaded colour, outlined as usual; its links take `linkSelectedColor`, the same orange.
-- `tabSearchNuke` (0008; Nodegraph): the Tab search lists the favourites first, with a line under the last one; each row
+- `tabSearchFavourites` (0008; Nodegraph): the Tab search lists the favourites first, with a line under the last one; each row
   has a star at its right end (filled for a favourite, outlined otherwise) that adds or removes it with one click
   (the click doesn't make the node); a green dot before the star grows with how often the node was made from the Tab
   search (Natron's own count); the letters typed are drawn bold where the search found them. The favourites are the
@@ -615,7 +635,7 @@ read by name, the look setting the Nuke value for the session:
   space"). Measured on Foundry's timeline picture ("Using the Viewer Controls", comp_timeline2.png: pixel heights
   read, nothing kept): Nuke's ruler is a little more than five digits tall, with the current frame's number standing
   on its marker's level rather than a line above it; its ruler and playback bar take about 60 % of the height
-  `.sng6` gave them. With `timelineRulerNuke` (patch 0006), the current frame's number is drawn beside its orange
+  `.sng6` gave them. With `timelineRulerCompact` (patch 0006), the current frame's number is drawn beside its orange
   marker and the in and out points' numbers beside their red lines (left of the in line, right of the out line), so
   `arrange.py` gives the ruler two lines of text (Natron's ruler font at its "Font size" preference, a few pixels
   around: 40 px instead of 54 on a 96-dpi screen) and the playback bar its buttons' height (buttons 24 x 18, fields
