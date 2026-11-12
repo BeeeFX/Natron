@@ -70,7 +70,7 @@ command = "copy_node"
 keys = "M"
 where = "node graph"
 nuke = "Merge"
-natron = "Merge (a new Merge takes the selected node in A, as in Nuke: the look keeps Merge connects to A on)"
+natron = "Merge (a new Merge takes the selected node in B, the trunk, as in Nuke: the look turns Natron's Merge connects to A off)"
 status = "same"
 
 [[key]]

@@ -13,8 +13,11 @@ The rules every gizmo keeps, so that a comp holding one opens and renders anywhe
 - **Every expression reads at least one of the group's controls** (``thisGroup.<control>.get()``): Natron compiles an
   expression with the group's name in it and recompiles it when the group is renamed only if it reads one of its
   parameters (checked on the fork: an expression reading only the input's format kept the old name).
-- **Inner nodes keep fixed names** (``Noise``, ``SizeR``…): when Natron opens a comp it builds the gizmo again and then
-  gives each inner node its saved values by name. Renaming one in a later version loses those values.
+- **Inner nodes keep fixed names** (``Noise``, ``SizeR``…), so the gizmos of two versions read alike in a comp. A comp
+  keeps the gizmo it was saved with: Natron opens it from the comp's own inner nodes, it doesn't build it again from
+  this recipe (the smoke test changes a value and a node of Grain's recipe and renders a saved comp: same pixels). So
+  a change that alters pixels reaches the gizmos made after it, never those in comps already; one that must reach old
+  comps too is a new gizmo under a new ``getVersion()``, the old one kept for the comps that name it.
 - No NatronGui: the gizmos render headless (NatronRenderer, the farm).
 """
 

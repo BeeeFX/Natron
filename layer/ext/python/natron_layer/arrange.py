@@ -11,7 +11,8 @@ it expects (a release that changed them): nothing breaks, that part just stays N
   the A and B inputs with the compare operation between them, then on the right the proxy and full-frame switches,
   the zoom and the proxy level; the second row has gain then gamma, each a switch, a field and a slider, then on the
   right refresh, region of interest and pause, the clip-to-format and checkerboard switches, the viewers' lock, and
-  the info bar's switch last. Thin separators between groups. Viewers made later are arranged too (``watch``).
+  the info bar's switch last. Thin separators between groups. Viewers made later are arranged too, as Qt polishes
+  them (``watch``).
 - **Object names** on the rows and the playback bar (``SngViewerBar1``, ``SngViewerBar2``, ``SngPlayerBar``), so
   the look's stylesheet draws them as Nuke's (flat bars; playback buttons in small raised boxes).
 - **The timeline and playback bar in Nuke's order** (Foundry's "Using the Viewer Controls", the timeline picture):
@@ -19,7 +20,7 @@ it expects (a release that changed them): nothing breaks, that part just stays N
   under it the frame rate and time format on the left, the loop mode, then in the middle the set-in button, first
   frame, previous keyframe, previous frame, play backward, the current frame, play, next frame, next keyframe, last
   frame and the set-out button, then the frame increment; the viewers' lock on the right. The ruler itself is drawn
-  by Natron (core patch 0006's ``timelineRulerNuke``); with it the ruler and the bar are as compact as Nuke's (the
+  by Natron (core patch 0006's ``timelineRulerCompact``); with it the ruler and the bar are as compact as Nuke's (the
   current frame's number beside its marker). Since round 6 (.sng9) at Nuke's sizes: the viewer's bars 26 pixels
   high, the info bar 20, the playback buttons 30 x 24 in a 30-pixel row.
 - **The properties panels' header in Nuke's order**: the collapse button first, the name field taking the width,
@@ -225,11 +226,11 @@ RULER_HEIGHT = 54  # Natron's ruler drawn as Natron's (current frame's number ov
 
 
 def ruler_height(ruler: Any) -> int:
-    """The ruler's height. Drawn as Nuke's (preference ``timelineRulerNuke``, this fork's builds), the current frame's
+    """The ruler's height. Drawn as Nuke's (preference ``timelineRulerCompact``, this fork's builds), the current frame's
     number sits beside its marker, so the ruler is as compact as Nuke's: a line for the marker, the ticks and the
     numbers beside them, and a line for the frame numbers (Foundry's timeline picture: the ruler a little more than
     five digits tall). Otherwise room for Natron's two lines of text over the ticks."""
-    if compat.setting_value("timelineRulerNuke") is not True:
+    if compat.setting_value("timelineRulerCompact") is not True:
         return max(ruler.minimumHeight(), RULER_HEIGHT)
     # The ruler draws its text in Natron's font at its "Font size" preference (Gui/TimeLineGui.cpp), not the
     # widget's: a line of frame numbers, the gap to the ticks' baseline (5), the marker's number standing on it, and
@@ -253,7 +254,7 @@ def arrange_player(viewer: Any, bar: Any, qt: Any) -> bool:
         return False
     widgets = dict(zip(PLAYER_NAMES, found))
     relayout(qt, bar, NUKE_PLAYER, widgets)
-    compact = compat.setting_value("timelineRulerNuke") is True
+    compact = compat.setting_value("timelineRulerCompact") is True
     for name in NUKE_PLAYER:
         if isinstance(name, str) and kind(widgets.get(name)) == "QPushButton":
             widgets[name].setFixedSize(*PLAYER_BUTTON)
@@ -285,12 +286,55 @@ def arrange_player(viewer: Any, bar: Any, qt: Any) -> bool:
         field.setMinimumHeight(0)
         field.setMaximumHeight(16777215)
         field.setSizePolicy(qt.QtWidgets.QSizePolicy.Policy.Fixed, qt.QtWidgets.QSizePolicy.Policy.Preferred)
-        field.setHidden(hidden)
+        field.setHidden(hidden or ruler.isHidden())
     row.addWidget(widgets["in_point"])
     row.addWidget(ruler, 1)
     row.addWidget(widgets["out_point"])
     layout.insertLayout(index, row)
+    follow_ruler(qt, ruler, [widgets["in_point"], widgets["out_point"]])
     return True
+
+
+_filters: list[Any] = []  # the event filters below, kept alive (PySide would drop them otherwise)
+_classes: dict[str, Any] = {}
+
+
+def _filter_class(qt: Any, name: str, handle: Any) -> Any:
+    """A QObject subclass whose eventFilter calls ``handle(watched, event)`` (made once per name: Qt is only there
+    inside Natron)."""
+    if name not in _classes:
+
+        class _Filter(qt.QtCore.QObject):
+            def __init__(self, parent: Any, call: Any) -> None:
+                super().__init__(parent)
+                self._call = call
+
+            def eventFilter(self, watched: Any, event: Any) -> bool:  # noqa: N802  (Qt's name)
+                try:
+                    self._call(watched, event)
+                except Exception:  # noqa: BLE001,S110  (a nicety: never in the way of Natron's own events)
+                    pass
+                return False
+
+        _classes[name] = _Filter
+    return _classes[name]
+
+
+def follow_ruler(qt: Any, ruler: Any, fields: list[Any]) -> Any:
+    """The in and out fields shown and hidden with the frame ruler: Natron's "hide timeline" hides only the ruler
+    (ViewerTab::setTimelineVisible), and the fields, moved beside it, would stay alone in an empty row. The ruler's
+    own hidden flag is followed, not its parent's, so switching viewer tabs changes nothing."""
+    shown = (qt.QtCore.QEvent.Type.Show, qt.QtCore.QEvent.Type.Hide)
+
+    def handle(_watched: Any, event: Any) -> None:
+        if event.type() in shown:
+            for field in fields:
+                field.setHidden(ruler.isHidden())
+
+    watcher = _filter_class(qt, "follow", handle)(ruler, handle)
+    ruler.installEventFilter(watcher)
+    _filters.append(watcher)
+    return watcher
 
 
 HEADER = "DockablePanelHeader"  # the properties panels' header (core patch 0002 names it)
@@ -430,16 +474,36 @@ def viewer_share(window: Any, qt: Any) -> bool:
     return False
 
 
-_watchers: list[Any] = []
+_watchers: list[Any] = []  # timers polling the window: none since the audit of 11 November 2026 (NAT-13)
+_queued: list[bool] = []
 
 
-def watch(window: Any, qt: Any, every_ms: int = 3000) -> None:
-    """Viewers made later (a new viewer, a pane split, a floating viewer) arranged within a few seconds."""
-    timer = qt.QtCore.QTimer(window)
-    timer.setInterval(every_ms)
-    timer.timeout.connect(lambda: (arrange_all(window, qt), arrange_headers(window, qt)))
-    timer.start()
-    _watchers.append(timer)
+def watch(window: Any, qt: Any) -> Any:
+    """Viewers made later (a new viewer, a pane split, a floating viewer) and new properties panels arranged as Qt
+    polishes them, before they're first drawn: an event filter on the application that only looks for a Polish of
+    a ViewerTab or of a panel's header, and queues one arrangement for the next turn of the event loop (several new
+    widgets at once make one). No timer looks at the window."""
+    application = compat.application()
+    if application is None:
+        return None
+    polish = qt.QtCore.QEvent.Type.Polish
+
+    def arrange_queued() -> None:
+        _queued.clear()
+        arrange_all(window, qt)
+        arrange_headers(window, qt)
+
+    def handle(watched: Any, event: Any) -> None:
+        if event.type() != polish or _queued:
+            return
+        if kind(watched) == "ViewerTab" or watched.objectName() == HEADER:
+            _queued.append(True)
+            qt.QtCore.QTimer.singleShot(0, arrange_queued)
+
+    watcher = _filter_class(qt, "polish", handle)(application, handle)
+    application.installEventFilter(watcher)
+    _filters.append(watcher)
+    return watcher
 
 
 def install(window: Any) -> dict[str, int]:

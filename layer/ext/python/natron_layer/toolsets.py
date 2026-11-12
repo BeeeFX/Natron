@@ -155,33 +155,36 @@ def after_paste(app: Any, new_nodes: list[Any], source: Any = None) -> Pasted:
 # --- Paste and save (interface only) ---
 
 
-def paste(app: Any, toolset: ToolSet, source: Any = None) -> Pasted:
-    """Paste ``toolset`` with Natron's own paste, fed by ``source`` (the selected node by default)."""
+def paste(app: Any, toolset: ToolSet, source: Any = None, group: Any = None) -> Pasted:
+    """Paste ``toolset`` with Natron's own paste into the comp's main node graph or ``group``'s, fed by ``source``
+    (the selected node of that node graph by default)."""
     text = Path(toolset.path).read_text(encoding="utf-8")
     if not looks_like_natron_nodes(text):
         raise ValueError(f"{toolset.path} isn't a file of Natron's copied nodes.")
     if source is None:
-        selected = compat.selected_nodes(app)
+        selected = compat.selected_nodes(app, group)
         source = selected[0] if len(selected) == 1 else None
-    before = {n.getScriptName() for n in compat.children(app)}
+    graph = app if group is None else group
+    before = {n.getScriptName() for n in compat.children(graph)}
     with compat.kept_clipboard():
         # Natron's paste reads whatever the clipboard holds (and failed badly on an empty one): only paste once the
         # ToolSet is really there.
         if not compat.set_clipboard_text(text):
             raise RuntimeError("Windows didn't let Natron put the ToolSet on the clipboard (another program had it "
                                "open); try again.")
-        compat.paste_nodes(app)
-    new_nodes = [n for n in compat.children(app) if n.getScriptName() not in before]
+        compat.paste_nodes(app, group)
+    new_nodes = [n for n in compat.children(graph) if n.getScriptName() not in before]
     return after_paste(app, new_nodes, source)
 
 
-def save_selection(app: Any, name: str) -> Path:
-    """The selected nodes, copied with Natron's own Copy, saved as one of the artist's ToolSets."""
+def save_selection(app: Any, name: str, group: Any = None) -> Path:
+    """The selected nodes (of the comp's top level, or of ``group``), copied with Natron's own Copy, saved as one of
+    the artist's ToolSets."""
     clean = re.sub(r"[^\w\- ]", "", name).strip().replace(" ", "_")
     if not clean:
         raise ValueError("A ToolSet needs a name.")
     with compat.kept_clipboard():
-        compat.copy_selected_nodes(app)
+        compat.copy_selected_nodes(app, group)
         text = compat.clipboard_text()
     if not looks_like_natron_nodes(text):
         raise ValueError("Natron's Copy gave nothing (select the nodes first).")
@@ -203,7 +206,7 @@ def _paste_number(number: int) -> Pasted | None:
         compat.warning("ToolSets", f"{toolset.path} isn't there any more.")
         return None
     app = compat.active_app()
-    report = paste(app, toolset)
+    report = paste(app, toolset, group=compat.focused_group(app))
     compat.say(report.summary(toolset.name))
     return report
 
@@ -215,14 +218,15 @@ def save_selection_dialog() -> Path | None:
     """Menu: Nuke › ToolSets › Save selection as ToolSet…"""
     qt = compat.qt_modules()
     app = compat.active_app()
-    if not compat.selected_nodes(app):
+    group = compat.focused_group(app)
+    if not compat.selected_nodes(app, group):
         compat.information("Save selection as ToolSet", "Select the nodes to keep as a ToolSet first.")
         return None
     name, ok = qt.QtWidgets.QInputDialog.getText(None, "Save selection as ToolSet", "Name of the ToolSet:")
     if not ok or not name.strip():
         return None
     try:
-        path = save_selection(app, name)
+        path = save_selection(app, name, group)
     except ValueError as exc:
         compat.warning("Save selection as ToolSet", str(exc))
         return None
@@ -243,7 +247,8 @@ def paste_dialog() -> Pasted | None:
     if not ok:
         return None
     toolset = found[labels.index(label)]
-    report = paste(compat.active_app(), toolset)
+    app = compat.active_app()
+    report = paste(app, toolset, group=compat.focused_group(app))
     compat.say(report.summary(toolset.name))
     return report
 

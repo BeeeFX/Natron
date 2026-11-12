@@ -244,12 +244,38 @@ def _when_window_is_up(qt: Any) -> None:
 
             # once Natron has finished sizing its window (its splitters settle after the window shows)
             window = windows[0]
-            qt.QtCore.QTimer.singleShot(1000, lambda: skin.polish(window))
-        qt.QtCore.QTimer.singleShot(1500, first_launch)
+            qt.QtCore.QTimer.singleShot(1000, lambda: (skin.polish(window), first_launch_when_free(qt)))
+        else:
+            first_launch_when_free(qt)
 
     timer.timeout.connect(look_for_window)
     timer.start()
     _waiting.append(timer)  # kept alive until the window is up
+
+
+_asking: list[Any] = []
+
+
+def first_launch_when_free(qt: Any) -> None:
+    """The first-launch question, but never over another dialog (a comp's own, one of Singerie's windows) or while
+    Natron's window isn't the one in front: then it waits for the next time the keyboard comes to Natron's window."""
+    app = compat.application()
+    if app is None:
+        return
+    if app.activeModalWidget() is None and isinstance(app.activeWindow(), qt.QtWidgets.QMainWindow):
+        first_launch()
+        return
+    if _asking:
+        return
+
+    def again(_old: Any, _new: Any) -> None:
+        if app.activeModalWidget() is None and isinstance(app.activeWindow(), qt.QtWidgets.QMainWindow):
+            app.focusChanged.disconnect(again)
+            _asking.clear()
+            first_launch()
+
+    _asking.append(again)
+    app.focusChanged.connect(again)
 
 
 def refresh_look() -> bool:

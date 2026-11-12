@@ -87,6 +87,35 @@ def cg_beauty_rebuild(app: Any, x: float = 0.0, y: float = 0.0) -> dict[str, Any
     return made
 
 
+# Karma's lighting passes as Singerie's SNG Karma Output turns them on ("Beauty and lighting": Singerie's
+# plugins/houdini/python/singerie_houdini/karma_output.py, PASS_PRESETS), each an EXR layer of that name. Unlike
+# Cycles' light passes they hold the light already multiplied by the surface's colour, so they simply add up.
+KARMA_PASSES = ("combineddiffuse", "combinedglossyreflection", "glossytransmission", "combinedemission",
+                "combinedvolume", "sss")
+
+
+def karma_beauty_rebuild(app: Any, x: float = 0.0, y: float = 0.0) -> dict[str, Any]:
+    """Karma's lighting passes back into the beauty (they add up, no colour multiply), with a check against the
+    render's own beauty."""
+    made: dict[str, Any] = {}
+    made["ToolSetIn"] = start = _node(app, DOT, "ToolSetIn", x + 330, y)
+    streams = []
+    for column, name in enumerate(KARMA_PASSES):
+        streams.append(_node(app, SHUFFLE, f"AOV_{name}", x + 110 * column, y + 120, PREMULTIPLIED, inputs=(start,)))
+        made[f"AOV_{name}"] = streams[-1]
+    inputs = [streams[0], streams[1], None, *streams[2:]]  # Merge: B, A, the mask, then A2, A3…
+    made["Rebuild"] = rebuild = _node(app, MERGE, "Rebuild", x + 330, y + 240, (("operation", "plus"),), tuple(inputs))
+    colour = "uk.co.thefoundry.OfxImagePlaneColour"
+    made["KeepAlpha"] = keep = _node(app, SHUFFLE, "KeepAlpha", x + 330, y + 320, (
+        ("outputR", f"B.{colour}.R"), ("outputG", f"B.{colour}.G"), ("outputB", f"B.{colour}.B"),
+        ("outputA", f"A.{colour}.A"), *PREMULTIPLIED), (rebuild, start))
+    made["ToolSetOut"] = _node(app, DOT, "ToolSetOut", x + 330, y + 400, inputs=(keep,))
+    made["Check"] = check = _node(app, MERGE, "Check", x + 600, y + 320, (
+        ("operation", "difference"), ("OutputChannelsA", False)), (start, rebuild))
+    check.setLabel("Check (black when the passes add up to the beauty)")
+    return made
+
+
 def grain_and_lens(app: Any, x: float = 0.0, y: float = 0.0) -> dict[str, Any]:
     """A CG element made to sit in a plate: the lens's distortion, its colour fringes and vignetting, then grain."""
     made: dict[str, Any] = {}
@@ -116,6 +145,7 @@ def grain_and_lens(app: Any, x: float = 0.0, y: float = 0.0) -> dict[str, Any]:
 
 RECIPES: dict[str, Callable[..., dict[str, Any]]] = {
     "CG beauty rebuild (Cycles passes)": cg_beauty_rebuild,
+    "CG beauty rebuild (Karma passes)": karma_beauty_rebuild,
     "Grain and lens": grain_and_lens,
 }
 

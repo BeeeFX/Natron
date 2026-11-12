@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # This file is part of the layer of this Natron fork (see FORK.md at the repository root).
-"""The layer of this Natron fork: Natron made to look and behave like Nuke by default, with no change to Natron's
-own code (see FORK.md and layer/README.md).
+"""The layer of this Natron fork: Natron made to look and behave like Nuke by default, mostly from outside Natron's
+own code (Python, presets, a stylesheet), with a few small core patches (see FORK.md and layer/README.md).
 
-``start()`` runs in every Natron session (init.py), ``start_gui()`` in sessions with an interface (initGui.py).
+``start()`` runs in every Natron session (init.py; it stands aside headless), ``start_gui()`` in sessions with an
+interface (initGui.py).
 Neither writes Natron's preferences.
 """
 
@@ -17,13 +18,20 @@ last_report = None  # the look's report from start(), for the smoke test and the
 
 
 def start() -> object | None:
-    """The Nuke look for this session (NATRON_LAYER_LOOK=off leaves Natron's own look)."""
+    """The Nuke look for this session (NATRON_LAYER_LOOK=off leaves Natron's own look).
+
+    Not in a headless session (NatronRenderer, ``Natron -t``: the farm, the flipbook's render, Singerie's render
+    scripts): the look is a window's colours and habits, and its preferences would only make one render PC differ
+    from another. NATRON_LAYER_LOOK=force applies it there too (the smoke test, for its look checks)."""
     global last_report  # noqa: PLW0603
-    if os.environ.get("NATRON_LAYER_LOOK", "").strip().lower() == "off":
+    wanted = os.environ.get("NATRON_LAYER_LOOK", "").strip().lower()
+    if wanted == "off":
+        return None
+    from . import compat  # noqa: PLC0415
+
+    if wanted != "force" and compat.in_natron() and compat.is_background():
         return None
     from . import look  # noqa: PLC0415
-
-    from . import compat  # noqa: PLC0415
 
     try:
         last_report = look.apply()
