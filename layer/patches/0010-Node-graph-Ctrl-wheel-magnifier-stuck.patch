@@ -18,7 +18,8 @@ own, older than his fork), not a look: no preference.
 
 Gap: none (a bug in Natron's node graph).
 Size: 2 files, 12 lines added.
-upstream: not offered yet (Baptiste: keep the fork private for now).
+upstream: to offer now (Baptiste, 12 November 2026: the two fixes go to Niik-l from his
+account).
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
@@ -44,7 +45,7 @@ index e7dfedb64..d5155a557 100644
      QPointF lastMousePosScene = mapToScene( _imp->_lastMousePos.x(), _imp->_lastMousePos.y() );
      double dx, dy;
 diff --git a/Gui/NodeGraph30.cpp b/Gui/NodeGraph30.cpp
-index 40f3c1b5b..98ddc5ff3 100644
+index 1ccaf171b..317c145e5 100644
 --- a/Gui/NodeGraph30.cpp
 +++ b/Gui/NodeGraph30.cpp
 @@ -200,6 +200,12 @@ NodeGraph::wheelEvent(QWheelEvent* e)

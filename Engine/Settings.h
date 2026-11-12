@@ -222,6 +222,9 @@ public:
     void getDisabledCrossColor(double *r, double *g, double *b) const;
     double getDisabledCrossWidth() const;
 
+    // A preference by its script name, found once and kept (the fork's own, read on every paint).
+    KnobIPtr cachedKnob(const char* name) const;
+
     void getGeneratorColor(float *r, float *g, float *b) const;
     void getReaderColor(float *r, float *g, float *b) const;
     void getWriterColor(float *r, float *g, float *b) const;

@@ -61,7 +61,7 @@ NATRON_NAMESPACE_ENTER
 static bool
 sliderHandleBar()
 {
-    KnobBool* k = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("sliderHandleBar").get() );
+    KnobBool* k = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("sliderHandleBar").get() );
 
     return k && k->getValue();
 }

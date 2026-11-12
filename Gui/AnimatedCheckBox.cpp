@@ -159,7 +159,7 @@ AnimatedCheckBox::paintEvent(QPaintEvent* e)
     } else if (animation == 3) {
         appPTR->getCurrentSettings()->getExprColor(&bgR, &bgG, &bgB);
     }
-    KnobBool* insetPref = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("knobWidgetsShaded").get() );
+    KnobBool* insetPref = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("knobWidgetsShaded").get() );
     const bool inset = insetPref && insetPref->getValue();
     if ( inset && (animation == 0) && (bgR == bgG) && (bgG == bgB) ) {
         bgR = bgG = bgB = bgR * 0.6; // a plain box (not a channel's colour) darker than the panel

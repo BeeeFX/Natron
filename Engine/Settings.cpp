@@ -800,7 +800,7 @@ Settings::initializeKnobsGuiColors()
     _guiColorsTab->addKnob(_diskCachedFrameColor);
     // Read by the timeline through its name (no member, so Settings.h stays as it is).
     KnobBoolPtr nukeRuler = AppManager::createKnob<KnobBool>( this, tr("Timeline ruler as Nuke's") );
-    nukeRuler->setName("timelineRulerNuke");
+    nukeRuler->setName("timelineRulerCompact");
     nukeRuler->setHintToolTip( tr("When checked, the timeline's frame ruler has no axis line, short ticks with taller ones where "
                                   "a number sits, the cached frames' line under the ticks and the in and out points as upright "
                                   "lines; otherwise Natron's ruler.") );
@@ -864,7 +864,7 @@ Settings::initializeKnobsGuiColors()
     insetCross->setDefaultValue(false);
     _guiColorsTab->addKnob(insetCross);
     KnobBoolPtr infoNuke = AppManager::createKnob<KnobBool>( this, tr("Viewer info bar as Nuke's") );
-    infoNuke->setName("viewerInfoNuke");
+    infoNuke->setName("viewerInfoCompact");
     infoNuke->setHintToolTip( tr("When checked, the viewer's info bar reads as Nuke's: the format, bbox, channels, the pointer's position, the values in brighter red, green and blue, then H S V L; otherwise Natron's (RoD, the image's kind first).") );
     infoNuke->setDefaultValue(false);
     _guiColorsTab->addKnob(infoNuke);
@@ -1563,7 +1563,7 @@ Settings::initializeKnobsNodeGraph()
                                                       "for auto-connection. When the node is disabled, B is always output, whether this is checked or not.") );
     _nodegraphTab->addKnob(_useInputAForMergeAutoConnect);
     KnobBoolPtr tabNuke = AppManager::createKnob<KnobBool>( this, tr("Tab search with favourites") );
-    tabNuke->setName("tabSearchNuke");
+    tabNuke->setName("tabSearchFavourites");
     tabNuke->setHintToolTip( tr("When checked, the Tab search lists your favourites first, shows a star on each row to add or remove one, a green dot for the nodes you make most often, and the letters you typed in bold.") );
     tabNuke->setDefaultValue(false);
     _nodegraphTab->addKnob(tabNuke);
@@ -3558,6 +3558,23 @@ double Settings::getLinkWidth() const { return _linkWidth->getValue(); }
 double Settings::getLinkArrowLength() const { return _linkArrowLength->getValue(); }
 double Settings::getLinkArrowAngle() const { return _linkArrowAngle->getValue(); }
 double Settings::getDisabledCrossWidth() const { return _disabledCrossWidth->getValue(); }
+
+KnobIPtr
+Settings::cachedKnob(const char* name) const
+{
+    // A lookup by name walks every preference under a lock: once per name here, kept as a weak pointer.
+    static QMutex mutex;
+    static std::map<std::pair<const Settings*, std::string>, KnobIWPtr> found;
+    QMutexLocker locker(&mutex);
+    KnobIWPtr& kept = found[std::make_pair(this, std::string(name))];
+    KnobIPtr knob = kept.lock();
+    if (!knob) {
+        knob = getKnobByName(name);
+        kept = knob;
+    }
+
+    return knob;
+}
 
 static void
 getColorKnobValue(const KnobColorPtr& k, double *r, double *g, double *b)

@@ -4,7 +4,7 @@ Date: Sat, 31 Oct 2026 01:45:09 +0000
 Subject: [PATCH 7/8] Viewer info bar, curve colours and dope sheet keys
  optionally drawn like Nuke's
 
-- viewerInfoNuke (Appearance > Main Window; off by default, Natron's info bar as before): the viewer's info bar
+- viewerInfoCompact (Appearance > Main Window; off by default, Natron's info bar as before): the viewer's info bar
   reads "bbox:" instead of "RoD:", "channels: rgba" (instead of "Color.RGBA32f") after the bbox instead of first,
   the values in brighter red, green and blue with a white alpha, and "H: 51 S:0.05 V:0.86  L: 0.84822". The
   channels move each time an image arrives, so the preference applies without a restart.
@@ -13,22 +13,26 @@ Subject: [PATCH 7/8] Viewer info bar, curve colours and dope sheet keys
   a dark edge (the selection colour when selected) instead of the interpolation pictures.
 - Every new preference is read by name, so Settings.h doesn't change.
 
+Since the audit of 11 November 2026 (NAT-17): the info bar's preference is named viewerInfoCompact (was
+viewerInfoNuke).
+
 Core patch 0007 of the BeeeFX fork (layer/patches/).
 
 Gap: layer/GAPS.md, "Nuke's look and habits" (the info bar, the curve editor and dope sheet).
 Size: 4 files, 112 lines added, 18 removed.
-upstream: not offered (Baptiste: keep the fork private for now).
+upstream: not offered yet (the repository is public since 2 November 2026; offered once the two
+fixes are in, Baptiste's call).
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
- Engine/Settings.cpp      | 10 ++++++++
- Gui/CurveEditor.cpp      | 22 ++++++++++++++++
- Gui/DopeSheetView.cpp    | 54 +++++++++++++++++++++++++++++-----------
- Gui/InfoViewerWidget.cpp | 44 +++++++++++++++++++++++++++++---
+ Engine/Settings.cpp      | 10 +++++++++
+ Gui/CurveEditor.cpp      | 22 ++++++++++++++++++++
+ Gui/DopeSheetView.cpp    | 54 ++++++++++++++++++++++++++++++++++--------------
+ Gui/InfoViewerWidget.cpp | 44 ++++++++++++++++++++++++++++++++++++---
  4 files changed, 112 insertions(+), 18 deletions(-)
 
 diff --git a/Engine/Settings.cpp b/Engine/Settings.cpp
-index 93bd09d38..22934ac3c 100644
+index 505cfc801..33ca29477 100644
 --- a/Engine/Settings.cpp
 +++ b/Engine/Settings.cpp
 @@ -863,6 +863,11 @@ Settings::initializeKnobsGuiColors()
@@ -36,7 +40,7 @@ index 93bd09d38..22934ac3c 100644
      insetCross->setDefaultValue(false);
      _guiColorsTab->addKnob(insetCross);
 +    KnobBoolPtr infoNuke = AppManager::createKnob<KnobBool>( this, tr("Viewer info bar as Nuke's") );
-+    infoNuke->setName("viewerInfoNuke");
++    infoNuke->setName("viewerInfoCompact");
 +    infoNuke->setHintToolTip( tr("When checked, the viewer's info bar reads as Nuke's: the format, bbox, channels, the pointer's position, the values in brighter red, green and blue, then H S V L; otherwise Natron's (RoD, the image's kind first).") );
 +    infoNuke->setDefaultValue(false);
 +    _guiColorsTab->addKnob(infoNuke);
@@ -56,7 +60,7 @@ index 93bd09d38..22934ac3c 100644
  
  void
 diff --git a/Gui/CurveEditor.cpp b/Gui/CurveEditor.cpp
-index cde56d34e..0170aed47 100644
+index cde56d34e..f0b518246 100644
 --- a/Gui/CurveEditor.cpp
 +++ b/Gui/CurveEditor.cpp
 @@ -51,6 +51,8 @@ GCC_DIAG_UNUSED_PRIVATE_FIELD_ON
@@ -78,7 +82,7 @@ index cde56d34e..0170aed47 100644
 +setNukeChannelColor(const CurveGuiPtr& curve,
 +                    const std::string& dimension)
 +{
-+    KnobBool* pref = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("animationEditorsNuke").get() );
++    KnobBool* pref = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("animationEditorsNuke").get() );
 +    if ( !pref || !pref->getValue() ) {
 +        return;
 +    }
@@ -103,7 +107,7 @@ index cde56d34e..0170aed47 100644
              elements.push_back(elem);
              std::string expr = k->getExpression(j);
 diff --git a/Gui/DopeSheetView.cpp b/Gui/DopeSheetView.cpp
-index b0c7bc016..508667779 100644
+index b0c7bc016..0dfaecc70 100644
 --- a/Gui/DopeSheetView.cpp
 +++ b/Gui/DopeSheetView.cpp
 @@ -41,6 +41,7 @@
@@ -122,7 +126,7 @@ index b0c7bc016..508667779 100644
 -    glBindTexture(GL_TEXTURE_2D, kfTexturesIDs[textureType]);
 +    // Optionally (preference animationEditorsNuke, read by name) a key as Nuke's dope sheet draws it: a narrow grey
 +    // upright bar with a dark edge, in the selection colour when selected (odd textures are the selected ones).
-+    KnobBool* nukeKeys = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("animationEditorsNuke").get() );
++    KnobBool* nukeKeys = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("animationEditorsNuke").get() );
 +    if ( nukeKeys && nukeKeys->getValue() ) {
 +        const double inset = rect.width() * 0.29;
 +        const double top = rect.top() - (rect.top() - rect.bottom()) * 0.07, bottom = rect.bottom() + (rect.top() - rect.bottom()) * 0.07;
@@ -178,7 +182,7 @@ index b0c7bc016..508667779 100644
      if (drawTime) {
          QString text = QString::number(time);
 diff --git a/Gui/InfoViewerWidget.cpp b/Gui/InfoViewerWidget.cpp
-index c796854ff..3024105a8 100644
+index c796854ff..d68db6aed 100644
 --- a/Gui/InfoViewerWidget.cpp
 +++ b/Gui/InfoViewerWidget.cpp
 @@ -38,6 +38,8 @@
@@ -194,12 +198,12 @@ index c796854ff..3024105a8 100644
  using std::cout; using std::endl;
  NATRON_NAMESPACE_ENTER
  
-+// Optionally (preference viewerInfoNuke, read by name, off by default) the info bar worded and ordered as Nuke's:
++// Optionally (preference viewerInfoCompact, read by name, off by default) the info bar worded and ordered as Nuke's:
 +// the format, "bbox:", "channels:", the pointer's position, the values in Nuke's colours, then H S V L.
 +static bool
 +infoBarNuke()
 +{
-+    KnobBool* pref = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("viewerInfoNuke").get() );
++    KnobBool* pref = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("viewerInfoCompact").get() );
 +
 +    return pref && pref->getValue();
 +}

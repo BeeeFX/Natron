@@ -505,7 +505,7 @@ KnobGuiValue::createWidget(QHBoxLayout* layout)
     addExtraWidgets(containerLayout);
 
     // Optionally (preference knobDimensionButtonLast, read by name) the dimensions button after the colour buttons.
-    KnobBool* dimensionsLast = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("knobDimensionButtonLast").get() );
+    KnobBool* dimensionsLast = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("knobDimensionButtonLast").get() );
     if ( _imp->dimensionSwitchButton && dimensionsLast && dimensionsLast->getValue() ) {
         containerLayout->removeWidget(_imp->dimensionSwitchButton);
         containerLayout->addWidget(_imp->dimensionSwitchButton);

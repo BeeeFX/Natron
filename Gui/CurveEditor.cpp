@@ -85,7 +85,7 @@ static void
 setNukeChannelColor(const CurveGuiPtr& curve,
                     const std::string& dimension)
 {
-    KnobBool* pref = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("animationEditorsNuke").get() );
+    KnobBool* pref = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("animationEditorsNuke").get() );
     if ( !pref || !pref->getValue() ) {
         return;
     }

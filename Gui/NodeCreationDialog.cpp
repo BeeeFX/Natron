@@ -65,13 +65,13 @@ CLANG_DIAG_ON(uninitialized)
 NATRON_NAMESPACE_ENTER
 
 
-// Optionally (preference tabSearchNuke, read by name, off by default) the Tab search as Nuke's: the favourites
+// Optionally (preference tabSearchFavourites, read by name, off by default) the Tab search as Nuke's: the favourites
 // (preference tabFavourites, entries separated by |) listed first, a star on each row to add or remove one, a green
 // dot growing with how often a node was made from here, and the typed letters in bold.
 static bool
-tabSearchNuke()
+tabSearchFavourites()
 {
-    KnobBool* pref = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("tabSearchNuke").get() );
+    KnobBool* pref = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("tabSearchFavourites").get() );
 
     return pref && pref->getValue();
 }
@@ -79,7 +79,7 @@ tabSearchNuke()
 static QStringList
 tabFavourites()
 {
-    KnobString* k = dynamic_cast<KnobString*>( appPTR->getCurrentSettings()->getKnobByName("tabFavourites").get() );
+    KnobString* k = dynamic_cast<KnobString*>( appPTR->getCurrentSettings()->cachedKnob("tabFavourites").get() );
 
     return k ? QString::fromUtf8( k->getValue().c_str() ).split(QLatin1Char('|'), Qt::SkipEmptyParts) : QStringList();
 }
@@ -93,7 +93,7 @@ public:
 
     virtual void paint(QPainter* p, const QStyleOptionViewItem& option, const QModelIndex& index) const OVERRIDE FINAL
     {
-        if ( !tabSearchNuke() ) {
+        if ( !tabSearchFavourites() ) {
             QStyledItemDelegate::paint(p, option, index);
             return;
         }
@@ -101,7 +101,8 @@ public:
         initStyleOption(&opt, index);
         const QString label = opt.text;
         opt.text.clear();
-        opt.widget->style()->drawControl(QStyle::CE_ItemViewItem, &opt, p, opt.widget);
+        QStyle* style = opt.widget ? opt.widget->style() : QApplication::style();
+        style->drawControl(QStyle::CE_ItemViewItem, &opt, p, opt.widget);
         const QString typed = _edit->text();
         // The star sits at the visible right end (the row can be wider than the list); the text stops before it.
         const QAbstractItemView* view = qobject_cast<const QAbstractItemView*>(opt.widget);
@@ -153,8 +154,8 @@ public:
     virtual bool editorEvent(QEvent* e, QAbstractItemModel* model, const QStyleOptionViewItem& option, const QModelIndex& index) OVERRIDE FINAL
     {
         // A press on the star adds the row to the favourites or takes it out, saved with the preferences.
-        if ( tabSearchNuke() && (e->type() == QEvent::MouseButtonPress) && (static_cast<QMouseEvent*>(e)->position().x() > _edit->getView()->viewport()->rect().right() - 18) ) {
-            KnobString* k = dynamic_cast<KnobString*>( appPTR->getCurrentSettings()->getKnobByName("tabFavourites").get() );
+        if ( tabSearchFavourites() && (e->type() == QEvent::MouseButtonPress) && (static_cast<QMouseEvent*>(e)->position().x() > _edit->getView()->viewport()->rect().right() - 18) ) {
+            KnobString* k = dynamic_cast<KnobString*>( appPTR->getCurrentSettings()->cachedKnob("tabFavourites").get() );
             if (k) {
                 QStringList favs = tabFavourites();
                 const QString label = index.data().toString();
@@ -174,6 +175,14 @@ private:
     CompleterLineEdit* _edit;
     const CompleterLineEdit::PluginsNamesMap* _names;
 };
+
+// The favourites belong to the Tab search alone (NodeCreationDialog, the only list given a TabSearchDelegate): the
+// same list of names serves Link to... and Pick parameter, which keep Natron's plain list.
+static bool
+favouritesIn(const QAbstractItemView* view)
+{
+    return tabSearchFavourites() && view && dynamic_cast<const TabSearchDelegate*>( view->itemDelegate() );
+}
 
 struct CompleterLineEditPrivate
 {
@@ -238,7 +247,6 @@ CompleterLineEdit::CompleterLineEdit(const QStringList & displayWords,
     _imp->model = new QStringListModel(this);
     _imp->listView->setWindowFlags(Qt::ToolTip);
     _imp->listView->setModel(_imp->model);
-    _imp->listView->setItemDelegate( new TabSearchDelegate(this, &_imp->names) );
 
     connect( this, SIGNAL(textChanged(QString)), this, SLOT(filterText(QString)) );
     connect( _imp->listView, SIGNAL(clicked(QModelIndex)), this, SLOT(setTextFromIndex(QModelIndex)) );
@@ -308,7 +316,7 @@ CompleterLineEdit::filterText(const QString & txt)
         }
 #endif
     }
-    if ( tabSearchNuke() ) { // the favourites first, each group in its own order
+    if ( favouritesIn(_imp->listView) ) { // the favourites first, each group in its own order
         const QStringList favs = tabFavourites();
         QStringList first, rest;
         for (int i = 0; i < sl.size(); ++i) {
@@ -342,7 +350,7 @@ void
 CompleterLineEdit::setTextFromIndex(const QModelIndex & index)
 {
     const QPoint at = _imp->listView->viewport()->mapFromGlobal( QCursor::pos() );
-    if ( tabSearchNuke() && (at.x() > _imp->listView->viewport()->rect().right() - 18) ) {
+    if ( favouritesIn(_imp->listView) && (at.x() > _imp->listView->viewport()->rect().right() - 18) ) {
         return; // a click on the star (TabSearchDelegate) doesn't choose the row
     }
     QString text = index.data().toString();

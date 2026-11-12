@@ -132,7 +132,7 @@ static int nodeTileHeight() { return appPTR->getCurrentSettings()->getNodeTileHe
 static bool
 nodeLabelTight()
 {
-    KnobBool* tight = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("nodeLabelTight").get() );
+    KnobBool* tight = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("nodeLabelTight").get() );
 
     return tight && tight->getValue();
 }
@@ -150,7 +150,7 @@ settingsColor(void (Settings::*getter)(double*, double*, double*) const)
 static double
 nodeErrorTint()
 {
-    KnobDouble* k = dynamic_cast<KnobDouble*>( appPTR->getCurrentSettings()->getKnobByName("nodeErrorTint").get() );
+    KnobDouble* k = dynamic_cast<KnobDouble*>( appPTR->getCurrentSettings()->cachedKnob("nodeErrorTint").get() );
 
     return k ? k->getValue() : 0.;
 }
@@ -158,7 +158,7 @@ nodeErrorTint()
 static QColor
 nodeErrorColor()
 {
-    KnobColor* k = dynamic_cast<KnobColor*>( appPTR->getCurrentSettings()->getKnobByName("nodeErrorColor").get() );
+    KnobColor* k = dynamic_cast<KnobColor*>( appPTR->getCurrentSettings()->cachedKnob("nodeErrorColor").get() );
     QColor c(217, 31, 26);
     if (k) {
         c.setRgbF( Image::clamp(k->getValue(0), 0., 1.), Image::clamp(k->getValue(1), 0., 1.), Image::clamp(k->getValue(2), 0., 1.) );
@@ -692,14 +692,14 @@ NodeGui::createGui()
 
     // Optionally (preference backdropLabelOnly, read by name) a backdrop without its name strip (BackdropGui draws the
     // label large at the top); the strip stays where it is, unseen, to drag the backdrop by.
-    KnobBool* labelOnly = dynamic_cast<KnobBool*>( settings->getKnobByName("backdropLabelOnly").get() );
+    KnobBool* labelOnly = dynamic_cast<KnobBool*>( settings->cachedKnob("backdropLabelOnly").get() );
     if ( isBd && labelOnly && labelOnly->getValue() && _nameFrame ) {
         _nameFrame->setPen(Qt::NoPen);
         _nameFrame->setData(kNodeGraphRectPointedEnds + 1, true); // the name is hidden once made, below
     }
 
     // Optionally (preference viewerNodePointed, read by name) a Viewer node with pointed ends, its outline too.
-    KnobBool* pointed = dynamic_cast<KnobBool*>( settings->getKnobByName("viewerNodePointed").get() );
+    KnobBool* pointed = dynamic_cast<KnobBool*>( settings->cachedKnob("viewerNodePointed").get() );
     if ( pointed && pointed->getValue() && (node->getPluginID() == PLUGINID_NATRON_VIEWER) ) {
         _boundingBox->setData(kNodeGraphRectPointedEnds, true);
     }
@@ -980,7 +980,7 @@ NodeGui::adjustSizeToContent(int* w,
 
     // Optionally (preference nodeFitLabel, off by default) a node grows to fit a longer label. Measured from the
     // node's initial width, never from its current one, so the width can't creep. Backdrops size themselves.
-    KnobBool* fitLabel = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("nodeFitLabel").get() );
+    KnobBool* fitLabel = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("nodeFitLabel").get() );
     if ( w && fitLabel && fitLabel->getValue() && !dynamic_cast<BackdropGui*>(this) &&
          !( _previewPixmap && _previewPixmap->isVisible() ) ) {
         int initialW, initialH;
@@ -1891,7 +1891,7 @@ NodeGui::refreshCurrentBrush()
     bool selected = isSelectionTinted() && getIsSelected();
     // Or (preference nodeSelectedFill, read by name) filled with the selection colour inside a rim of its own
     // colour, outlined as usual, as Nuke's.
-    KnobBool* fillPref = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("nodeSelectedFill").get() );
+    KnobBool* fillPref = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("nodeSelectedFill").get() );
     const bool fill = selected && fillPref && fillPref->getValue();
     if (selected && !fill) {
         color = mixColors( color, Qt::white, appPTR->getCurrentSettings()->getNodeSelectedTint() * 0.5 );
@@ -3072,7 +3072,7 @@ struct NodeGuiIndicatorPrivate
 
         QPointF ellipseCenter = ellipseRect.center();
         // Optionally (preference nodeBadgesFlat, read by name) a flat disc in the badge's main colour, thin dark edge.
-        KnobBool* flat = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("nodeBadgesFlat").get() );
+        KnobBool* flat = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("nodeBadgesFlat").get() );
         if ( flat && flat->getValue() && !gradStops.isEmpty() ) {
             ellipse->setBrush( gradStops[gradStops.size() / 2].second );
             ellipse->setPen( QPen(QColor(20, 20, 20), 1) );
@@ -3234,7 +3234,7 @@ NodeGui::setNameItemHtml(const QString & name,
     // font: once a node's panel has been opened, Natron's label editor leaves an empty font tag in the label (HTML size
     // 6), which drew the name much larger than the other nodes'.
     QString labelText = label;
-    KnobBool* keepSize = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("nodeNameKeepsSize").get() );
+    KnobBool* keepSize = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("nodeNameKeepsSize").get() );
     if ( keepSize && keepSize->getValue() ) {
         QString plain = label;
         plain.remove( QRegularExpression( QString::fromUtf8("<[^>]*>") ) );

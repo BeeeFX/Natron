@@ -19,7 +19,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  1 file changed, 2 insertions(+)
 
 diff --git a/Gui/DockablePanel.cpp b/Gui/DockablePanel.cpp
-index 51d9f813..573aba38 100644
+index 51d9f813c..573aba38a 100644
 --- a/Gui/DockablePanel.cpp
 +++ b/Gui/DockablePanel.cpp
 @@ -185,6 +185,8 @@ DockablePanel::DockablePanel(Gui* gui,

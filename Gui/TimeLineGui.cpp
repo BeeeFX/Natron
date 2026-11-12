@@ -67,13 +67,13 @@ GCC_DIAG_UNUSED_PRIVATE_FIELD_ON
 
 NATRON_NAMESPACE_ENTER
 
-// Preference timelineRulerNuke (off by default): the frame ruler drawn as Nuke's: no axis line, short ticks on every
+// Preference timelineRulerCompact (off by default): the frame ruler drawn as Nuke's: no axis line, short ticks on every
 // step and taller ones where a number sits, rising from one baseline; the cached frames' line under the ticks; the
 // playback in and out points as upright lines; the numbers in the regular weight. Read by name (Settings.h unchanged).
 static bool
-timelineRulerNuke()
+timelineRulerCompact()
 {
-    KnobBool* k = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("timelineRulerNuke").get() );
+    KnobBool* k = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("timelineRulerCompact").get() );
 
     return k && k->getValue();
 }
@@ -369,7 +369,7 @@ TimeLineGui::paintGL()
 
     glCheckError();
 
-    const bool nukeRuler = timelineRulerNuke();
+    const bool nukeRuler = timelineRulerCompact();
     {
         double screenPixelRatio = (_imp->viewerTab && _imp->viewerTab->getViewer()) ? _imp->viewerTab->getViewer()->getScreenPixelRatio() : 1.0;
         const QFont::Weight weight = nukeRuler ? QFont::Normal : QFont::Bold;
@@ -766,6 +766,7 @@ TimeLineGui::paintGL()
                     glVertex2f( leftBoundBtm.x(), btmLeft.y() );
                     glVertex2f( leftBoundBtm.x(), topRight.y() );
                     glEnd();
+                    glLineWidth(_imp->_screenPixelRatio); // back to one pixel for what's drawn next
                 } else {
                     glBegin(GL_POLYGON);
                     glVertex2f( leftBoundBtm.x(), leftBoundBtm.y() );
@@ -793,6 +794,7 @@ TimeLineGui::paintGL()
                     glVertex2f( rightBoundBtm.x(), btmLeft.y() );
                     glVertex2f( rightBoundBtm.x(), topRight.y() );
                     glEnd();
+                    glLineWidth(_imp->_screenPixelRatio); // back to one pixel for what's drawn next
                 } else {
                     glBegin(GL_POLYGON);
                     glVertex2f( rightBoundBtm.x(), rightBoundBtm.y() );

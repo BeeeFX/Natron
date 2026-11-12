@@ -518,13 +518,18 @@ static QString
 pageTabLabel(DockablePanel* panel,
              const KnobPageGuiPtr& page)
 {
-    QString label = QString::fromUtf8( page->pageKnob.lock()->getLabel().c_str() );
-    KnobBool* named = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("pageTabNodeName").get() );
+    KnobPagePtr pageKnob = page ? page->pageKnob.lock() : KnobPagePtr();
+    if (!pageKnob) {
+        return QString();
+    }
+    QString label = QString::fromUtf8( pageKnob->getLabel().c_str() );
+    KnobBool* named = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("pageTabNodeName").get() );
     NodeSettingsPanel* nodePanel = dynamic_cast<NodeSettingsPanel*>(panel);
     if ( label != QString::fromUtf8("Controls") || !named || !named->getValue() || !nodePanel || !nodePanel->getNode() ) {
         return label;
     }
-    const Plugin* plugin = nodePanel->getNode()->getNode()->getPlugin();
+    NodePtr node = nodePanel->getNode()->getNode();
+    const Plugin* plugin = node ? node->getPlugin() : 0;
     if ( !plugin || plugin->getLabelWithoutSuffix().isEmpty() ) {
         return label;
     }

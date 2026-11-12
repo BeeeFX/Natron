@@ -47,12 +47,12 @@
 using std::cout; using std::endl;
 NATRON_NAMESPACE_ENTER
 
-// Optionally (preference viewerInfoNuke, read by name, off by default) the info bar worded and ordered as Nuke's:
+// Optionally (preference viewerInfoCompact, read by name, off by default) the info bar worded and ordered as Nuke's:
 // the format, "bbox:", "channels:", the pointer's position, the values in Nuke's colours, then H S V L.
 static bool
 infoBarNuke()
 {
-    KnobBool* pref = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("viewerInfoNuke").get() );
+    KnobBool* pref = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("viewerInfoCompact").get() );
 
     return pref && pref->getValue();
 }

@@ -7,7 +7,7 @@ Subject: [PATCH] Selected nodes filled and the Tab search's favourites,
 - nodeSelectedFill (Appearance > Node Graph; off by default): with a selected node tint above 0, a selected node is
   filled flat with the selection colour inside a thin rim (2.5 units) of its own shaded colour and keeps its usual
   outline, instead of being brightened with an outline in the selection colour.
-- tabSearchNuke (Nodegraph; off by default, Natron's Tab search as before): the favourites (tabFavourites, the rows'
+- tabSearchFavourites (Nodegraph; off by default, Natron's Tab search as before): the favourites (tabFavourites, the rows'
   text separated by |) listed first with a line under the last one; a star at each row's visible right end, filled
   for a favourite, that adds or removes one with a click (saved with the preferences; the click doesn't make the
   node); a green dot growing with Natron's own count of the nodes made from the Tab search; the typed letters bold
@@ -17,24 +17,29 @@ Subject: [PATCH] Selected nodes filled and the Tab search's favourites,
   magnifier, which artists took for the node changing size).
 - Every new preference is read by name, so Settings.h doesn't change.
 
+Since the audit of 11 November 2026: the preference is named tabSearchFavourites (was tabSearchNuke, NAT-17);
+the star is the Tab search's alone, no longer in Link to... and Pick parameter, which use the same list (NAT-12);
+a row painted without a widget uses the application's style (NAT-15).
+
 Core patch 0008 of the BeeeFX fork (layer/patches/).
 
 Gap: layer/GAPS.md, item 1 (Tab node search: favourites) and "Nuke's look and habits" (the selected node).
-Size: 6 files, 193 lines added, 12 removed.
-upstream: not offered (Baptiste: keep the fork private for now).
+Size: 6 files, 201 lines added, 12 removed.
+upstream: not offered yet (the repository is public since 2 November 2026; offered once the two
+fixes are in, Baptiste's call).
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
- Engine/Settings.cpp        |  21 ++++++
- Gui/NodeCreationDialog.cpp | 132 +++++++++++++++++++++++++++++++++++++
+ Engine/Settings.cpp        |  21 +++++++
+ Gui/NodeCreationDialog.cpp | 140 +++++++++++++++++++++++++++++++++++++++++++++
  Gui/NodeGraph30.cpp        |   8 +++
- Gui/NodeGraphRectItem.cpp  |  27 +++++---
+ Gui/NodeGraphRectItem.cpp  |  27 +++++----
  Gui/NodeGraphRectItem.h    |   6 ++
  Gui/NodeGui.cpp            |  11 +++-
- 6 files changed, 193 insertions(+), 12 deletions(-)
+ 6 files changed, 201 insertions(+), 12 deletions(-)
 
 diff --git a/Engine/Settings.cpp b/Engine/Settings.cpp
-index 22934ac3c..f5faf7ab7 100644
+index 33ca29477..dab07312e 100644
 --- a/Engine/Settings.cpp
 +++ b/Engine/Settings.cpp
 @@ -1115,6 +1115,18 @@ Settings::initializeKnobsNodeGraphDrawing()
@@ -61,7 +66,7 @@ index 22934ac3c..f5faf7ab7 100644
                                                        "for auto-connection. When the node is disabled, B is always output, whether this is checked or not.") );
      _nodegraphTab->addKnob(_useInputAForMergeAutoConnect);
 +    KnobBoolPtr tabNuke = AppManager::createKnob<KnobBool>( this, tr("Tab search with favourites") );
-+    tabNuke->setName("tabSearchNuke");
++    tabNuke->setName("tabSearchFavourites");
 +    tabNuke->setHintToolTip( tr("When checked, the Tab search lists your favourites first, shows a star on each row to add or remove one, a green dot for the nodes you make most often, and the letters you typed in bold.") );
 +    tabNuke->setDefaultValue(false);
 +    _nodegraphTab->addKnob(tabNuke);
@@ -73,7 +78,7 @@ index 22934ac3c..f5faf7ab7 100644
  
  void
 diff --git a/Gui/NodeCreationDialog.cpp b/Gui/NodeCreationDialog.cpp
-index cc9086ff9..c42d2166d 100644
+index cc9086ff9..9b33d7b34 100644
 --- a/Gui/NodeCreationDialog.cpp
 +++ b/Gui/NodeCreationDialog.cpp
 @@ -40,11 +40,19 @@ CLANG_DIAG_OFF(uninitialized)
@@ -96,17 +101,17 @@ index cc9086ff9..c42d2166d 100644
  #include "Gui/LineEdit.h"
  #include "Gui/GuiApplicationManager.h"
  
-@@ -57,6 +65,116 @@ CLANG_DIAG_ON(uninitialized)
+@@ -57,6 +65,125 @@ CLANG_DIAG_ON(uninitialized)
  NATRON_NAMESPACE_ENTER
  
  
-+// Optionally (preference tabSearchNuke, read by name, off by default) the Tab search as Nuke's: the favourites
++// Optionally (preference tabSearchFavourites, read by name, off by default) the Tab search as Nuke's: the favourites
 +// (preference tabFavourites, entries separated by |) listed first, a star on each row to add or remove one, a green
 +// dot growing with how often a node was made from here, and the typed letters in bold.
 +static bool
-+tabSearchNuke()
++tabSearchFavourites()
 +{
-+    KnobBool* pref = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("tabSearchNuke").get() );
++    KnobBool* pref = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("tabSearchFavourites").get() );
 +
 +    return pref && pref->getValue();
 +}
@@ -114,7 +119,7 @@ index cc9086ff9..c42d2166d 100644
 +static QStringList
 +tabFavourites()
 +{
-+    KnobString* k = dynamic_cast<KnobString*>( appPTR->getCurrentSettings()->getKnobByName("tabFavourites").get() );
++    KnobString* k = dynamic_cast<KnobString*>( appPTR->getCurrentSettings()->cachedKnob("tabFavourites").get() );
 +
 +    return k ? QString::fromUtf8( k->getValue().c_str() ).split(QLatin1Char('|'), Qt::SkipEmptyParts) : QStringList();
 +}
@@ -128,7 +133,7 @@ index cc9086ff9..c42d2166d 100644
 +
 +    virtual void paint(QPainter* p, const QStyleOptionViewItem& option, const QModelIndex& index) const OVERRIDE FINAL
 +    {
-+        if ( !tabSearchNuke() ) {
++        if ( !tabSearchFavourites() ) {
 +            QStyledItemDelegate::paint(p, option, index);
 +            return;
 +        }
@@ -136,7 +141,8 @@ index cc9086ff9..c42d2166d 100644
 +        initStyleOption(&opt, index);
 +        const QString label = opt.text;
 +        opt.text.clear();
-+        opt.widget->style()->drawControl(QStyle::CE_ItemViewItem, &opt, p, opt.widget);
++        QStyle* style = opt.widget ? opt.widget->style() : QApplication::style();
++        style->drawControl(QStyle::CE_ItemViewItem, &opt, p, opt.widget);
 +        const QString typed = _edit->text();
 +        // The star sits at the visible right end (the row can be wider than the list); the text stops before it.
 +        const QAbstractItemView* view = qobject_cast<const QAbstractItemView*>(opt.widget);
@@ -188,8 +194,8 @@ index cc9086ff9..c42d2166d 100644
 +    virtual bool editorEvent(QEvent* e, QAbstractItemModel* model, const QStyleOptionViewItem& option, const QModelIndex& index) OVERRIDE FINAL
 +    {
 +        // A press on the star adds the row to the favourites or takes it out, saved with the preferences.
-+        if ( tabSearchNuke() && (e->type() == QEvent::MouseButtonPress) && (static_cast<QMouseEvent*>(e)->position().x() > _edit->getView()->viewport()->rect().right() - 18) ) {
-+            KnobString* k = dynamic_cast<KnobString*>( appPTR->getCurrentSettings()->getKnobByName("tabFavourites").get() );
++        if ( tabSearchFavourites() && (e->type() == QEvent::MouseButtonPress) && (static_cast<QMouseEvent*>(e)->position().x() > _edit->getView()->viewport()->rect().right() - 18) ) {
++            KnobString* k = dynamic_cast<KnobString*>( appPTR->getCurrentSettings()->cachedKnob("tabFavourites").get() );
 +            if (k) {
 +                QStringList favs = tabFavourites();
 +                const QString label = index.data().toString();
@@ -210,10 +216,18 @@ index cc9086ff9..c42d2166d 100644
 +    const CompleterLineEdit::PluginsNamesMap* _names;
 +};
 +
++// The favourites belong to the Tab search alone (NodeCreationDialog, the only list given a TabSearchDelegate): the
++// same list of names serves Link to... and Pick parameter, which keep Natron's plain list.
++static bool
++favouritesIn(const QAbstractItemView* view)
++{
++    return tabSearchFavourites() && view && dynamic_cast<const TabSearchDelegate*>( view->itemDelegate() );
++}
++
  struct CompleterLineEditPrivate
  {
      QDialog* dialog;
-@@ -103,6 +221,7 @@ CompleterLineEdit::CompleterLineEdit(const PluginsNamesMap& plugins,
+@@ -103,6 +230,7 @@ CompleterLineEdit::CompleterLineEdit(const PluginsNamesMap& plugins,
      _imp->model = new QStringListModel(this);
      _imp->listView->setWindowFlags(Qt::ToolTip);
      _imp->listView->setModel(_imp->model);
@@ -221,19 +235,11 @@ index cc9086ff9..c42d2166d 100644
  
      connect( this, SIGNAL(textChanged(QString)), this, SLOT(filterText(QString)) );
      connect( _imp->listView, SIGNAL(clicked(QModelIndex)), this, SLOT(setTextFromIndex(QModelIndex)) );
-@@ -119,6 +238,7 @@ CompleterLineEdit::CompleterLineEdit(const QStringList & displayWords,
-     _imp->model = new QStringListModel(this);
-     _imp->listView->setWindowFlags(Qt::ToolTip);
-     _imp->listView->setModel(_imp->model);
-+    _imp->listView->setItemDelegate( new TabSearchDelegate(this, &_imp->names) );
- 
-     connect( this, SIGNAL(textChanged(QString)), this, SLOT(filterText(QString)) );
-     connect( _imp->listView, SIGNAL(clicked(QModelIndex)), this, SLOT(setTextFromIndex(QModelIndex)) );
-@@ -188,6 +308,14 @@ CompleterLineEdit::filterText(const QString & txt)
+@@ -188,6 +316,14 @@ CompleterLineEdit::filterText(const QString & txt)
          }
  #endif
      }
-+    if ( tabSearchNuke() ) { // the favourites first, each group in its own order
++    if ( favouritesIn(_imp->listView) ) { // the favourites first, each group in its own order
 +        const QStringList favs = tabFavourites();
 +        QStringList first, rest;
 +        for (int i = 0; i < sl.size(); ++i) {
@@ -244,19 +250,19 @@ index cc9086ff9..c42d2166d 100644
      _imp->model->setStringList(sl);
      _imp->listView->setModel(_imp->model);
  
-@@ -213,6 +341,10 @@ CompleterLineEdit::filterText(const QString & txt)
+@@ -213,6 +349,10 @@ CompleterLineEdit::filterText(const QString & txt)
  void
  CompleterLineEdit::setTextFromIndex(const QModelIndex & index)
  {
 +    const QPoint at = _imp->listView->viewport()->mapFromGlobal( QCursor::pos() );
-+    if ( tabSearchNuke() && (at.x() > _imp->listView->viewport()->rect().right() - 18) ) {
++    if ( favouritesIn(_imp->listView) && (at.x() > _imp->listView->viewport()->rect().right() - 18) ) {
 +        return; // a click on the star (TabSearchDelegate) doesn't choose the row
 +    }
      QString text = index.data().toString();
  
      setText(text);
 diff --git a/Gui/NodeGraph30.cpp b/Gui/NodeGraph30.cpp
-index f1159df17..40f3c1b5b 100644
+index f1159df17..1ccaf171b 100644
 --- a/Gui/NodeGraph30.cpp
 +++ b/Gui/NodeGraph30.cpp
 @@ -44,6 +44,8 @@ CLANG_DIAG_ON(uninitialized)
@@ -275,7 +281,7 @@ index f1159df17..40f3c1b5b 100644
 +    // With the preference nodeGraphCtrlWheelZooms (read by name), Ctrl+wheel zooms like the wheel alone, as in Nuke's
 +    // node graph, instead of enlarging the node last clicked.
 +    if (ctrlDown && _imp->_magnifiedNode) {
-+        KnobBool* zooms = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("nodeGraphCtrlWheelZooms").get() );
++        KnobBool* zooms = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("nodeGraphCtrlWheelZooms").get() );
 +        ctrlDown = !(zooms && zooms->getValue());
 +    }
      if (ctrlDown && _imp->_magnifiedNode) {
@@ -345,7 +351,7 @@ index 96179f21e..27165762f 100644
  };
  
 diff --git a/Gui/NodeGui.cpp b/Gui/NodeGui.cpp
-index 6fdc20596..1517e7e22 100644
+index c801f768b..a1a504335 100644
 --- a/Gui/NodeGui.cpp
 +++ b/Gui/NodeGui.cpp
 @@ -1872,7 +1872,11 @@ NodeGui::refreshCurrentBrush()
@@ -355,7 +361,7 @@ index 6fdc20596..1517e7e22 100644
 -    if (selected) {
 +    // Or (preference nodeSelectedFill, read by name) filled with the selection colour inside a rim of its own
 +    // colour, outlined as usual, as Nuke's.
-+    KnobBool* fillPref = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("nodeSelectedFill").get() );
++    KnobBool* fillPref = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("nodeSelectedFill").get() );
 +    const bool fill = selected && fillPref && fillPref->getValue();
 +    if (selected && !fill) {
          color = mixColors( color, Qt::white, appPTR->getCurrentSettings()->getNodeSelectedTint() * 0.5 );

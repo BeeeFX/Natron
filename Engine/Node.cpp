@@ -3823,7 +3823,7 @@ Node::makePreviewByDefault() const
 
     // Readers show a postage stamp by default unless the preference says no (Appearance > Node Graph).
     if ( _imp->effect->isReader() ) {
-        KnobBool* readerPreview = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("readerPreview").get() );
+        KnobBool* readerPreview = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("readerPreview").get() );
         if ( readerPreview && !readerPreview->getValue() ) {
             return false;
         }
