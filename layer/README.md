@@ -11,13 +11,14 @@ releases can be taken as it comes. GPL-3.0-or-later (`LICENSE`).
 | `upstream.toml` | Niik-l's release this branch carries, the release the smoke test last passed on, the patch count |
 | `compat/natron_compat.py` | **The adapter**: the one module that calls Natron's Python API and Qt (through qtpy, which the fork bundles). Everything else calls it |
 | `ext/plugin/` | What Natron loads: `init.py` (every session), `initGui.py` (with a window), `aliases/` (the Nuke-named toolsets), `gizmos/` (the gizmo pack's PyPlugs), `layer_plugin.txt` (how init.py finds the rest) |
-| `ext/python/natron_layer/` | The layer's code: `look.py` (the Nuke look), `skin.py` (the skin: icons, font, session stylesheet), `hotkeys.py` (keys), `aliases.py` (Nuke names), `gizmo_kit.py` and `gizmos.py` (the gizmo pack), `workflow.py` and `flipbook_job.py` (the workflow scripts), `toolsets.py` and `toolset_recipes.py` (ToolSets), `expressions.py` (the expression menu), `nuke_prefs.py` (reading Nuke preferences), `gui.py` (the Nuke menu, the first-launch question), `user_config.py` (the artist's answers) |
+| `ext/python/natron_layer/` | The layer's code: `look.py` (the Nuke look), `skin.py` (the skin: icons, font, session stylesheet), `hotkeys.py` (keys), `aliases.py` (Nuke names), `gizmo_kit.py` and `gizmos.py` (the gizmo pack), `cryptomatte.py` and `cryptomatte_data.py` (the Cryptomatte gizmo), `workflow.py` and `flipbook_job.py` (the workflow scripts), `toolsets.py` and `toolset_recipes.py` (ToolSets), `expressions.py` (the expression menu), `nuke_prefs.py` (reading Nuke preferences), `gui.py` (the Nuke menu, the first-launch question), `user_config.py` (the artist's answers) |
 | `ext/presets/` | `nuke_look.toml` (the look's values), `nuke_hotkeys.toml` (Nuke's keys next to Natron's), `nuke_expressions.toml` (the expression recipes) |
 | `ext/toolsets/` | The studio ToolSets: Natron's own copied nodes, made by `tools/make_toolsets.py` |
 | `ext/qss/nuke.qss` | The stylesheet: Natron's own, unchanged, then a Nuke section |
 | `ext/icons/` | The skin's icons, PNG at 1x and 2x (our own drawings, made by `tools/make_icons.py`), `pixmaps.toml` (each with the Natron picture it stands for) and `qss/` (the stylesheet's own small pictures) |
 | `ext/fonts/` | The skin's font, DejaVu Sans, with its licence |
 | `patches/` | Core patches (none) and the budget |
+| `tests/cryptomatte/` | The Cryptomatte gizmo's test (`run_cryptomatte.py`; inside Natron `cryptomatte_checks.py`; made-up renders of known coverages, `fixtures.py`; a small EXR reader and writer, `exr_io.py`; the arithmetic alone, `test_cryptomatte_data.py`) |
 | `tests/smoke/` | The smoke test (`run_smoke.py`; inside Natron `smoke_checks.py` and `tool_checks.py`, without the layer `project_checks.py`), its window probe and the hand-written Nuke fixtures |
 | `tools/` | `make_icons.py` (draws the skin's icons; Pillow), `natron_pixmaps.py` (Natron's pictures and their numbers, read from the fork's source), `package_build.py` (a build from a release), `sync_upstream.py` (the upstream watch, and bringing Niik-l's commits in), `make_toolsets.py` (the studio ToolSets' files, with its window probe `toolset_maker/`) |
 | `GAPS.md` | What's still missing compared with Nuke, ranked, with each item's route and status |
@@ -209,7 +210,7 @@ Comps hold only plain Natron nodes: they open and render anywhere, the farm incl
 
 ## The gizmo pack
 
-`gizmos.py` (built with `gizmo_kit.py`) and `ext/plugin/gizmos/`: six **Group PyPlugs** written for this layer from
+`gizmos.py` (built with `gizmo_kit.py`) and `ext/plugin/gizmos/`: seven **Group PyPlugs** written for this layer from
 Natron's own nodes, in the toolbar's Nuke group and Tab search under Nuke's names, each coloured like Nuke's nodes of
 its menu. **Nothing is derived from natron-plugins** (the community PyPlugs the fork bundles): their per-plug-in
 licences aren't stated (see `../FORK.md`, Licences), so these are our own.
@@ -222,6 +223,7 @@ licences aren't stated (see `../FORK.md`, Licences), so these are our own.
 | ChromaticAberration (Filter) | Splits the colours towards the edges: Amount, Red/Green/Blue shares | one LensDistortion per channel (centred on the format by Natron) |
 | Vignette (Draw) | Darkens the edges: Amount, Softness, Scale | a Radial fitted to the input's format, multiplied |
 | STMapIdentity (Transform) | An ST map of the input's format: R = (x + 0.5) / width, G = (y + 0.5) / height (Pixel centres off: x / width) | two Ramps |
+| Cryptomatte (Keyer) | A matte of the objects named in a list, from a render's Cryptomatte layers (below) | per layer of ranks a Shuffle and a CImgExpression, summed by a Merge |
 
 Natron already has, under Nuke's own names: **VectorBlur** (the fork's own node, from motion vectors), **Exposure**
 (the fork's), **Despill** (spill map mix, expand, respill colour, brightness), Shuffle and ShuffleCopy; Copy and
@@ -247,6 +249,81 @@ Found on the fork while building them:
 - Blurring Natron's Noise lowers its spread about as 1 / size (measured): Grain scales its strength back up by size.
 - Natron's **Shuffle says "unpremultiplied" unless told**, and a Write then multiplies by the alpha again: the
   shuffles that carry a CG render's layers are marked premultiplied.
+
+## Cryptomatte
+
+`cryptomatte.py` (the node) and `cryptomatte_data.py` (the arithmetic, plain Python): Nuke's Cryptomatte for this
+Natron, written from the Cryptomatte specification (Psyop's document, version 1.2.0), our own code. It takes the place
+of the community `Cryptomatte_Keyer` Natron ships (a GLSL shader: it needs OpenGL, triples the coverage of its first
+two ranks, reads no other rank, lets its empty slots catch ID 0, keys a typed float, no names; Singerie's
+`docs/dev/progress/2026-11-12-natron-cryptomatte-test.md` has the measurements).
+
+**What the artist gets**: one node with a Source input (a render's Read: the Cryptomatte in the beauty, or in a file
+of its own) and an optional Image input (the picture under the matte when the Cryptomatte is in a file apart).
+
+| Control | What it does |
+|---|---|
+| Layer | Which Cryptomatte, by the name the renderer gave it: Blender's `ViewLayer.CryptoObject`, `…CryptoMaterial`, `…CryptoAsset`, Karma's `CryptoPrimitives`, `CryptoMaterials`… (from the header, else every layer named `…Crypto…00`) |
+| Pick (add), Pick (remove) | Click the colour square, then Ctrl+click an object in the viewer (Preview on) |
+| Add by name | Every name of the layer's manifest: choose one to add it |
+| Matte list | Kept with the comp, as names: one a line (or comma-separated), `*` and `?` wildcards, `-name` leaves out what a wildcard took, `<0.123>` an ID without a name, a name holding a comma in double quotes |
+| Preview | Each object in its own colour, the listed ones bright, the others at a quarter; the matte in alpha |
+| Output | The image with the matte in alpha, the image premultiplied by it, or the matte alone in RGBA |
+| Manifest file | Where the names are when the header has none: a sidecar `.json`, or another frame or the beauty `.exr` of the render (the farm's split of a Blender 5 frame drops the manifest) |
+
+**How it's built** (a Group of Natron's own CPU nodes, so the farm renders it without a GPU and a comp holding it
+opens anywhere): per layer of ranks (`<name>00` to `<name>07`, up to 16 ranks) a Shuffle into RGBA and a
+CImgExpression adding both ranks' coverage where the rank's ID is listed (`m(R)*G+m(B)*A`), a Merge (plus) summing
+the layers: the true coverage at every pixel, edges and motion blur included, and an empty rank (ID 0) never counts.
+The list's IDs are worked out in Python (the manifest read from the EXR's header by a few lines of Python, no pixels;
+a name not in it hashed as the renderers do, MurmurHash3) and written into the CImgExpressions as **sorted IDs
+searched as a tree of `?:`** (CImg evaluates one branch): about log2(n) comparisons a pixel, whatever the list's
+length. Each ID is written as the shortest decimal that reads back as the same 32-bit float, so CImg's double
+comparison is exact. The Python runs only while an artist edits the node: the saved comp holds the expressions.
+Speed on this PC (NatronRenderer, a 1920 × 1080 frame, 6 ranks, the file already read): 0.5 s for one name, 0.9 s
+for 1,000 names, 1.0 s for 2,000, 0.8 s with the preview.
+
+**Picking**: Natron hands a colour control the colour under a Ctrl+click in the viewer, exact 32-bit values with
+its default "Linear color pickers" (`Gui/ViewerGL.cpp`, `getColorAt`), but tells a script nothing else (no position,
+no pixel reading from Python, no overlay for a PyPlug). So the preview draws each pixel's first-rank object in a
+colour that **holds its ID exactly**: its 23 mantissa bits in red and green, its sign and exponent in blue, each with
+12 check bits worked out from the others, all of them exact in a 32-bit float (`cryptomatte_data.preview_colour`).
+The picked colour gives the ID back; a blend (an edge seen zoomed out, a box pick) fails the checks and the node says
+to pick inside an object at 100 %. With a manifest, an ID it doesn't list is refused too. A pick while Preview is off
+turns it on and asks to pick again; a remove on an object a wildcard took writes `-name`. Checked headless by
+setting the Pick control to a colour read from the rendered preview, as the viewer's picker does; Natron's window
+itself (the Ctrl+click) wasn't tried.
+
+**The status line** says how many objects are in the matte, how many ranks were found, where the names came from and
+what matched nothing; without a manifest, a list with wildcards leaves the matte as it was and says what to do.
+
+Found on the fork while building it:
+
+- **Natron's image cache knows a node by a hash of its own script name, its inputs' hashes and a count of its
+  changes** (`Node::computeHashInternal`), not by its parameters' values, and not by the group it's in. Two
+  Cryptomattes on the same Read, built and set up the same way (inner nodes of the same names, the same number of
+  changes), rendered the same cached matte. So the inner nodes fed straight by the group's inputs (`Rank0`…,
+  `ImageIn`) carry the node's name (`Rank0_Cryptomatte1`), set again when the node is connected (a pasted copy too),
+  which makes every node after them distinct through their inputs. The test renders four nodes on one Read. The real
+  fix is one line in Natron (the fully qualified name in that hash): a core fix to offer Niik-l, not made here
+  (`GAPS.md`). A quick check with two Grains of different seeds on one Constant didn't show it.
+- **A CImgExpression with a variable** (`a=R;a`) **crashes Natron 2026.10.02** (NatronRenderer ends with an access
+  violation); macros (`f(v)=…;f(R)`) work, so the expressions use macros only.
+- CImg's nodes divide by alpha first unless `premult` is off and `premultChanged` on (an alpha here is a coverage);
+  a CImgExpression reading a layer straight (its Source channels) outputs RGB only, hence the Shuffle in front.
+- Headless, Natron runs a node's `onParamChanged` for values a script sets too (with `userEdited` false): the node
+  acts on the artist's edits and on picks only.
+- A comp saved with the node opens on a Natron without the layer as a plain Group and renders the same pixels; that
+  Natron prints that it can't find the node's two callbacks (harmless).
+
+The test: `python layer/tests/cryptomatte/run_cryptomatte.py --renderer "<release>/bin/NatronRenderer.exe"
+[--karma <folder>] [--cycles <exr>] [--cycles-split <exr>]` (standard library only; the real renders are only read).
+It makes renders whose every coverage is known (0 to 8 objects a pixel, an object only at the last rank, ID 0 with
+coverage, names with paths and a comma, lower-case Blender channels with a sidecar manifest, no manifest, 2,000
+names), renders lists of names, wildcards, raw IDs, every output, the preview, picking walks, four nodes on one
+Read, and compares each matte with the truth summed in Python straight from the file's ranks, pixel by pixel; then
+renders the saved comp without the layer. Natron's registry values are read before each NatronRenderer run and put
+back exactly after (Natron records four switches for the gizmo, and the recent files when a comp is opened).
 
 ## Workflow scripts
 
@@ -340,7 +417,7 @@ python layer/tests/smoke/run_smoke.py --renderer "<release>/bin/NatronRenderer.e
 
 With any Python 3.10+ (`--offscreen` moves the window out of sight as soon as it shows, for a PC someone is using; on a
 build from this fork the window checks also look at the node graph's drawing: a Read of a missing file drawn in the error
-colour, unlike a Grade, and saying why under the mouse). It runs the Nuke reader's tests (`test_nuke_prefs.py`, no Natron), checks the layer's files
+colour, unlike a Grade, and saying why under the mouse). It runs the Nuke reader's tests (`test_nuke_prefs.py`, no Natron) and the Cryptomatte arithmetic's (`../cryptomatte/test_cryptomatte_data.py`), checks the layer's files
 (the stylesheet still holds Natron's own unchanged, the patch series, ASCII files for Natron, one PyPlug per alias
 and gizmo, one file per studio ToolSet, every expression recipe valid Python), then `NatronRenderer -t
 smoke_checks.py` in a clean session: Natron's disk cache, home folder, TEMP and the layer's config in a temporary

@@ -135,6 +135,26 @@ class Kit:
         self._limits(param, list(default), minimum, maximum, display)
         return param
 
+    def button(self, name: str, label: str, help: str = "") -> Any:  # noqa: A002
+        param = self._param("button", name, label, help)
+        param.setEvaluateOnChange(False)
+        return param
+
+    def file(self, name: str, label: str, help: str = "") -> Any:  # noqa: A002
+        return self._param("file", name, label, help)
+
+    def string(self, name: str, label: str, kind: str = "default", help: str = "",  # noqa: A002
+               visible: bool = True) -> Any:
+        """A text control: ``kind`` ``default`` (one line), ``multiline`` or ``label`` (shown, not edited)."""
+        param = compat.add_user_param(self.group, "string", name, label)
+        enum = {"label": "eStringTypeLabel", "multiline": "eStringTypeMultiLine", "default": "eStringTypeDefault"}
+        param.setType(getattr(type(param).TypeEnum, enum[kind]))  # right after making it (Natron's rule)
+        if help:
+            param.setHelp(help)
+        param.setVisible(visible)
+        self.page.addParam(param)
+        return param
+
     def boolean(self, name: str, label: str, default: bool, help: str = "") -> Any:  # noqa: A002
         param = self._param("bool", name, label, help)
         param.setDefaultValue(bool(default))
