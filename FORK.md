@@ -56,8 +56,9 @@ can take it as it is.
 - **Nuke's node names.** A **Nuke** group in the toolbar and in Tab search: Copy, ShuffleCopy, ChannelMerge,
   Keylight, IBKGizmo, Glow, Denoise, FilterErode, CornerPin2D, AdjustBBox, CurveTool, TimeClip, PostageStamp. Each
   makes Natron's own node set up the Nuke way, so comps hold only plain Natron nodes and open anywhere.
-- **A gizmo pack.** Grain, ZDefocus, EdgeExtend, ChromaticAberration, Vignette and STMapIdentity, our own Groups of
-  Natron's nodes (in the toolbar's Nuke group and Tab search). A comp holding one carries its nodes: it renders on
+- **A gizmo pack.** Grain, ZDefocus, EdgeExtend, ChromaticAberration, Vignette, STMapIdentity and **Cryptomatte**
+  (Nuke's: the layer by name, names with wildcards, Ctrl+click picking, every rank summed exactly, on the CPU), our
+  own Groups of Natron's nodes (in the toolbar's Nuke group and Tab search). A comp holding one carries its nodes: it renders on
   the farm and opens on a Natron without the layer.
 - **Workflow scripts** in the Nuke menu: extract an EXR's layers into Shuffles, link a roto to a track and bake
   expressions to keyframes, select similar nodes, cycle a Merge's operation, collect a comp's files, and a flipbook
@@ -147,6 +148,11 @@ packages listed in its `Resources/layer/MSYS2-PACKAGES.lock` (sources in MSYS2's
   same CC BY-NC-SA 3.0); **Grain_Advanced** ports a studio's Nuke gizmo and **DespillMadness** another author's Nuke
   gizmo, under licences the copies don't state; Copy_N, Shuffle_N, ChannelMerge and zDefocus state none. Hence none
   is used.
+- **The Cryptomatte gizmo is our own** (`layer/ext/python/natron_layer/cryptomatte.py`, `cryptomatte_data.py`),
+  written from Psyop's Cryptomatte specification (the document, version 1.2.0) and Austin Appleby's MurmurHash3
+  (public domain), with no code of Psyop's reference implementation and nothing of the `Cryptomatte_Keyer` PyPlug
+  Natron ships. Its test's EXR reader and writer (`layer/tests/cryptomatte/exr_io.py`) are written from the OpenEXR
+  file layout document.
 - **The workflow scripts, ToolSets and expression recipes are our own** too: natron-python-scripting (MPL-2.0) only
   inspired the list of tools; none of its files or code is used, so no MPL notice is needed.
 - The studio ToolSets (`layer/ext/toolsets/*.xml`) are Natron's own copy format of nodes made by our recipes

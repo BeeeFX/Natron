@@ -14,6 +14,7 @@ NatronGui. So a comp holding one renders on the farm, and opens as a plain Group
 | ChromaticAberration | (a common gizmo) | three LensDistortion nodes, one per channel |
 | Vignette | (a common gizmo) | a Radial fitted to the input's format, multiplied |
 | STMapIdentity | (an Expression in Nuke) | two Ramps: R = (x + 0.5) / width, G = (y + 0.5) / height |
+| Cryptomatte | Cryptomatte | per rank layer a Shuffle and a CImgExpression, summed by a Merge (``cryptomatte.py``) |
 
 Natron already has, under Nuke's own names: VectorBlur (the fork's, motion vectors), Exposure (the fork's), Despill
 (spill map mix, expand, respill colour, brightness), Shuffle and ShuffleCopy, so they aren't redone here; Copy and
@@ -28,7 +29,7 @@ import dataclasses
 from collections.abc import Callable
 from typing import Any
 
-from . import compat
+from . import compat, cryptomatte
 from .gizmo_kit import INPUT_FORMAT, Kit, channel
 
 ID_PREFIX = "layer.gizmo."
@@ -332,6 +333,9 @@ GIZMOS: tuple[Gizmo, ...] = (
           ("net.sf.openfx.Radial", MERGE), _vignette),
     Gizmo("STMapIdentity", "Transform", "An ST map of the input's format: R = (x + 0.5) / width, G = (y + 0.5) / "
           "height, for STMap and lens distortion maps.", ("net.sf.openfx.Ramp", MERGE, SHUFFLE), _stmap_identity),
+    Gizmo("Cryptomatte", "Keyer", "A matte of the objects named in a list, from a render's Cryptomatte layers: "
+          "every rank summed exactly, names with wildcards, Ctrl+click to pick, on the CPU.", cryptomatte.NEEDS,
+          cryptomatte.build),
 )
 
 BY_NAME = {gizmo.name: gizmo for gizmo in GIZMOS}
@@ -343,7 +347,8 @@ def available() -> list[Gizmo]:
 
 
 # The colour of Nuke's menu each gizmo is in: Natron's own preference for that class of node (the look sets it).
-MENU_COLOURS = {"Filter": "filterNodesColor", "Draw": "drawNodesColor", "Transform": "transformNodesColor"}
+MENU_COLOURS = {"Filter": "filterNodesColor", "Draw": "drawNodesColor", "Transform": "transformNodesColor",
+                "Keyer": "keyerNodesColor"}
 
 
 def build(name: str, app: Any, group: Any) -> Any:

@@ -537,12 +537,13 @@ _PARAM_MAKERS = {
     "string": "createStringParam",
     "button": "createButtonParam",
     "double2d": "createDouble2DParam",
+    "file": "createFileParam",
 }
 
 
 def add_user_param(node: Any, kind: str, name: str, label: str, alpha: bool = False) -> Any:
     """A parameter of the artist's kind on ``node`` (a Group's controls): ``page``, ``double``, ``int``, ``bool``,
-    ``choice``, ``string``, ``button``, ``double2d`` or ``color`` (``alpha`` for a fourth channel)."""
+    ``choice``, ``string``, ``button``, ``double2d``, ``file`` or ``color`` (``alpha`` for a fourth channel)."""
     if kind == "color":
         return node.createColorParam(name, label, alpha)
     return getattr(node, _PARAM_MAKERS[kind])(name, label)

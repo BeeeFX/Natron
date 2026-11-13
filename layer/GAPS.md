@@ -16,7 +16,7 @@ Natron's own code changed: costly at every release, so few (see `patches/README.
 
 | # | Nuke | Natron today | Route | Status |
 |---|---|---|---|---|
-| 1 | Tab node search | Has it, ranked by use; no favourites | E: Nuke names as aliases and gizmos. C: favourites and a menu-path column (about 150–300 lines) | **E done** (13 aliases, `Copy [Nuke]`, and 6 gizmos); **favourites done** (`.sng6`, patch 0008: starred, listed first, weights as green dots, typed letters bold); menu-path column planned (item 9) |
+| 1 | Tab node search | Has it, ranked by use; no favourites | E: Nuke names as aliases and gizmos. C: favourites and a menu-path column (about 150–300 lines) | **E done** (13 aliases, `Copy [Nuke]`, and 7 gizmos); **favourites done** (`.sng6`, patch 0008: starred, listed first, weights as green dots, typed letters bold); menu-path column planned (item 9) |
 | 2 | Node graph behaviour and keys | Mostly (Dot, Backdrop, Ctrl+G, D, Ctrl+F, snap, Merge to A, colours per class) | E: Nuke's keys it lacks, preferences, select similar. Bookmarks: E panel plus C "centre on node" | **E done** for keys (K, I, `\`, Shift+Y, Alt+B, Alt+F), preferences and Select similar class / colour; bookmarks planned (item 12) |
 | 3 | Viewer | Good, with the fork's OCIO display and view | E: flipbook through RV, ImageStatistics. C: input process | **flipbook done** (Alt+F: NatronRenderer in the background, then RV or a movie); input process not planned (unless Niik-l wants it) |
 | 4 | Properties bin | Partly (max panels, floating panels) | E: max panels. C: several and pinned bins | **E done** (10 panels); C not planned |
@@ -35,8 +35,8 @@ Natron's own code changed: costly at every release, so few (see `patches/README.
 
 | # | Nuke | Natron today | Route | Status |
 |---|---|---|---|---|
-| 15 | Gizmos and ToolSets | PyPlugs; no ToolSets menu | E | **done**: 6 gizmos (Grain, ZDefocus, EdgeExtend, ChromaticAberration, Vignette, STMapIdentity); ToolSets (studio, the artist's, a project's through `NATRON_LAYER_TOOLSETS`; Singerie's tool library to come) |
-| 16 | Cryptomatte | A community GLSL keyer | E: an OpenFX plug-in | planned (item 10) |
+| 15 | Gizmos and ToolSets | PyPlugs; no ToolSets menu | E | **done**: 7 gizmos (Grain, ZDefocus, EdgeExtend, ChromaticAberration, Vignette, STMapIdentity, Cryptomatte); ToolSets (studio, the artist's, a project's through `NATRON_LAYER_TOOLSETS`; Singerie's tool library to come) |
+| 16 | Cryptomatte | A community GLSL keyer (needs OpenGL, wrong edges, first two ranks only, no names) | E: a gizmo of Natron's CPU nodes (Shuffle, CImgExpression, Merge) with the list worked out in Python; an OpenFX plug-in only if it's ever too slow | **done** (item 10; the layer's README › Cryptomatte): the layer by name, the manifest (header or sidecar), names with wildcards kept in the comp, every rank summed exactly, Ctrl+click picking through a preview whose colours hold the IDs, on the CPU. Picking in Natron's window not tried yet |
 | 17 | 3D: Axis, TransformGeo, WriteGeo, Normals | Missing in the fork | C in the fork's 3D code, offered to Niik-l only | open |
 | 18 | ZDefocus, Bokeh | Community PyPlugs (licences not stated); DeepDefocus | E | **ZDefocus done** (our gizmo: six depth slices, CImg's filters); bladed or disc bokeh would be an OpenFX plug-in, open |
 | 19 | Motion vectors, Kronos | The fork's own **VectorBlur** (from motion vectors); no optical flow | E: offline flow plus PyPlugs, or OpenFX | VectorBlur **in the fork**; optical flow open |
@@ -139,7 +139,7 @@ draws under its name, the Tab menu's menu-path column, a few icons (combo box ar
 8. Shortcut import and export in Natron's shortcut editor (C, about 150–300 lines, offered to Niik-l and
    NatronGitHub).
 9. Tab search favourites (C) — **done** (`.sng6`, patch 0008); a menu-path column (C) still to do.
-10. Cryptomatte OpenFX plug-in.
+10. Cryptomatte — **done** as a gizmo of Natron's own CPU nodes (no OpenFX plug-in needed: CImgExpression's double-precision math compares the IDs exactly). Found on the way: Natron's image cache can give two Groups' inner nodes of the same names, fed the same way and changed as often, the same cached image (`Node::computeHashInternal` hashes a node's own script name, not its group's); the Cryptomatte names its first inner nodes after itself. A one-line core fix (the fully qualified name in that hash) would make it go for every Group: to offer Niik-l, not made. And a CImgExpression with a variable (`a=R;a`) crashes 2026.10.02: macros only.
 11. Text and burn-ins: Arena's Text ships with Niik-l's 2026.10.02 release and renders headless (checked, above);
     next, a slate and burn-in ToolSet or gizmo on it.
 12. Centre the node graph on a node (C, small) and a bookmarks panel.

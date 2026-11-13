@@ -205,6 +205,10 @@ def unit_tests(say: Say) -> None:
     code, output = run([sys.executable, str(HERE / "test_nuke_prefs.py")], dict(os.environ),
                        "the Nuke preferences reader's tests (no Natron)")  # fmt: skip
     say(code == 0 and "\nOK" in output, "test_nuke_prefs.py passed")
+    crypto = LAYER / "tests" / "cryptomatte" / "test_cryptomatte_data.py"
+    code, output = run([sys.executable, str(crypto)], dict(os.environ),
+                       "the Cryptomatte node's arithmetic (no Natron; its renders: run_cryptomatte.py)")  # fmt: skip
+    say(code == 0 and "\nOK" in output, "test_cryptomatte_data.py passed")
 
 
 def repository_checks(say: Say) -> None:
