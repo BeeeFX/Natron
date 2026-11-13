@@ -4,7 +4,7 @@ Date: Fri, 30 Oct 2026 15:55:30 +0000
 Subject: [PATCH] Timeline ruler, sliders, check boxes and drop-downs
  optionally drawn like Nuke's
 
-- timelineRulerNuke (Appearance > Main Window; off by default, Natron's ruler as before): the timeline's frame ruler
+- timelineRulerCompact (Appearance > Main Window; off by default, Natron's ruler as before): the timeline's frame ruler
   without its axis line, with short ticks on every step and taller ones where a number can sit, all rising from one
   baseline, the cached frames' line between the ticks and the numbers, the playback in and out points as upright
   lines through the ruler, and the numbers in the regular weight; the current frame's number beside its marker and
@@ -16,23 +16,27 @@ Subject: [PATCH] Timeline ruler, sliders, check boxes and drop-downs
   darker; a drop-down at rest is shaded from light to dark with a dark edge.
 - Every new preference is read by name, so Settings.h doesn't change.
 
+Since the audit of 11 November 2026: the preference is named timelineRulerCompact (was timelineRulerNuke,
+NAT-17); the in and out points' lines give the line width back (NAT-15).
+
 Core patch 0006 of the BeeeFX fork (layer/patches/).
 
 Gap: layer/GAPS.md, "Nuke's look and habits" (the timeline and the properties panels' widgets).
-Size: 5 files, 137 lines added, 41 removed.
-upstream: not offered (Baptiste: keep the fork private for now).
+Size: 5 files, 139 lines added, 41 removed.
+upstream: not offered yet (the repository is public since 2 November 2026; offered once the two
+fixes are in, Baptiste's call).
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
- Engine/Settings.cpp        |  14 +++++
- Gui/AnimatedCheckBox.cpp   |  17 +++++-
- Gui/ComboBox.cpp           |  14 ++++-
- Gui/ScaleSliderQWidget.cpp |  24 ++++++--
- Gui/TimeLineGui.cpp        | 109 ++++++++++++++++++++++++++-----------
- 5 files changed, 137 insertions(+), 41 deletions(-)
+ Engine/Settings.cpp        |  14 ++++++
+ Gui/AnimatedCheckBox.cpp   |  17 ++++++-
+ Gui/ComboBox.cpp           |  14 +++++-
+ Gui/ScaleSliderQWidget.cpp |  24 +++++++---
+ Gui/TimeLineGui.cpp        | 111 ++++++++++++++++++++++++++++++++-------------
+ 5 files changed, 139 insertions(+), 41 deletions(-)
 
 diff --git a/Engine/Settings.cpp b/Engine/Settings.cpp
-index 868f4b58e..93bd09d38 100644
+index ce0fbaf01..505cfc801 100644
 --- a/Engine/Settings.cpp
 +++ b/Engine/Settings.cpp
 @@ -798,6 +798,14 @@ Settings::initializeKnobsGuiColors()
@@ -41,7 +45,7 @@ index 868f4b58e..93bd09d38 100644
      _guiColorsTab->addKnob(_diskCachedFrameColor);
 +    // Read by the timeline through its name (no member, so Settings.h stays as it is).
 +    KnobBoolPtr nukeRuler = AppManager::createKnob<KnobBool>( this, tr("Timeline ruler as Nuke's") );
-+    nukeRuler->setName("timelineRulerNuke");
++    nukeRuler->setName("timelineRulerCompact");
 +    nukeRuler->setHintToolTip( tr("When checked, the timeline's frame ruler has no axis line, short ticks with taller ones where "
 +                                  "a number sits, the cached frames' line under the ticks and the in and out points as upright "
 +                                  "lines; otherwise Natron's ruler.") );
@@ -64,7 +68,7 @@ index 868f4b58e..93bd09d38 100644
  
  void
 diff --git a/Gui/AnimatedCheckBox.cpp b/Gui/AnimatedCheckBox.cpp
-index c2c560641..bd1811f6e 100644
+index c2c560641..bb67c85e0 100644
 --- a/Gui/AnimatedCheckBox.cpp
 +++ b/Gui/AnimatedCheckBox.cpp
 @@ -41,6 +41,7 @@ CLANG_DIAG_ON(deprecated-register)
@@ -79,7 +83,7 @@ index c2c560641..bd1811f6e 100644
      } else if (animation == 3) {
          appPTR->getCurrentSettings()->getExprColor(&bgR, &bgG, &bgB);
      }
-+    KnobBool* insetPref = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("knobWidgetsShaded").get() );
++    KnobBool* insetPref = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("knobWidgetsShaded").get() );
 +    const bool inset = insetPref && insetPref->getValue();
 +    if ( inset && (animation == 0) && (bgR == bgG) && (bgG == bgB) ) {
 +        bgR = bgG = bgB = bgR * 0.6; // a plain box (not a channel's colour) darker than the panel
@@ -106,7 +110,7 @@ index c2c560641..bd1811f6e 100644
  
  
 diff --git a/Gui/ComboBox.cpp b/Gui/ComboBox.cpp
-index 9a4bfe01a..64644a6bc 100644
+index 9a4bfe01a..b7bc6dd22 100644
 --- a/Gui/ComboBox.cpp
 +++ b/Gui/ComboBox.cpp
 @@ -328,7 +328,19 @@ ComboBox::paintEvent(QPaintEvent* /*e*/)
@@ -115,7 +119,7 @@ index 9a4bfe01a..64644a6bc 100644
          bRect.adjust(fw, fw, -fw, -fw);
 -        p.fillRect(bRect, fillColor);
 +        // Optionally (preference knobWidgetsShaded, read by name) shaded from light to dark with a dark edge, as Nuke's.
-+        KnobBool* shaded = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("knobWidgetsShaded").get() );
++        KnobBool* shaded = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("knobWidgetsShaded").get() );
 +        if ( shaded && shaded->getValue() && !_clicked && !_dirty && (_animation == 0) ) {
 +            QLinearGradient gradient( bRect.topLeft(), bRect.bottomLeft() );
 +            gradient.setColorAt( 0, fillColor.lighter(119) );
@@ -131,7 +135,7 @@ index 9a4bfe01a..64644a6bc 100644
          QPainterPath path;
          path.addRoundedRect(roundedRect, roundPixels, roundPixels);
 diff --git a/Gui/ScaleSliderQWidget.cpp b/Gui/ScaleSliderQWidget.cpp
-index 1bc50072f..883602dd1 100644
+index 0e2bb53e7..7166235af 100644
 --- a/Gui/ScaleSliderQWidget.cpp
 +++ b/Gui/ScaleSliderQWidget.cpp
 @@ -494,8 +494,17 @@ ScaleSliderQWidget::paintEvent(QPaintEvent* /*e*/)
@@ -192,20 +196,20 @@ index 1bc50072f..883602dd1 100644
                  p.setPen(c);
  
 diff --git a/Gui/TimeLineGui.cpp b/Gui/TimeLineGui.cpp
-index 19825f6f5..b41d7ef71 100644
+index 19825f6f5..0f6362734 100644
 --- a/Gui/TimeLineGui.cpp
 +++ b/Gui/TimeLineGui.cpp
 @@ -67,6 +67,17 @@ GCC_DIAG_UNUSED_PRIVATE_FIELD_ON
  
  NATRON_NAMESPACE_ENTER
  
-+// Preference timelineRulerNuke (off by default): the frame ruler drawn as Nuke's: no axis line, short ticks on every
++// Preference timelineRulerCompact (off by default): the frame ruler drawn as Nuke's: no axis line, short ticks on every
 +// step and taller ones where a number sits, rising from one baseline; the cached frames' line under the ticks; the
 +// playback in and out points as upright lines; the numbers in the regular weight. Read by name (Settings.h unchanged).
 +static bool
-+timelineRulerNuke()
++timelineRulerCompact()
 +{
-+    KnobBool* k = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("timelineRulerNuke").get() );
++    KnobBool* k = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("timelineRulerCompact").get() );
 +
 +    return k && k->getValue();
 +}
@@ -217,7 +221,7 @@ index 19825f6f5..b41d7ef71 100644
  
      glCheckError();
  
-+    const bool nukeRuler = timelineRulerNuke();
++    const bool nukeRuler = timelineRulerCompact();
      {
          double screenPixelRatio = (_imp->viewerTab && _imp->viewerTab->getViewer()) ? _imp->viewerTab->getViewer()->getScreenPixelRatio() : 1.0;
 -        if (screenPixelRatio != _imp->_screenPixelRatio) {
@@ -302,7 +306,7 @@ index 19825f6f5..b41d7ef71 100644
          glBegin(GL_POLYGON);
          glVertex2f( cursorBtm.x(), cursorBtm.y() );
          glVertex2f( cursorTopLeft.x(), cursorTopLeft.y() );
-@@ -726,35 +753,53 @@ TimeLineGui::paintGL()
+@@ -726,35 +753,55 @@ TimeLineGui::paintGL()
              if ( ( leftBoundBtm.x() >= btmLeft.x() ) && ( leftBoundBtmRight.x() <= topRight.x() ) ) {
                  if (leftBound != currentTime) {
                      QString leftBoundStr( _imp->isTimeFormatFrames ? QString::number(leftBound) : timecodeString(leftBound, fps) );
@@ -327,6 +331,7 @@ index 19825f6f5..b41d7ef71 100644
 +                    glVertex2f( leftBoundBtm.x(), btmLeft.y() );
 +                    glVertex2f( leftBoundBtm.x(), topRight.y() );
 +                    glEnd();
++                    glLineWidth(_imp->_screenPixelRatio); // back to one pixel for what's drawn next
 +                } else {
 +                    glBegin(GL_POLYGON);
 +                    glVertex2f( leftBoundBtm.x(), leftBoundBtm.y() );
@@ -362,6 +367,7 @@ index 19825f6f5..b41d7ef71 100644
 +                    glVertex2f( rightBoundBtm.x(), btmLeft.y() );
 +                    glVertex2f( rightBoundBtm.x(), topRight.y() );
 +                    glEnd();
++                    glLineWidth(_imp->_screenPixelRatio); // back to one pixel for what's drawn next
 +                } else {
 +                    glBegin(GL_POLYGON);
 +                    glVertex2f( rightBoundBtm.x(), rightBoundBtm.y() );

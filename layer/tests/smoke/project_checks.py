@@ -58,7 +58,7 @@ def run_job(job):
     frame = int(job.get("frame", 1))
     target = os.path.join(OUT, "without_layer", job["name"])
     os.makedirs(target, exist_ok=True)
-    packaged = bool(os.environ.get("NATRON_LAYER_SMOKE_PACKAGED"))
+    packaged = bool(os.environ.get("NATRON_LAYER_SMOKE_PACKAGED") or os.environ.get("NATRON_LAYER_SMOKE_WITH_LAYER"))
     for name in job.get("groups", []):
         node = loaded.getNode(name)
         kind = node.getPluginID() if node is not None else "?"
@@ -134,6 +134,9 @@ def main():
         layer_ids = [str(i) for i in NatronEngine.natron.getPluginIDs() if str(i).startswith("layer.")]
         if os.environ.get("NATRON_LAYER_SMOKE_PACKAGED"):
             say(True, "(a packaged build carries the layer; its comps still open as the plain Groups saved in them)")
+        elif os.environ.get("NATRON_LAYER_SMOKE_WITH_LAYER"):
+            say("layer.gizmo.Grain" in layer_ids, "this NatronRenderer runs with a layer (a changed one): its gizmos "
+                "are registered")
         else:
             say(not layer_ids and "natron_layer" not in sys.modules,
                 "this NatronRenderer runs without the layer (none of its plug-ins, no natron_layer)")

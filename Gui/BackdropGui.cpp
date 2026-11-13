@@ -33,6 +33,7 @@ CLANG_DIAG_OFF(uninitialized)
 #include <QGraphicsTextItem>
 #include <QCoreApplication>
 #include <QThread>
+#include <QRegularExpression>
 CLANG_DIAG_ON(deprecated)
 CLANG_DIAG_ON(uninitialized)
 
@@ -55,7 +56,7 @@ NATRON_NAMESPACE_ENTER
 static bool
 backdropLabelOnly()
 {
-    KnobBool* k = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("backdropLabelOnly").get() );
+    KnobBool* k = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("backdropLabelOnly").get() );
 
     return k && k->getValue();
 }
@@ -185,7 +186,10 @@ BackdropGuiPrivate::refreshLabelText(int nameHeight,
         if (!antialias) {
             f.setStyleStrategy(QFont::NoAntialias);
         }
-        if ( backdropLabelOnly() && !text.contains( QString::fromUtf8("size=") ) ) {
+        // The label's own size: a font tag with a size attribute (<font size="6">), not any text with "size=".
+        static const QRegularExpression ownSize( QString::fromUtf8("<font\\b[^>]*\\bsize\\s*="),
+                                                 QRegularExpression::CaseInsensitiveOption );
+        if ( backdropLabelOnly() && !text.contains(ownSize) ) {
             f.setPointSizeF(f.pointSizeF() * 2.);
         }
         label->setFont(f);

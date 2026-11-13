@@ -1426,7 +1426,7 @@ DopeSheetViewPrivate::drawTexturedKeyframe(DopeSheetViewPrivate::KeyframeTexture
 
     // Optionally (preference animationEditorsNuke, read by name) a key as Nuke's dope sheet draws it: a narrow grey
     // upright bar with a dark edge, in the selection colour when selected (odd textures are the selected ones).
-    KnobBool* nukeKeys = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("animationEditorsNuke").get() );
+    KnobBool* nukeKeys = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("animationEditorsNuke").get() );
     if ( nukeKeys && nukeKeys->getValue() ) {
         const double inset = rect.width() * 0.29;
         const double top = rect.top() - (rect.top() - rect.bottom()) * 0.07, bottom = rect.bottom() + (rect.top() - rect.bottom()) * 0.07;

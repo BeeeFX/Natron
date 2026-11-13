@@ -266,6 +266,9 @@ def repository_checks(say: Say) -> None:
     recipes = expressions.recipes()
     say(recipes and all(r.text() for r in recipes), f"every expression recipe makes valid Python ({len(recipes)})")
     skin_checks(say)
+    import repository_guards
+
+    repository_guards.run(say, series, upstream)
 
 
 def skin_checks(say: Say) -> None:
@@ -329,6 +332,15 @@ def natron_checks(renderer: str, tmp: Path, say: Say) -> None:
     if packaged(renderer):
         env.pop("NATRON_PLUGIN_PATH")  # the build's own copy of the layer is what's tested
         env["NATRON_LAYER_SMOKE_PACKAGED"] = str(Path(renderer).resolve().parents[1])
+        import repository_guards
+
+        repository_guards.licence_checks(say, Path(renderer).resolve().parents[1])
+    # Headless, the layer stands aside from the look (the farm's case); first that, then the look's checks with it
+    # forced on (NATRON_LAYER_LOOK=force).
+    code, output = run([renderer, "-t", str(HERE / "background_checks.py")], env,
+                       "NatronRenderer -t background_checks.py (headless, as on the farm)")
+    say(code == 0 and "BACKGROUND CHECKS PASSED" in output, "headless, the layer leaves the look out")
+    env["NATRON_LAYER_LOOK"] = "force"
     code, output = run([renderer, "-t", str(HERE / "smoke_checks.py")], env, "NatronRenderer -t smoke_checks.py")
     say(code == 0 and "SMOKE CHECKS PASSED" in output, "the checks inside Natron passed")
 
@@ -342,6 +354,8 @@ def gui_checks(renderer: str, tmp: Path, say: Say) -> None:
     probe = str(HERE / "gui_probe")
     env["NATRON_PLUGIN_PATH"] = probe if packaged(renderer) else f"{LAYER / 'ext' / 'plugin'};{probe}"
     env["NATRON_LAYER_SMOKE_REFERENCES"] = str(tmp / "out" / "toolset_references.json")
+    if "--big" in sys.argv:
+        env["NATRON_LAYER_PROBE_BIG"] = "1"  # 3,000 nodes timed in the window (reported, not asserted)
     if os.environ.get("NATRON_LAYER_PROBE_OFFSCREEN") == "1" or "--offscreen" in sys.argv:
         env["NATRON_LAYER_PROBE_OFFSCREEN"] = "1"  # the probe moves the window out of sight (someone at the PC)
     code = watch_window([str(natron)], env, tmp / "gui" / "out" / "viewer_switch.txt", say)
@@ -385,12 +399,64 @@ def project_checks(renderer: str, tmp: Path, say: Say) -> None:
     say(code == 0 and "PROJECT CHECKS PASSED" in output, "the saved comps render without the layer")
 
 
+# Two changes to the Grain gizmo's recipe, as a later build might make them: a value inside it (an expression's
+# constant) and its shape (one more node before its output).
+GIZMO_CHANGES = {
+    "a value in the recipe": ('"max(3.46, 5.0 * thisGroup.size', '"max(3.46, 50.0 * thisGroup.size'),
+    "the recipe's nodes": ("    kit.alias(\"mix\", \"Mix\", added, \"mix\", help=\"0: the image without grain.\")\n"
+                           "    kit.output(added)\n",
+                           "    kit.alias(\"mix\", \"Mix\", added, \"mix\", help=\"0: the image without grain.\")\n"
+                           "    louder = kit.node(\"net.sf.openfx.MultiplyPlugin\", \"Louder\", "
+                           "((\"value\", (2.0, 2.0, 2.0, 1.0)),), [added], at=(200, 600))\n"
+                           "    kit.output(louder)\n"),
+}
+
+
+def gizmo_version_checks(renderer: str, tmp: Path, say: Say) -> None:
+    """A comp keeps the gizmo it was saved with: the comp of every gizmo (saved by tool_checks.py) opened by a Natron
+    whose layer has a changed Grain recipe still renders the pixels it rendered when saved. So a fix to a gizmo
+    reaches the gizmos made after it, never those already in comps (layer/README.md › Gizmos)."""
+    jobs_file = tmp / "out" / "project_jobs.json"
+    jobs = json.loads(jobs_file.read_text(encoding="utf-8")) if jobs_file.is_file() else []
+    gizmos_job = next((job for job in jobs if job.get("name") == "gizmos"), None)
+    grain = [w for w in (gizmos_job or {}).get("writers", []) if w.get("gizmo") == "MyGrain"]
+    if not grain:
+        say(False, "the comp of every gizmo was saved with its Grain (to open with a changed recipe)")
+        return
+    for what, (old, new) in GIZMO_CHANGES.items():
+        folder = tmp / "changed" / what.replace(" ", "_").replace("'", "")
+        changed = folder / "layer"
+        for part in ("ext", "compat"):
+            shutil.copytree(LAYER / part, changed / part, ignore=shutil.ignore_patterns("__pycache__"))
+        shutil.copy2(LAYER / "upstream.toml", changed / "upstream.toml")
+        recipe = changed / "ext" / "python" / "natron_layer" / "gizmos.py"
+        text = recipe.read_text(encoding="utf-8").replace("\r\n", "\n")
+        if old not in text:
+            say(False, f"the Grain recipe still holds what the check changes ({what}): update GIZMO_CHANGES")
+            continue
+        recipe.write_text(text.replace(old, new, 1), encoding="utf-8")
+        job = dict(gizmos_job, name=f"gizmos_changed_{folder.name}", writers=grain, groups=["MyGrain"])
+        listed = folder / "jobs.json"
+        listed.write_text(json.dumps([job], indent=1), encoding="utf-8")
+        env = base_environment(folder / "session")
+        env["NATRON_PLUGIN_PATH"] = str(changed / "ext" / "plugin")
+        env["NATRON_LAYER_SMOKE_JOBS"] = str(listed)
+        env["NATRON_LAYER_SMOKE_OUT"] = str(folder / "out")
+        env["NATRON_LAYER_SMOKE_WITH_LAYER"] = "1"
+        code, output = run([renderer, "-t", str(HERE / "project_checks.py")], env,
+                           f"NatronRenderer with a changed Grain ({what}) -t project_checks.py")
+        say(code == 0 and "PROJECT CHECKS PASSED" in output,
+            f"a comp keeps the Grain it was saved with when a later layer changes {what}: same pixels")
+
+
 def main() -> int:
     sys.stdout.reconfigure(errors="replace")
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--renderer", help="the release's NatronRenderer (default: NATRON_LAYER_RENDERER)")
     parser.add_argument("--gui", action="store_true", help="also open Natron's window briefly with the probe")
     parser.add_argument("--offscreen", action="store_true", help="with --gui: move the window out of sight at once")
+    parser.add_argument("--big", action="store_true", help="with --gui: time a select-all and a drag step on 3,000 "
+                        "nodes (reported)")
     parser.add_argument("--keep", action="store_true", help="keep the temporary folder")
     args = parser.parse_args()
     renderer = find_renderer(args.renderer)
@@ -409,6 +475,8 @@ def main() -> int:
         if args.gui:
             gui_checks(renderer, tmp, say)
         project_checks(renderer, tmp, say)
+        if not packaged(renderer):  # a packaged build carries its own layer: the changed copy can't stand in for it
+            gizmo_version_checks(renderer, tmp, say)
     finally:
         taken = forget_layer_switches(switches_before)
         if taken:

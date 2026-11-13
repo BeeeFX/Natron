@@ -382,9 +382,9 @@ def key_and_modifiers(shortcut: str) -> tuple[Any, Any] | None:
 
 
 def create_node(app: Any, plugin_id: str, group: Any = None) -> Any:
-    """A new node of ``plugin_id`` in ``group`` (the project's top level when None). Toolset PyPlugs make nodes of
-    their own and give None."""
-    if group is None or isinstance(group, str):
+    """A new node of ``plugin_id`` in ``group`` (the project's top level when None or the app itself). Toolset
+    PyPlugs make nodes of their own and give None."""
+    if group is None or group is app or isinstance(group, str):
         return app.createNode(plugin_id)
     return app.createNode(plugin_id, -1, group)
 
@@ -413,7 +413,7 @@ def children(app_or_group: Any) -> list[Any]:
 
 
 def unique_name(app: Any, base: str) -> str:
-    """``Copy1``, ``Copy2``…: the first script name no top-level node has."""
+    """``Copy1``, ``Copy2``…: the first script name no node of ``app`` (the comp's top level, or a Group) has."""
     taken = {node.getScriptName() for node in children(app)}
     number = 1
     while f"{base}{number}" in taken:
@@ -426,14 +426,68 @@ def gui_app(app: Any) -> Any:
     return app if hasattr(app, "getSelectedNodes") else None
 
 
-def selected_nodes(app: Any) -> list[Any]:
+def selected_nodes(app: Any, group: Any = None) -> list[Any]:
+    """The selected nodes of the comp's top level, or of ``group``'s node graph."""
     gui = gui_app(app)
     if gui is None:
         return []
     try:
+        if group is not None and group is not app:
+            return list(gui.getSelectedNodes(group))
         return list(gui.getSelectedNodes())
     except Exception:  # noqa: BLE001
         return []
+
+
+GROUP_PLUGIN = "fr.inria.built-in.Group"
+
+
+def groups_of(app_or_group: Any) -> list[Any]:
+    """Every node with a node graph of its own (Groups, gizmos) inside ``app_or_group``, at any depth."""
+    found = []
+    pending = children(app_or_group)
+    while pending:
+        node = pending.pop(0)
+        inner = None
+        with contextlib.suppress(Exception):
+            inner = list(node.getChildren())
+        if inner is not None and (node.getPluginID() == GROUP_PLUGIN or inner):
+            found.append(node)
+            pending.extend(inner)
+    return found
+
+
+def focused_node_graph() -> Any:
+    """The node graph widget holding the keyboard (Natron's NodeGraph class), or None."""
+    app = application()
+    widget = app.focusWidget() if app is not None else None
+    while widget is not None:
+        try:
+            if str(widget.metaObject().className()).rsplit(":", 1)[-1] == "NodeGraph":
+                return widget
+            widget = widget.parentWidget()
+        except Exception:  # noqa: BLE001
+            return None
+    return None
+
+
+def focused_group(app: Any, graph: Any = None) -> Any:
+    """Where the artist is working: the Group whose node graph has the keyboard, else ``app`` (the comp's top level).
+
+    Natron names a Group's node graph after the Group's label when it makes it (Gui/Gui05.cpp), and leaves the main
+    node graph without a name; the Group is found by that label (or its script name), at any depth. A name that
+    matches no Group (renamed since) gives the top level, as before."""
+    graph = focused_node_graph() if graph is None else graph
+    name = ""
+    with contextlib.suppress(Exception):
+        name = str(graph.objectName()) if graph is not None else ""
+    if not name:
+        return app
+    for group in groups_of(app):
+        with contextlib.suppress(Exception):
+            if name in (str(group.getLabel()), str(group.getScriptName())):
+                return group
+    return app
 
 
 def select_only(app: Any, node: Any) -> None:
@@ -572,6 +626,18 @@ def expression_of(param: Any, dimension: int = 0) -> str:
     return str(found or "")
 
 
+def expression_and_return(param: Any, dimension: int = 0) -> tuple[str, bool]:
+    """A dimension's expression and whether it sets ``ret`` itself (Natron's has-return flag), as set_expression
+    takes them back."""
+    try:
+        found = param.getExpression(dimension)
+    except Exception:  # noqa: BLE001
+        return "", False
+    if isinstance(found, (tuple, list)):
+        return str(found[0] or "") if found else "", bool(found[1]) if len(found) > 1 else False
+    return str(found or ""), False
+
+
 def make_alias(param: Any, target: Any) -> bool:
     """``param`` (on a Group) shows and drives ``target`` (a parameter of a node inside it)."""
     return bool(param.setAsAlias(target))
@@ -587,27 +653,50 @@ def _board() -> Any:
     return qt.QtGui.QGuiApplication.clipboard()
 
 
+# The clipboard's content put back after a ToolSet's paste, held here so PySide keeps the QMimeData alive while the
+# clipboard owns it (until the next change of the clipboard).
+_restored: list[Any] = []
+
+
+def saved_formats(data: Any) -> dict[str, bytes]:
+    """Every format a QMimeData holds (text, files, pictures, a program's own), as bytes."""
+    saved: dict[str, bytes] = {}
+    if data is None:
+        return saved
+    for name in list(data.formats()):
+        with contextlib.suppress(Exception):
+            saved[str(name)] = bytes(data.data(name))
+    return saved
+
+
+def restore_formats(board: Any, saved: dict[str, bytes], qt: Any) -> bool:
+    """Put ``saved`` (from saved_formats) back on the clipboard, every format; nothing when it was empty. Returns
+    whether something was put back."""
+    if not saved or qt is None:
+        return False
+    data = qt.QtCore.QMimeData()
+    for name, value in saved.items():
+        data.setData(name, qt.QtCore.QByteArray(value))
+    _restored[:] = [data]
+    board.setMimeData(data)
+    return True
+
+
 @contextlib.contextmanager
 def kept_clipboard() -> Iterator[None]:
-    """The system clipboard's text, or its picture, is put back afterwards (pasting a ToolSet goes through the
-    clipboard: Natron's paste reads it). Qt's own setText and setImage are used, so the clipboard's data stays Qt's
-    (no QMimeData made in Python whose lifetime PySide6 would have to hand over)."""
+    """The system clipboard's content, every format of it (text, copied files, a picture, another program's own), is
+    put back afterwards (pasting a ToolSet goes through the clipboard: Natron's paste reads it). An empty clipboard
+    is left empty; one that held something is never cleared."""
     board = _board()
-    text = image = None
+    saved: dict[str, bytes] = {}
     if board is not None:
-        data = board.mimeData()
-        if data is not None and data.hasText():
-            text = board.text()
-        elif data is not None and data.hasImage():
-            image = board.image().copy()
+        saved = saved_formats(board.mimeData())
     try:
         yield
     finally:
         if board is not None:
-            if text is not None:
-                set_clipboard_text(text)
-            elif image is not None:
-                board.setImage(image)
+            if saved:
+                restore_formats(board, saved, qt_modules())
             else:
                 board.clear()
             flush_clipboard()
@@ -632,44 +721,44 @@ def clipboard_text() -> str:
     return str(board.text()).rstrip("\x00").replace("\r\n", "\n")
 
 
-def set_clipboard_text(text: str, tries: int = 40) -> bool:
+def set_clipboard_text(text: str, tries: int = 5) -> bool:
     """Natron's own copy puts its nodes on the clipboard as ``text/plain`` (Gui/NodeGraph40.cpp), its paste reads
     them from there; Qt's setText offers exactly that. Windows lets one program at a time open the clipboard, and
-    programs watching it (clipboard history…) open it right after each change, so a set can fail: it's tried again
-    until the text reads back. Returns whether it did."""
-    import time  # noqa: PLC0415
-
+    programs watching it (clipboard history...) open it right after each change, so a set can fail: it's tried again
+    a few times, letting Qt handle what's pending in between (never the artist's keys or clicks), until the text
+    reads back. Returns whether it did."""
     board = _board()
-    if board is None:
+    qt = qt_modules()
+    if board is None or qt is None:
         return False
     wanted = text.replace("\r\n", "\n")
+    flags = qt.QtCore.QEventLoop.ProcessEventsFlag.ExcludeUserInputEvents
     for _ in range(tries):
         board.setText(text)
-        application().processEvents()
+        application().processEvents(flags)
         if clipboard_text() == wanted:
             return True
-        time.sleep(0.05)
     return False
 
 
-def copy_selected_nodes(app: Any) -> bool:
-    """Natron's own Copy of the comp's selected nodes (interface only)."""
+def copy_selected_nodes(app: Any, group: Any = None) -> bool:
+    """Natron's own Copy of the selected nodes of the comp's top level, or of ``group``'s (interface only)."""
     gui = gui_app(app)
     if gui is None:
         return False
-    gui.copySelectedNodes(gui)
+    gui.copySelectedNodes(gui if group is None or group is app else group)
     return True
 
 
-def paste_nodes(app: Any) -> bool:
-    """Natron's own paste, from the clipboard, into the comp's main node graph (interface only, once Natron's window
-    is up: a paste before its node graph exists ended Natron, checked on the fork). The app is passed as the group:
-    without one Natron pastes into the node graph last focused (a Group's, maybe); with the app, the comp's top
-    level, it takes the main node graph."""
+def paste_nodes(app: Any, group: Any = None) -> bool:
+    """Natron's own paste, from the clipboard, into the comp's main node graph or ``group``'s (interface only, once
+    Natron's window is up: a paste before its node graph exists ended Natron, checked on the fork). A group is
+    always passed: without one Natron pastes into the node graph last focused; with the app, the comp's top level,
+    it takes the main node graph."""
     gui = gui_app(app)
     if gui is None:
         return False
-    gui.pasteNodes(gui)
+    gui.pasteNodes(gui if group is None or group is app else group)
     return True
 
 
@@ -704,6 +793,21 @@ def project_frame_range(app: Any) -> tuple[int, int]:
     if found is None:
         return (1, 1)
     return (int(found.getValue(0)), int(found.getValue(1)))
+
+
+def viewer_range(app: Any) -> tuple[int, int] | None:
+    """The active viewer's in and out points (its playback range), or None headless or without a viewer."""
+    gui = gui_app(app)
+    if gui is None or not hasattr(gui, "getActiveViewer"):
+        return None
+    try:
+        viewer = gui.getActiveViewer()
+        found = viewer.getFrameRange() if viewer is not None else None
+    except Exception:  # noqa: BLE001
+        return None
+    if not isinstance(found, (tuple, list)) or len(found) < 2:
+        return None
+    return int(found[0]), int(found[1])
 
 
 def project_file(app: Any) -> str:

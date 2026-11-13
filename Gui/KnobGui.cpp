@@ -244,7 +244,7 @@ KnobGui::createGUI(QWidget* fieldContainer,
 
         // Optionally (preference knobAnimationButton, read by name) a row of an animatable value ends with a button
         // opening its animation menu, the one a right-click on the value opens.
-        KnobBool* animButton = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("knobAnimationButton").get() );
+        KnobBool* animButton = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("knobAnimationButton").get() );
         const bool isValue = dynamic_cast<KnobDoubleBase*>( knob.get() ) || dynamic_cast<KnobInt*>( knob.get() );
         if ( animButton && animButton->getValue() && isValue && knob->isAnimationEnabled() && knob->isNewLineActivated() &&
              !_imp->container->isInViewerUIKnob() ) {

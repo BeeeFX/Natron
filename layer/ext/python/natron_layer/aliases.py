@@ -136,15 +136,15 @@ def available() -> list[Alias]:
 
 def make(name: str, app: Any = None, group: Any = None) -> Any:
     """Make the Natron node for Nuke's ``name`` in ``group`` (the project's top level by default), set up, named
-    after it and fed by the selected node when there is exactly one. Returns the new node."""
+    after it and fed by the selected node of that node graph when there is exactly one. Returns the new node."""
     alias = BY_NAME[name]
     app = compat.active_app() if app is None else app
-    selected = compat.selected_nodes(app)
+    selected = compat.selected_nodes(app, group)
     node = compat.create_node(app, alias.plugin, group)
     if node is None:
         raise RuntimeError(f"Natron couldn't make a {alias.plugin} node for {name}.")
     with _suppress():
-        node.setScriptName(compat.unique_name(app, alias.nuke))
+        node.setScriptName(compat.unique_name(app if group is None else group, alias.nuke))
         node.setLabel(node.getScriptName())
     for param, value in alias.values:
         if not compat.set_node_value(node, param, value):

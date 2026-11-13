@@ -81,6 +81,41 @@ def pkginfo(bsdtar: str, path: str) -> dict[str, list[str]]:
     return info
 
 
+SOURCES = "https://repo.msys2.org/mingw/sources/"
+COPYLEFT = re.compile(r"(?i)\b(A?GPL|LGPL)")  # licences that ask for the source to travel with the program
+
+
+def fetch_sources(cache: str, folder: str, jobs: int, bsdtar: str) -> list[str]:
+    """For every package of the lock whose licence is a GPL or an LGPL, MSYS2's source archive of it
+    (``<pkgbase>-<version>.src.tar.zst`` from its sources folder) into ``folder``: MSYS2 keeps only some old source
+    archives, so the collective keeps its own copy of the ones a build hands on. Returns the archives it couldn't
+    get."""
+    os.makedirs(folder, exist_ok=True)
+    wanted = set()
+    for name in os.listdir(cache):
+        if not name.endswith((".pkg.tar.zst", ".pkg.tar.xz")):
+            continue
+        info = pkginfo(bsdtar, os.path.join(cache, name))
+        licences = " ".join(info.get("license", []))
+        base, version = (info.get("pkgbase") or info.get("pkgname") or [""])[0], (info.get("pkgver") or [""])[0]
+        if base and version and COPYLEFT.search(licences):
+            wanted.add(f"{base}-{version}.src.tar.zst")
+
+    def get(file: str) -> str | None:
+        out = os.path.join(folder, file)
+        if os.path.exists(out):
+            return None
+        try:
+            urllib.request.urlretrieve(SOURCES + urllib.parse.quote(file), out + ".part")
+        except OSError:
+            return file
+        os.replace(out + ".part", out)
+        return None
+
+    with concurrent.futures.ThreadPoolExecutor(jobs) as pool:
+        return sorted(f for f in pool.map(get, sorted(wanted)) if f)
+
+
 def dep_name(dep: str) -> str:
     return re.split(r"[<>=]", dep, maxsplit=1)[0].strip()
 
@@ -99,6 +134,8 @@ def main() -> int:
         metavar="VIRTUAL=PACKAGE",
         help="who provides a virtual name the script can't see before downloading (e.g. fc-libs=libgfortran)",
     )
+    ap.add_argument("--sources", help="also download the GPL and LGPL packages' source archives into this folder "
+                    "(natron-build/sources: the collective's own copy, named in a build's SOURCE.txt)")
     ap.add_argument("packages", nargs="+", help="what the build needs (MINGW64 package names)")
     args = ap.parse_args()
     os.makedirs(args.cache, exist_ok=True)
@@ -157,6 +194,12 @@ def main() -> int:
                 digest = hashlib.sha256(pkg.read()).hexdigest()
             f.write(f"{name} {ver} {digest} {file}\n")
     print(f"{len(done)} packages, list in {args.lock}", file=sys.stderr)
+    if args.sources:
+        failed = fetch_sources(args.cache, args.sources, args.jobs, args.bsdtar)
+        if failed:
+            print("MSYS2 has no source archive left for: " + ", ".join(failed), file=sys.stderr)
+            return 1
+        print(f"The GPL and LGPL packages' sources are in {args.sources}", file=sys.stderr)
     return 0
 
 

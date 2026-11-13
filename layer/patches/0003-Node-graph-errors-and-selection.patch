@@ -15,35 +15,42 @@ Subject: [PATCH] Node graph: a node in error drawn in the error colour; a
 - A node's drawing shows a message the node got before the drawing existed.
 - Both new preferences are read by name, so Settings.h doesn't change.
 
+Since the audit of 11 November 2026 (NAT-7): the Read's file check runs on a worker thread (the folder may
+be on a network drive) and its answer comes back on the interface's; it tries the current frame, then the
+sequence's first and last, before listing the folder; it knows %v and %V; it waits at most 50 turns for the
+node to be made; and it never runs headless (a render says it anyway).
+
 Core patch 0003 of the BeeeFX fork (layer/patches/), on top of 0001, written to be offered upstream as it is.
 
 Gap: layer/GAPS.md, "Nuke's look and habits" (the node graph's drawing: errors and selection).
-Size: 4 files, 166 lines added, 7 removed.
+Size: 4 files, 211 lines added, 7 removed.
 upstream: not offered yet (to offer to Niik-l with 0001: github.com/Niik-l/Natron).
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
- Engine/ReadNode.cpp | 72 +++++++++++++++++++++++++++++++++++++++++++
- Engine/Settings.cpp | 25 +++++++++++++--
- Gui/NodeGui.cpp     | 74 ++++++++++++++++++++++++++++++++++++++++++---
- Gui/NodeGui.h       |  2 ++
- 4 files changed, 166 insertions(+), 7 deletions(-)
+ Engine/ReadNode.cpp | 117 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ Engine/Settings.cpp |  25 +++++++++--
+ Gui/NodeGui.cpp     |  74 +++++++++++++++++++++++++++++++--
+ Gui/NodeGui.h       |   2 +
+ 4 files changed, 211 insertions(+), 7 deletions(-)
 
 diff --git a/Engine/ReadNode.cpp b/Engine/ReadNode.cpp
-index 2aba4c181..e54bb2990 100644
+index 2aba4c181..214bc1bbd 100644
 --- a/Engine/ReadNode.cpp
 +++ b/Engine/ReadNode.cpp
-@@ -52,6 +52,9 @@ CLANG_DIAG_OFF(uninitialized)
+@@ -52,6 +52,11 @@ CLANG_DIAG_OFF(uninitialized)
  #include <QProcess>
  #include <QFile>
  #include <QFileInfo>
 +#include <QDir>
 +#include <QRegularExpression>
 +#include <QTimer>
++#include <QFutureWatcher>
++#include <QtConcurrentRun>
  CLANG_DIAG_ON(deprecated)
  CLANG_DIAG_ON(uninitialized)
  
-@@ -68,6 +71,7 @@ CLANG_DIAG_ON(uninitialized)
+@@ -68,6 +73,7 @@ CLANG_DIAG_ON(uninitialized)
  #include "Engine/KnobSerialization.h" // createDefaultValueForParam
  #include "Engine/Plugin.h"
  #include "Engine/Settings.h"
@@ -51,25 +58,32 @@ index 2aba4c181..e54bb2990 100644
  
  //The plug-in that is instantiated whenever this node is created and doesn't point to any valid or known extension
  #define READ_NODE_DEFAULT_READER PLUGINID_OFX_READOIIO
-@@ -253,6 +257,9 @@ public:
+@@ -253,6 +259,14 @@ public:
  
      bool wasCreatedAsHiddenNode;
  
 +    // The "File not found" message was set by knobChanged's own check (cleared by it once the file is there).
 +    bool missingFileMessage;
 +
++    // How many times the check waited for the node to be made (bounded), and which check is the newest (an older
++    // one finishing later on its worker thread is ignored).
++    int fileCheckWaits;
++    unsigned int fileCheckNumber;
++
  
      ReadNodePrivate(ReadNode* publicInterface)
      : _publicInterface(publicInterface)
-@@ -268,6 +275,7 @@ public:
+@@ -268,6 +282,9 @@ public:
      , creatingReadNode(0)
      , lastPluginIDCreated()
      , wasCreatedAsHiddenNode(false)
 +    , missingFileMessage(false)
++    , fileCheckWaits(0)
++    , fileCheckNumber(0)
      {
      }
  
-@@ -283,6 +291,8 @@ public:
+@@ -283,6 +300,8 @@ public:
  
      void refreshPluginSelectorKnob();
  
@@ -78,36 +92,40 @@ index 2aba4c181..e54bb2990 100644
      void refreshFileInfoVisibility(const std::string& pluginID);
  
      void createDefaultReadNode();
-@@ -651,6 +661,67 @@ getFileNameFromSerialization(const std::list<KnobSerializationPtr>& serializatio
+@@ -651,6 +670,103 @@ getFileNameFromSerialization(const std::list<KnobSerializationPtr>& serializatio
      return filePattern;
  }
  
-+// Whether the file a Read names is there: the frame asked for, or, for a sequence pattern (#, @ or %0Nd), any file of
-+// the pattern in its folder (the frame asked for may lie outside the sequence's range).
++// Whether the file a Read names is there (run on a worker thread: the folder may be on a network drive): one of the
++// files asked for (the current frame, the sequence's first and last), or, for a name with a frame or view token (#,
++// @, %0Nd, %v, %V), any file of that shape in its folder (the frame asked for may lie outside the sequence's range).
 +static bool
-+readerFileExists(const std::string& frameFile, const std::string& pattern)
++readerFileExists(const std::vector<std::string>& files, const std::string& pattern)
 +{
-+    if ( !frameFile.empty() && QFile::exists( QString::fromUtf8( frameFile.c_str() ) ) ) {
-+        return true;
++    for (std::size_t i = 0; i < files.size(); ++i) {
++        if ( !files[i].empty() && QFile::exists( QString::fromUtf8( files[i].c_str() ) ) ) {
++            return true;
++        }
 +    }
 +    QString pat = QString::fromUtf8( pattern.c_str() );
-+    int token = pat.indexOf( QRegularExpression( QString::fromUtf8("#|@|%[0-9]*d") ) );
-+    if (token < 0) {
++    pat.replace( QLatin1Char('\\'), QLatin1Char('/') );
++    const QRegularExpression tokens( QString::fromUtf8("#+|@+|%[0-9]*d|%v|%V") );
++    const int slash = pat.lastIndexOf( QLatin1Char('/') );
++    const QString folder = slash < 0 ? QString::fromUtf8(".") : pat.left(slash);
++    QString name = pat.mid(slash + 1);
++    if ( !name.contains(tokens) ) {
 +        return false;
 +    }
-+    QFileInfo info( pat.left(token) );
-+    QString prefix = info.fileName();
-+    QRegularExpressionMatch m = QRegularExpression( QString::fromUtf8("(#+|@+|%[0-9]*d)") ).match(pat, token);
-+    QString suffix = pat.mid( token + m.capturedLength() );
-+    if ( suffix.contains( QLatin1Char('/') ) || suffix.contains( QLatin1Char('\\') ) ) {
-+        return true; // a frame number in a folder name: not checked here, rendering will say
++    if ( folder.contains(tokens) ) {
++        return true; // a frame number or a view in a folder name: not checked here, rendering will say
 +    }
-+    QDir dir = info.dir();
++    QDir dir(folder);
 +    if ( !dir.exists() ) {
 +        return false;
 +    }
++    name.replace( tokens, QString::fromUtf8("*") );
 +
-+    return !dir.entryList( QStringList( prefix + QLatin1Char('*') + suffix ), QDir::Files ).isEmpty();
++    return !dir.entryList( QStringList(name), QDir::Files ).isEmpty();
 +}
 +
 +void
@@ -115,38 +133,70 @@ index 2aba4c181..e54bb2990 100644
 +{
 +    // Natron finds a missing file when it first renders the Read, its postage stamp included. With postage stamps
 +    // off by preference (readerPreview) nothing renders an unconnected Read, so look for the file when it's named.
-+    KnobBool* readerPreview = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("readerPreview").get() );
++    // Headless (a render, the farm) a render says it anyway: no check.
++    if ( appPTR->isBackground() ) {
++        return;
++    }
++    KnobBool* readerPreview = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("readerPreview").get() );
 +    KnobFilePtr fileKnob = inputFileKnob.lock();
-+    if ( !readerPreview || readerPreview->getValue() || filename.empty() || !fileKnob || !_publicInterface->getApp() ) {
++    AppInstancePtr app = _publicInterface->getApp();
++    if ( !readerPreview || readerPreview->getValue() || filename.empty() || !fileKnob || !app ) {
 +        return;
 +    }
 +    NodePtr node = _publicInterface->getNode();
 +    if ( node && !node->isNodeCreated() ) {
-+        // A node still being made drops its messages: look again once it's made (the next turn of the event loop).
++        // A node still being made drops its messages: look again once it's made (the next turns of the event loop),
++        // at most 50 times.
++        if (++fileCheckWaits > 50) {
++            return;
++        }
 +        std::string name = filename;
 +        QTimer::singleShot( 0, _publicInterface, [this, name]() { checkFileFound(name); } );
 +
 +        return;
 +    }
-+    std::string frameFile = fileKnob->getFileName( (int)_publicInterface->getApp()->getTimeLine()->currentFrame(), ViewIdx(0) );
-+    std::string pattern = filename;
-+    _publicInterface->getApp()->getProject()->canonicalizePath(frameFile);
-+    _publicInterface->getApp()->getProject()->canonicalizePath(pattern);
-+    if ( readerFileExists(frameFile, pattern) ) {
-+        if (missingFileMessage) {
-+            _publicInterface->clearPersistentMessage(false);
-+            missingFileMessage = false;
++    fileCheckWaits = 0;
++    // The files to try before listing the folder: the current frame's, then the sequence's first and last.
++    std::vector<std::string> files;
++    files.push_back( fileKnob->getFileName( (int)app->getTimeLine()->currentFrame(), ViewIdx(0) ) );
++    const char* ends[] = { kParamFirstFrame, kParamLastFrame };
++    for (int i = 0; i < 2; ++i) {
++        KnobInt* end = dynamic_cast<KnobInt*>( _publicInterface->getKnobByName(ends[i]).get() );
++        if (end) {
++            files.push_back( fileKnob->getFileName( end->getValue(), ViewIdx(0) ) );
 +        }
-+    } else {
-+        _publicInterface->setPersistentMessage( eMessageTypeError, tr("File not found: %1").arg( QString::fromUtf8( filename.c_str() ) ).toStdString() );
-+        missingFileMessage = true;
 +    }
++    for (std::size_t i = 0; i < files.size(); ++i) {
++        app->getProject()->canonicalizePath(files[i]);
++    }
++    std::string pattern = filename;
++    app->getProject()->canonicalizePath(pattern);
++    // On a worker thread; the answer comes back on this one. The watcher goes with the node (no answer then).
++    const unsigned int number = ++fileCheckNumber;
++    QFutureWatcher<bool>* watcher = new QFutureWatcher<bool>(_publicInterface);
++    QObject::connect( watcher, &QFutureWatcher<bool>::finished, _publicInterface, [this, watcher, number, filename]() {
++        const bool found = watcher->result();
++        watcher->deleteLater();
++        if (number != fileCheckNumber) {
++            return; // the file was named again since: the newer check answers
++        }
++        if (found) {
++            if (missingFileMessage) {
++                _publicInterface->clearPersistentMessage(false);
++                missingFileMessage = false;
++            }
++        } else {
++            _publicInterface->setPersistentMessage( eMessageTypeError, tr("File not found: %1").arg( QString::fromUtf8( filename.c_str() ) ).toStdString() );
++            missingFileMessage = true;
++        }
++    } );
++    watcher->setFuture( QtConcurrent::run( [files, pattern]() { return readerFileExists(files, pattern); } ) );
 +}
 +
  void
  ReadNodePrivate::createReadNode(bool throwErrors,
                                  const std::string& filename,
-@@ -823,6 +894,7 @@ ReadNodePrivate::createReadNode(bool throwErrors,
+@@ -823,6 +939,7 @@ ReadNodePrivate::createReadNode(bool throwErrors,
      if (knob) {
          inputFileKnob = std::dynamic_pointer_cast<KnobFile>(knob);
      }
@@ -155,7 +205,7 @@ index 2aba4c181..e54bb2990 100644
  
  void
 diff --git a/Engine/Settings.cpp b/Engine/Settings.cpp
-index 466c3194d..416c2fbc2 100644
+index 0c7dc8ae9..9c274a12b 100644
 --- a/Engine/Settings.cpp
 +++ b/Engine/Settings.cpp
 @@ -999,7 +999,26 @@ Settings::initializeKnobsNodeGraphDrawing()
@@ -205,7 +255,7 @@ index 466c3194d..416c2fbc2 100644
          { &_linkSelectedColor, "linkSelectedColor", tr("Links of selected nodes"), 1., 1., 1., tr("The colour of the links of selected nodes.") },
          { &_disabledCrossColor, "disabledCrossColor", tr("Disabled node cross"), 0., 0., 0., tr("The colour of the cross drawn over a disabled node.") },
 diff --git a/Gui/NodeGui.cpp b/Gui/NodeGui.cpp
-index d087f3a04..2eea71209 100644
+index 8fd28ef96..f45eb5af5 100644
 --- a/Gui/NodeGui.cpp
 +++ b/Gui/NodeGui.cpp
 @@ -136,6 +136,26 @@ settingsColor(void (Settings::*getter)(double*, double*, double*) const)
@@ -215,7 +265,7 @@ index d087f3a04..2eea71209 100644
 +static double
 +nodeErrorTint()
 +{
-+    KnobDouble* k = dynamic_cast<KnobDouble*>( appPTR->getCurrentSettings()->getKnobByName("nodeErrorTint").get() );
++    KnobDouble* k = dynamic_cast<KnobDouble*>( appPTR->getCurrentSettings()->cachedKnob("nodeErrorTint").get() );
 +
 +    return k ? k->getValue() : 0.;
 +}
@@ -223,7 +273,7 @@ index d087f3a04..2eea71209 100644
 +static QColor
 +nodeErrorColor()
 +{
-+    KnobColor* k = dynamic_cast<KnobColor*>( appPTR->getCurrentSettings()->getKnobByName("nodeErrorColor").get() );
++    KnobColor* k = dynamic_cast<KnobColor*>( appPTR->getCurrentSettings()->cachedKnob("nodeErrorColor").get() );
 +    QColor c(217, 31, 26);
 +    if (k) {
 +        c.setRgbF( Image::clamp(k->getValue(0), 0., 1.), Image::clamp(k->getValue(1), 0., 1.), Image::clamp(k->getValue(2), 0., 1.) );

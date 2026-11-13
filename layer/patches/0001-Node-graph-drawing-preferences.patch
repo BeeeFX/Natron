@@ -17,6 +17,10 @@ changes for anyone who doesn't set them:
 Values are read when a node is made and when a link is drawn, so a script can set them for a session
 (the BeeeFX fork's layer sets Nuke-like values) without touching anyone's stored preferences.
 
+Since the audit of 11 November 2026 (NAT-6): Settings::cachedKnob(name), the preferences the fork's
+patches add without an accessor, found by name once and kept (a weak pointer), instead of walking every
+preference under a lock on each paint.
+
 Core patch 0001 of the BeeeFX fork (layer/patches/), written to be offered upstream as it is.
 
 Also (second commit on sng/main): A new preference, nodeFitLabel (Appearance > Node Graph > Node and link drawing, off by default: every node
@@ -26,24 +30,24 @@ creep (the reason the width was left alone); backdrops and nodes showing a posta
 before. Read by name from the settings, so Settings.h doesn't change.
 
 Gap: layer/GAPS.md, "Nuke's look and habits" (the node graph's drawing).
-Size: 9 files changed, 255 insertions(+), 25 deletions(-).
+Size: 9 files, 275 lines added, 25 removed.
 upstream: not offered yet (to offer to Niik-l: github.com/Niik-l/Natron).
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
- Engine/Node.cpp           |   8 ++++
- Engine/Settings.cpp       | 106 ++++++++++++++++++++++++++++++++++++++++++++++
- Engine/Settings.h         |  33 +++++++++++++++
- Gui/DotGui.cpp            |   8 +++-
- Gui/Edge.cpp              |  26 +++++++++---
+ Engine/Node.cpp           |   8 +++
+ Engine/Settings.cpp       | 123 ++++++++++++++++++++++++++++++++++++++++++++++
+ Engine/Settings.h         |  36 ++++++++++++++
+ Gui/DotGui.cpp            |   8 ++-
+ Gui/Edge.cpp              |  26 ++++++++--
  Gui/NodeGraphRectItem.cpp |   7 +--
  Gui/NodeGraphRectItem.h   |   7 +++
- Gui/NodeGui.cpp           |  80 +++++++++++++++++++++++++++-------
- Gui/NodeGui.h             |   5 +++
- 9 files changed, 255 insertions(+), 25 deletions(-)
+ Gui/NodeGui.cpp           |  80 ++++++++++++++++++++++++------
+ Gui/NodeGui.h             |   5 ++
+ 9 files changed, 275 insertions(+), 25 deletions(-)
 
 diff --git a/Engine/Node.cpp b/Engine/Node.cpp
-index a6a4eae3a..1442a65ac 100644
+index a6a4eae3a..78d1028d8 100644
 --- a/Engine/Node.cpp
 +++ b/Engine/Node.cpp
 @@ -3821,6 +3821,14 @@ Node::makePreviewByDefault() const
@@ -52,7 +56,7 @@ index a6a4eae3a..1442a65ac 100644
  
 +    // Readers show a postage stamp by default unless the preference says no (Appearance > Node Graph).
 +    if ( _imp->effect->isReader() ) {
-+        KnobBool* readerPreview = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("readerPreview").get() );
++        KnobBool* readerPreview = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("readerPreview").get() );
 +        if ( readerPreview && !readerPreview->getValue() ) {
 +            return false;
 +        }
@@ -62,7 +66,7 @@ index a6a4eae3a..1442a65ac 100644
  }
  
 diff --git a/Engine/Settings.cpp b/Engine/Settings.cpp
-index 07a79aaf9..466c3194d 100644
+index 07a79aaf9..0c7dc8ae9 100644
 --- a/Engine/Settings.cpp
 +++ b/Engine/Settings.cpp
 @@ -131,6 +131,7 @@ Settings::initializeKnobs()
@@ -160,7 +164,7 @@ index 07a79aaf9..466c3194d 100644
  void
  Settings::initializeKnobsScriptEditorColors()
  {
-@@ -3336,6 +3417,31 @@ Settings::getDisconnectedArrowLength() const
+@@ -3336,6 +3417,48 @@ Settings::getDisconnectedArrowLength() const
      return _disconnectedArrowLength->getValue();
  }
  
@@ -174,6 +178,23 @@ index 07a79aaf9..466c3194d 100644
 +double Settings::getLinkArrowLength() const { return _linkArrowLength->getValue(); }
 +double Settings::getLinkArrowAngle() const { return _linkArrowAngle->getValue(); }
 +double Settings::getDisabledCrossWidth() const { return _disabledCrossWidth->getValue(); }
++
++KnobIPtr
++Settings::cachedKnob(const char* name) const
++{
++    // A lookup by name walks every preference under a lock: once per name here, kept as a weak pointer.
++    static QMutex mutex;
++    static std::map<std::pair<const Settings*, std::string>, KnobIWPtr> found;
++    QMutexLocker locker(&mutex);
++    KnobIWPtr& kept = found[std::make_pair(this, std::string(name))];
++    KnobIPtr knob = kept.lock();
++    if (!knob) {
++        knob = getKnobByName(name);
++        kept = knob;
++    }
++
++    return knob;
++}
 +
 +static void
 +getColorKnobValue(const KnobColorPtr& k, double *r, double *g, double *b)
@@ -193,10 +214,10 @@ index 07a79aaf9..466c3194d 100644
  Settings::getHostName() const
  {
 diff --git a/Engine/Settings.h b/Engine/Settings.h
-index 977d4f1f3..f2c57c6bf 100644
+index 977d4f1f3..604192af3 100644
 --- a/Engine/Settings.h
 +++ b/Engine/Settings.h
-@@ -205,6 +205,23 @@ public:
+@@ -205,6 +205,26 @@ public:
  
      int getDisconnectedArrowLength() const;
  
@@ -217,10 +238,13 @@ index 977d4f1f3..f2c57c6bf 100644
 +    void getDisabledCrossColor(double *r, double *g, double *b) const;
 +    double getDisabledCrossWidth() const;
 +
++    // A preference by its script name, found once and kept (the fork's own, read on every paint).
++    KnobIPtr cachedKnob(const char* name) const;
++
      void getGeneratorColor(float *r, float *g, float *b) const;
      void getReaderColor(float *r, float *g, float *b) const;
      void getWriterColor(float *r, float *g, float *b) const;
-@@ -430,6 +447,7 @@ private:
+@@ -430,6 +450,7 @@ private:
      void initializeKnobsCurveEditorColors();
      void initializeKnobsDopeSheetColors();
      void initializeKnobsNodeGraphColors();
@@ -228,7 +252,7 @@ index 977d4f1f3..f2c57c6bf 100644
      void initializeKnobsScriptEditorColors();
  
  
-@@ -669,6 +687,21 @@ private:
+@@ -669,6 +690,21 @@ private:
  
      // Appearance/Node Graph
      KnobPagePtr _nodegraphColorsTab;
@@ -405,7 +429,7 @@ index 4fdcc9bbf..aec751788 100644
  };
  
 diff --git a/Gui/NodeGui.cpp b/Gui/NodeGui.cpp
-index 2dc3afa89..d087f3a04 100644
+index 2dc3afa89..8fd28ef96 100644
 --- a/Gui/NodeGui.cpp
 +++ b/Gui/NodeGui.cpp
 @@ -27,6 +27,7 @@
@@ -521,7 +545,7 @@ index 2dc3afa89..d087f3a04 100644
  
 +    // Optionally (preference nodeFitLabel, off by default) a node grows to fit a longer label. Measured from the
 +    // node's initial width, never from its current one, so the width can't creep. Backdrops size themselves.
-+    KnobBool* fitLabel = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("nodeFitLabel").get() );
++    KnobBool* fitLabel = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("nodeFitLabel").get() );
 +    if ( w && fitLabel && fitLabel->getValue() && !dynamic_cast<BackdropGui*>(this) &&
 +         !( _previewPixmap && _previewPixmap->isVisible() ) ) {
 +        int initialW, initialH;
@@ -607,3 +631,6 @@ index 49e2fc107..f5f68d32b 100644
      void initializeInputsForInspector();
  
  
+-- 
+2.48.1.windows.1
+

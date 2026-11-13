@@ -163,7 +163,7 @@ pageTabNodeName = true
 # numbered ones rising from one baseline, the cached frames' line under them, the in and out points as upright lines,
 # the numbers in the regular weight); check boxes with a small cross inside a darker square, and drop-downs shaded
 # from light to dark with a dark edge.
-timelineRulerNuke = true
+timelineRulerCompact = true
 knobWidgetsShaded = true
 # Round 5 (.sng6), core patches 0007 and 0008, from Foundry's public pictures ("Working with Nodes" nodes_branching_2.png,
 # "Nuke Studio Environments" viewer_focus.png, "Animating Parameters" curve_editor_intro.png and dope_sheet_intro.png,
@@ -178,15 +178,16 @@ nodeSelectedFill = true
 # (Natron left Qt's 4-pixel margin around the name and 20 % more: 28 pixels high at 100 %), and a Merge says its
 # operation in words only ("Merge1 (over)"), without Natron's picture of it on the node, as Nuke's.
 nodeLabelTight = true
-viewerInfoNuke = true
+viewerInfoCompact = true
 animationEditorsNuke = true
-tabSearchNuke = true
+tabSearchFavourites = true
 
 [habits]
-# Nodegraph: Nuke's habits. Snap to node, a new Merge takes the selected node in its A input, mask inputs hidden
-# until needed (these three are Natron's defaults too, kept here so the look says what it relies on).
+# Nodegraph: Nuke's habits. Snap to node and mask inputs hidden until needed (Natron's defaults too, kept here so the
+# look says what it relies on); a new Merge takes the selected node in its B input, the trunk, as Nuke's does
+# (Natron's default is A: the look turns it off; audit of 11 November 2026, NAT-2).
 enableSnapToNode = true
-mergeConnectToA = true
+mergeConnectToA = false
 autoHideInputs = true
 
 # User Interface: at most 10 properties panels open, as Nuke's properties bin; no file browser when a Write is made

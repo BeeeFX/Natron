@@ -55,6 +55,8 @@ CLANG_DIAG_OFF(uninitialized)
 #include <QDir>
 #include <QRegularExpression>
 #include <QTimer>
+#include <QFutureWatcher>
+#include <QtConcurrentRun>
 CLANG_DIAG_ON(deprecated)
 CLANG_DIAG_ON(uninitialized)
 
@@ -260,6 +262,11 @@ public:
     // The "File not found" message was set by knobChanged's own check (cleared by it once the file is there).
     bool missingFileMessage;
 
+    // How many times the check waited for the node to be made (bounded), and which check is the newest (an older
+    // one finishing later on its worker thread is ignored).
+    int fileCheckWaits;
+    unsigned int fileCheckNumber;
+
 
     ReadNodePrivate(ReadNode* publicInterface)
     : _publicInterface(publicInterface)
@@ -276,6 +283,8 @@ public:
     , lastPluginIDCreated()
     , wasCreatedAsHiddenNode(false)
     , missingFileMessage(false)
+    , fileCheckWaits(0)
+    , fileCheckNumber(0)
     {
     }
 
@@ -661,32 +670,36 @@ getFileNameFromSerialization(const std::list<KnobSerializationPtr>& serializatio
     return filePattern;
 }
 
-// Whether the file a Read names is there: the frame asked for, or, for a sequence pattern (#, @ or %0Nd), any file of
-// the pattern in its folder (the frame asked for may lie outside the sequence's range).
+// Whether the file a Read names is there (run on a worker thread: the folder may be on a network drive): one of the
+// files asked for (the current frame, the sequence's first and last), or, for a name with a frame or view token (#,
+// @, %0Nd, %v, %V), any file of that shape in its folder (the frame asked for may lie outside the sequence's range).
 static bool
-readerFileExists(const std::string& frameFile, const std::string& pattern)
+readerFileExists(const std::vector<std::string>& files, const std::string& pattern)
 {
-    if ( !frameFile.empty() && QFile::exists( QString::fromUtf8( frameFile.c_str() ) ) ) {
-        return true;
+    for (std::size_t i = 0; i < files.size(); ++i) {
+        if ( !files[i].empty() && QFile::exists( QString::fromUtf8( files[i].c_str() ) ) ) {
+            return true;
+        }
     }
     QString pat = QString::fromUtf8( pattern.c_str() );
-    int token = pat.indexOf( QRegularExpression( QString::fromUtf8("#|@|%[0-9]*d") ) );
-    if (token < 0) {
+    pat.replace( QLatin1Char('\\'), QLatin1Char('/') );
+    const QRegularExpression tokens( QString::fromUtf8("#+|@+|%[0-9]*d|%v|%V") );
+    const int slash = pat.lastIndexOf( QLatin1Char('/') );
+    const QString folder = slash < 0 ? QString::fromUtf8(".") : pat.left(slash);
+    QString name = pat.mid(slash + 1);
+    if ( !name.contains(tokens) ) {
         return false;
     }
-    QFileInfo info( pat.left(token) );
-    QString prefix = info.fileName();
-    QRegularExpressionMatch m = QRegularExpression( QString::fromUtf8("(#+|@+|%[0-9]*d)") ).match(pat, token);
-    QString suffix = pat.mid( token + m.capturedLength() );
-    if ( suffix.contains( QLatin1Char('/') ) || suffix.contains( QLatin1Char('\\') ) ) {
-        return true; // a frame number in a folder name: not checked here, rendering will say
+    if ( folder.contains(tokens) ) {
+        return true; // a frame number or a view in a folder name: not checked here, rendering will say
     }
-    QDir dir = info.dir();
+    QDir dir(folder);
     if ( !dir.exists() ) {
         return false;
     }
+    name.replace( tokens, QString::fromUtf8("*") );
 
-    return !dir.entryList( QStringList( prefix + QLatin1Char('*') + suffix ), QDir::Files ).isEmpty();
+    return !dir.entryList( QStringList(name), QDir::Files ).isEmpty();
 }
 
 void
@@ -694,32 +707,64 @@ ReadNodePrivate::checkFileFound(const std::string& filename)
 {
     // Natron finds a missing file when it first renders the Read, its postage stamp included. With postage stamps
     // off by preference (readerPreview) nothing renders an unconnected Read, so look for the file when it's named.
-    KnobBool* readerPreview = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("readerPreview").get() );
+    // Headless (a render, the farm) a render says it anyway: no check.
+    if ( appPTR->isBackground() ) {
+        return;
+    }
+    KnobBool* readerPreview = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("readerPreview").get() );
     KnobFilePtr fileKnob = inputFileKnob.lock();
-    if ( !readerPreview || readerPreview->getValue() || filename.empty() || !fileKnob || !_publicInterface->getApp() ) {
+    AppInstancePtr app = _publicInterface->getApp();
+    if ( !readerPreview || readerPreview->getValue() || filename.empty() || !fileKnob || !app ) {
         return;
     }
     NodePtr node = _publicInterface->getNode();
     if ( node && !node->isNodeCreated() ) {
-        // A node still being made drops its messages: look again once it's made (the next turn of the event loop).
+        // A node still being made drops its messages: look again once it's made (the next turns of the event loop),
+        // at most 50 times.
+        if (++fileCheckWaits > 50) {
+            return;
+        }
         std::string name = filename;
         QTimer::singleShot( 0, _publicInterface, [this, name]() { checkFileFound(name); } );
 
         return;
     }
-    std::string frameFile = fileKnob->getFileName( (int)_publicInterface->getApp()->getTimeLine()->currentFrame(), ViewIdx(0) );
-    std::string pattern = filename;
-    _publicInterface->getApp()->getProject()->canonicalizePath(frameFile);
-    _publicInterface->getApp()->getProject()->canonicalizePath(pattern);
-    if ( readerFileExists(frameFile, pattern) ) {
-        if (missingFileMessage) {
-            _publicInterface->clearPersistentMessage(false);
-            missingFileMessage = false;
+    fileCheckWaits = 0;
+    // The files to try before listing the folder: the current frame's, then the sequence's first and last.
+    std::vector<std::string> files;
+    files.push_back( fileKnob->getFileName( (int)app->getTimeLine()->currentFrame(), ViewIdx(0) ) );
+    const char* ends[] = { kParamFirstFrame, kParamLastFrame };
+    for (int i = 0; i < 2; ++i) {
+        KnobInt* end = dynamic_cast<KnobInt*>( _publicInterface->getKnobByName(ends[i]).get() );
+        if (end) {
+            files.push_back( fileKnob->getFileName( end->getValue(), ViewIdx(0) ) );
         }
-    } else {
-        _publicInterface->setPersistentMessage( eMessageTypeError, tr("File not found: %1").arg( QString::fromUtf8( filename.c_str() ) ).toStdString() );
-        missingFileMessage = true;
     }
+    for (std::size_t i = 0; i < files.size(); ++i) {
+        app->getProject()->canonicalizePath(files[i]);
+    }
+    std::string pattern = filename;
+    app->getProject()->canonicalizePath(pattern);
+    // On a worker thread; the answer comes back on this one. The watcher goes with the node (no answer then).
+    const unsigned int number = ++fileCheckNumber;
+    QFutureWatcher<bool>* watcher = new QFutureWatcher<bool>(_publicInterface);
+    QObject::connect( watcher, &QFutureWatcher<bool>::finished, _publicInterface, [this, watcher, number, filename]() {
+        const bool found = watcher->result();
+        watcher->deleteLater();
+        if (number != fileCheckNumber) {
+            return; // the file was named again since: the newer check answers
+        }
+        if (found) {
+            if (missingFileMessage) {
+                _publicInterface->clearPersistentMessage(false);
+                missingFileMessage = false;
+            }
+        } else {
+            _publicInterface->setPersistentMessage( eMessageTypeError, tr("File not found: %1").arg( QString::fromUtf8( filename.c_str() ) ).toStdString() );
+            missingFileMessage = true;
+        }
+    } );
+    watcher->setFuture( QtConcurrent::run( [files, pattern]() { return readerFileExists(files, pattern); } ) );
 }
 
 void

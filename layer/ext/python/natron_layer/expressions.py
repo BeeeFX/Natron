@@ -87,7 +87,7 @@ def animatable(node: Any) -> list[tuple[str, str]]:
 
 def _open(recipe_id: str) -> None:
     app = compat.active_app()
-    selected = compat.selected_nodes(app)
+    selected = compat.selected_nodes(app, compat.focused_group(app))
     recipe = by_id(recipe_id)
     if len(selected) != 1:
         compat.information(f"Expression: {recipe.label}", "Select the one node whose parameter gets the expression.")

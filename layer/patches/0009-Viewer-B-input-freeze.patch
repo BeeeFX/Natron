@@ -17,8 +17,8 @@ look: no preference (nobody wants the freeze back).
 
 Gap: none (a bug in Niik-l's 2.6, present since the Qt 6 port).
 Size: 1 file, 12 lines added, 10 removed.
-upstream: not offered yet (Baptiste: keep the fork private for now); the first to
-offer when he says so.
+upstream: to offer now (Baptiste, 12 November 2026: the two fixes go to Niik-l from his
+account).
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---

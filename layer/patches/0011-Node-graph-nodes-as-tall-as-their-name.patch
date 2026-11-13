@@ -19,7 +19,8 @@ for anyone who doesn't set it.
 
 Gap: GAPS.md, "Nuke's look" (the node graph's sizes).
 Size: 2 files, 26 lines added, 1 removed.
-upstream: not offered (Baptiste: keep the fork private for now).
+upstream: not offered yet (the repository is public since 2 November 2026; offered once the two
+fixes are in, Baptiste's call).
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
@@ -28,7 +29,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  2 files changed, 26 insertions(+), 1 deletion(-)
 
 diff --git a/Engine/Settings.cpp b/Engine/Settings.cpp
-index f5faf7ab7..c22cbd8a2 100644
+index dab07312e..8e622aa44 100644
 --- a/Engine/Settings.cpp
 +++ b/Engine/Settings.cpp
 @@ -1127,6 +1127,14 @@ Settings::initializeKnobsNodeGraphDrawing()
@@ -47,7 +48,7 @@ index f5faf7ab7..c22cbd8a2 100644
      struct IntDef { KnobIntPtr* knob; const char* name; QString label; int def, min, max; QString hint; };
      const IntDef ints[] = {
 diff --git a/Gui/NodeGui.cpp b/Gui/NodeGui.cpp
-index 1517e7e22..5c9c227e8 100644
+index a1a504335..7ed90bcdc 100644
 --- a/Gui/NodeGui.cpp
 +++ b/Gui/NodeGui.cpp
 @@ -39,6 +39,7 @@ CLANG_DIAG_OFF(uninitialized)
@@ -66,7 +67,7 @@ index 1517e7e22..5c9c227e8 100644
 +static bool
 +nodeLabelTight()
 +{
-+    KnobBool* tight = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->getKnobByName("nodeLabelTight").get() );
++    KnobBool* tight = dynamic_cast<KnobBool*>( appPTR->getCurrentSettings()->cachedKnob("nodeLabelTight").get() );
 +
 +    return tight && tight->getValue();
 +}

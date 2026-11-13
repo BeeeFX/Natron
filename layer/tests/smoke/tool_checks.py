@@ -473,7 +473,7 @@ def check_select_and_merge(say, app):
 
 
 def check_roto_link(say, app):
-    from natron_layer import workflow
+    from natron_layer import compat, workflow
 
     clear(app)
     base = constant(app, (0.0, 0.0, 0.0, 0.0))
@@ -491,6 +491,7 @@ def check_roto_link(say, app):
     after = node(app, "net.sf.openfx.GradePlugin", (), (roto,), name="AfterRoto")
     follow = workflow.link_roto_to_track(app, roto, tracker, reference=1)
     translate = follow.getParam("translate")
+    expression_text = compat.expression_of(translate, 0)
     at3 = (translate.getValueAtTime(3, 0), translate.getValueAtTime(3, 1))
     say(follow.getInput(0).getScriptName() == roto.getScriptName() and after.getInput(0).getScriptName()
         == follow.getScriptName() and near(at3, (20.0, 10.0)),
@@ -506,6 +507,10 @@ def check_roto_link(say, app):
     say(baked == 2 and not compat.expression_of(translate, 0) and translate.getIsAnimated(0)
         and near(at5, (40.0, 20.0)),
         "Bake expressions to keyframes: the expressions became keyframes (frame 5: +40, +20): " + str(rounded(at5)))
+    back = workflow.undo_bake()
+    say(back == 2 and compat.expression_of(translate, 0) == expression_text and not translate.getIsAnimated(0)
+        and near((translate.getValueAtTime(3, 0), translate.getValueAtTime(3, 1)), (20.0, 10.0)),
+        "Undo last bake: the same expression text back, its keyframes gone (frame 3: +20, +10)")
 
 
 def check_collect(say, app):
@@ -563,6 +568,18 @@ def check_flipbook(say, app):
         + " (" + (str(os.path.getsize(movie)) if os.path.isfile(movie) else "none") + " bytes)")
     say(workflow.find_rv() is None or os.path.isfile(workflow.find_rv()),
         "RV on this PC: " + str(workflow.find_rv() or "not found (the flipbook plays the MP4 in the system's player)"))
+    # Only the newest flipbooks stay in the tool's folder, and a cancelled one leaves nothing.
+    root = folder("flipbook_root")
+    for _ in range(3):
+        workflow.flipbook(app, grade, 1, 1, player="none", movie=False, wait=True, renderer=renderer, root=root)
+    left = sorted(os.listdir(root))
+    say(len(left) == workflow.KEEP_FLIPBOOKS, "three flipbooks into the tool's folder leave the newest "
+        + str(workflow.KEEP_FLIPBOOKS) + ": " + str(left))
+    started = workflow.flipbook(app, grade, 1, 40, player="none", movie=False, wait=False, renderer=renderer,
+                                root=root)
+    stopped = workflow.cancel_flipbooks()
+    say(stopped == 1 and not os.path.isdir(started["folder"]) and started["process"].poll() is not None
+        and not workflow._running, "Cancel flipbook stops a flipbook still rendering and deletes its folder")
     clear(app)
 
 
@@ -673,6 +690,26 @@ def check_toolset_recipes(say, app):
     say(near(px(out, 5, 5), (beauty, beauty, beauty, 0.75), 1e-3) and max(stats(check)["max"][:3]) < 1e-5,
         "and add up to the beauty ((0.1 + 0.05) x 0.8 + (0.2 + 0.1) x 0.5 + 0.03 = 0.3), alpha the beauty's, the "
         "Check black: " + str(rounded(px(out, 5, 5))) + ", Check " + str(rounded(px(check, 5, 5), 6)))
+    clear(app)
+    # The Karma rebuild on a render with Karma's lighting passes (they add up, no colour multiply). Only the passes
+    # are read back here: a second Read of a layered EXR in this session gave the first one's colour plane (the
+    # Cycles file's beauty), whatever its name or size, so the beauty and the Check are compared by the window probe.
+    karma = {"combineddiffuse": 0.17, "combinedglossyreflection": 0.08, "glossytransmission": 0.02,
+             "combinedemission": 0.03, "combinedvolume": 0.01, "sss": 0.04}
+    beauty = sum(karma.values())
+    channels, values = ["R", "G", "B", "A"], [beauty, beauty, beauty, 1.0]
+    for name, value in karma.items():
+        for letter in "RGB":
+            channels.append(name + "." + letter)
+            values.append(value)
+    read = app.createReader(layered_exr("karma_passes.exr", channels, values))
+    read.setScriptName("KarmaRender")
+    made = toolset_recipes.karma_beauty_rebuild(app)
+    report = toolsets.after_paste(app, list(made.values()), read)
+    added = px(render(app, made["Rebuild"], "karma_rebuild"), 5, 5)
+    say(sorted(report.matched) == sorted(karma) and not report.missing and near(added[:3], (beauty,) * 3, 1e-3),
+        "the Karma rebuild finds Karma's six lighting passes and adds them up to the beauty ("
+        + str(round(beauty, 4)) + "): " + str(rounded(added[:3])) + "; " + report.summary("Karma rebuild"))
     clear(app)
     checker = node(app, "net.sf.openfx.CheckerBoardPlugin", (("extent", "format"),
                                                              ("NatronParamFormatChoice", "square_256")))

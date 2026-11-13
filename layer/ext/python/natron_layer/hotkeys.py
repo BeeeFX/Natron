@@ -121,10 +121,11 @@ def _node_graph_only(shortcut: str) -> bool:
 
 
 def copy_node() -> Any:
-    """K: Nuke's Copy (the alias), fed by the selected node."""
+    """K: Nuke's Copy (the alias), fed by the selected node, in the node graph the artist is in (a Group's too)."""
     if not _node_graph_only("K"):
         return None
-    return aliases.make("Copy", compat.active_app())
+    app = compat.active_app()
+    return aliases.make("Copy", app, compat.focused_group(app))
 
 
 def node_info() -> str | None:
@@ -132,7 +133,7 @@ def node_info() -> str | None:
     if not _node_graph_only("I"):
         return None
     app = compat.active_app()
-    selected = compat.selected_nodes(app)
+    selected = compat.selected_nodes(app, compat.focused_group(app))
     if not selected:
         compat.information("Node info", "Select a node first.")
         return None
@@ -163,32 +164,69 @@ def describe(node: Any, app: Any) -> str:
     return "\n".join(lines)
 
 
+# The nodes the last snap moved and where they were, for Nuke > Edit > Undo snap to grid (Natron's Python moves a
+# node with no Undo of its own).
+_last_snap: list[tuple[Any, float, float]] = []
+
+
 def snap_to_grid() -> int | None:
-    """\\: every top-level node moved to the nearest point of Nuke's grid. Returns how many moved."""
+    """\\: every node of the node graph the artist is in (the comp's, or a Group's) moved to the nearest point of
+    Nuke's grid. Returns how many moved; Nuke > Edit > Undo snap to grid puts them back."""
     if not _node_graph_only("\\"):
         return None
-    return snap_nodes(compat.children(compat.active_app()))
+    app = compat.active_app()
+    moved = snap_nodes(compat.children(compat.focused_group(app)))
+    if moved:
+        compat.say(f"{moved} node(s) snapped to the grid: Nuke > Edit > Undo snap to grid puts them back.")
+    return moved
 
 
 def snap_nodes(nodes: list[Any], grid: tuple[int, int] = GRID) -> int:
-    moved = 0
+    """Each node to the nearest grid point, unless another node is already there (or gets there first): then it
+    stays where it was, so two nodes never land on top of each other. Remembers what moved for ``undo_snap``."""
+    placed = []
     for node in nodes:
         try:
             x, y = node.getPosition()
         except Exception:  # noqa: BLE001
             continue
-        snapped = (round(x / grid[0]) * grid[0], round(y / grid[1]) * grid[1])
-        if snapped != (x, y):
-            node.setPosition(*snapped)
-            moved += 1
-    return moved
+        placed.append((node, x, y, (round(x / grid[0]) * grid[0], round(y / grid[1]) * grid[1])))
+    taken = {(x, y) for _node, x, y, _snapped in placed}
+    moved: list[tuple[Any, float, float]] = []
+    for node, x, y, snapped in placed:
+        if snapped == (x, y) or snapped in taken:
+            continue
+        node.setPosition(*snapped)
+        taken.discard((x, y))
+        taken.add(snapped)
+        moved.append((node, x, y))
+    _last_snap[:] = moved
+    return len(moved)
+
+
+def undo_snap() -> int:
+    """Nuke > Edit > Undo snap to grid: the nodes the last snap moved, back where they were (one deleted since is
+    skipped). Returns how many went back."""
+    back = 0
+    for node, x, y in _last_snap:
+        try:
+            node.setPosition(x, y)
+            back += 1
+        except Exception:  # noqa: BLE001  (a node deleted since: Natron raises RuntimeError)
+            continue
+    _last_snap.clear()
+    if compat.application() is not None:
+        compat.say(f"Undo snap to grid: {back} node(s) back where they were." if back
+                   else "Undo snap to grid: nothing to put back.")
+    return back
 
 
 def connect_to_first() -> bool | None:
     """Shift+Y: with two nodes selected, the second's main input is fed by the first (Natron's selection order)."""
     if not _node_graph_only("Shift+Y"):
         return None
-    selected = compat.selected_nodes(compat.active_app())
+    app = compat.active_app()
+    selected = compat.selected_nodes(app, compat.focused_group(app))
     if len(selected) != 2:
         compat.information("Connect second selected to first", "Select exactly two nodes.")
         return False
@@ -211,16 +249,18 @@ def duplicate_and_branch() -> Any:
     if not _node_graph_only("Alt+B"):
         return None
     app = compat.active_app()
-    selected = compat.selected_nodes(app)
+    group = compat.focused_group(app)
+    selected = compat.selected_nodes(app, group)
     if len(selected) != 1:
         compat.information("Duplicate and branch", "Select one node.")
         return None
-    return branch_copy(app, selected[0])
+    return branch_copy(app, selected[0], group)
 
 
-def branch_copy(app: Any, node: Any) -> Any:
-    """A new node of the same plug-in with the same values, its inputs fed like the original's."""
-    copy = compat.create_node(app, node.getPluginID())
+def branch_copy(app: Any, node: Any, group: Any = None) -> Any:
+    """A new node of the same plug-in with the same values, its inputs fed like the original's, beside it in the same
+    node graph (``group``: the comp's top level by default)."""
+    copy = compat.create_node(app, node.getPluginID(), group)
     if copy is None:
         return None
     for param in node.getParams():
@@ -255,10 +295,11 @@ def make_creator(plugin_id: str, alias: str | None, shortcut: str) -> Any:
         if not _node_graph_only(shortcut):
             return None
         app = compat.active_app()
+        group = compat.focused_group(app)
         if alias:
-            return aliases.make(alias, app)
-        selected = compat.selected_nodes(app)
-        node = compat.create_node(app, plugin_id)
+            return aliases.make(alias, app, group)
+        selected = compat.selected_nodes(app, group)
+        node = compat.create_node(app, plugin_id, group)
         if node is not None and len(selected) == 1:
             compat.connect(node, 0, selected[0])
         return node
@@ -281,8 +322,12 @@ def register_imported(shortcuts: list[dict[str, Any]]) -> list[str]:
     return done
 
 
+UNDO_SNAP_MENU = "Nuke/Edit/Undo snap to grid"
+
+
 def register() -> list[str]:
-    """The layer's own keys (status "added"), as menu commands. Interface only."""
+    """The layer's own keys (status "added"), as menu commands, and Undo snap to grid (no key). Interface only."""
+    compat.add_menu_command(UNDO_SNAP_MENU, "natron_layer.hotkeys.undo_snap")
     done = []
     for key in added():
         if key.command and key.menu and compat.add_menu_command(key.menu, f"natron_layer.hotkeys.{key.command}",

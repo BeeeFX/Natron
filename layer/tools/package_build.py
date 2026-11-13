@@ -25,7 +25,11 @@ The release (or source build) folder is only read. In the copy:
   ext/fonts,
   upstream.toml, the licence, FORK.md and GAPS.md), with ``BUILD.toml`` (the version, the release it's based on, the
   layer's commit)
-  and ``SOURCE.txt`` (where the corresponding source is, as the GPL asks when a build is handed to someone).
+  and ``SOURCE.txt`` (where the corresponding source is, as the GPL asks when a build is handed to someone);
+- the root gets Natron's licence (``LICENSE.txt``) and the layer's (``LICENSE-layer.txt``), and a source build
+  ``Resources/licenses/``: every bundled MSYS2 library's licence text as MSYS2 installed it, Cycles' and
+  wgpu-native's, and ``PACKAGES.txt`` naming each library's licence and home page (``--strict-licences`` stops when
+  a library with a DLL has no text to copy).
 
 The version is ``2.6.0+<release date>.sng<number>`` (``2.6.0+2026.09.20.sng1``): Singerie's software manager reads
 a fork build's version as ``2.6.0+<build>``, so pins like ``2.6.x``, ``2.6.0`` and the exact build all match it, and
@@ -108,13 +112,113 @@ def stage_source_build(install: Path, target: Path) -> None:
         "Qt 6, Python, Boost, Cairo, OpenImageIO, OpenEXR, OpenColorIO, OpenVDB, OpenImageDenoise, Embree,\n"
         "OpenSubdiv, FFmpeg and other runtime libraries as DLLs from the MSYS2 MinGW-w64 distribution\n"
         "(https://www.msys2.org), each under its own licence, the exact packages listed in\n"
-        "Resources/layer/MSYS2-PACKAGES.lock (their sources are in MSYS2's package repositories).\n",
+        "Resources/layer/MSYS2-PACKAGES.lock; their licence texts are in Resources/licenses (PACKAGES.txt lists\n"
+        "each library's licence and home page), Natron's own licence in LICENSE.txt and the layer's in\n"
+        "LICENSE-layer.txt.\n",
         encoding="utf-8",
     )
 
 
+PREFIX = "mingw-w64-x86_64-"
+
+
+def locked_packages(lock: Path) -> list[tuple[str, str]]:
+    """(name, version) of every package in an MSYS2 lock file (msys2_snapshot.py's format)."""
+    found = []
+    for line in lock.read_text(encoding="utf-8").splitlines():
+        parts = line.split()
+        if len(parts) >= 2 and not line.startswith("#"):
+            found.append((parts[0], parts[1]))
+    return found
+
+
+def package_files(msys2: Path, name: str, version: str) -> list[str]:
+    """The files pacman installed for a package (its local database's ``files`` list), or [] when not installed."""
+    listed = msys2 / "var" / "lib" / "pacman" / "local" / f"{name}-{version}" / "files"
+    if not listed.is_file():
+        return []
+    return [line.strip() for line in listed.read_text(encoding="utf-8").splitlines()
+            if line.strip() and not line.startswith("%")]
+
+
+def library_licences(msys2: Path, lock: Path) -> tuple[dict[str, list[Path]], list[str]]:
+    """For every locked package, its licence files as MSYS2 installed them (``mingw64/share/licenses/...``, read
+    from pacman's own list of the package's files), and the packages that put a DLL in ``mingw64/bin`` yet carry no
+    licence file (their licence text has to come from somewhere else before a build is handed on)."""
+    licences: dict[str, list[Path]] = {}
+    without = []
+    for name, version in locked_packages(lock):
+        files = package_files(msys2, name, version)
+        texts = [msys2 / f for f in files if f.startswith("mingw64/share/licenses/") and not f.endswith("/")]
+        short = name[len(PREFIX):] if name.startswith(PREFIX) else name
+        if not texts:  # some keep it with their documents (share/doc/<name>/COPYING)
+            texts = [msys2 / f for f in files if not f.endswith("/") and re.match(
+                r"(?i)^(copying|licen[cs]e|notice|copyright)([._-].*)?$", f.rsplit("/", 1)[-1])]
+        if not texts:  # some packages leave the folder to their split sibling (boost-libs: boost)
+            folder = msys2 / "mingw64" / "share" / "licenses" / short
+            texts = [p for p in folder.rglob("*") if p.is_file()] if folder.is_dir() else []
+        if texts:
+            licences[short] = texts
+        elif any(f.startswith("mingw64/bin/") and f.lower().endswith(".dll") for f in files):
+            without.append(name)
+    return licences, without
+
+
+def package_desc(msys2: Path, name: str, version: str) -> dict[str, str]:
+    """A package's licence and home page from pacman's local database (``%LICENSE%``, ``%URL%``)."""
+    desc = msys2 / "var" / "lib" / "pacman" / "local" / f"{name}-{version}" / "desc"
+    found: dict[str, str] = {}
+    if desc.is_file():
+        key = ""
+        for line in desc.read_text(encoding="utf-8").splitlines():
+            if line.startswith("%") and line.endswith("%"):
+                key = line.strip("%")
+            elif line.strip() and key in ("LICENSE", "URL"):
+                found[key] = (found.get(key, "") + " " + line.strip()).strip()
+    return found
+
+
+def copy_licences(target: Path, natron_root: Path | None, msys2_lock: Path | None) -> list[str]:
+    """Natron's own licence at the build's root (LICENSE.txt), the layer's beside it (LICENSE-layer.txt), and for a
+    source build every bundled library's licence text in Resources/licenses/<package>/: the MSYS2 packages of the
+    lock file (as MSYS2 installed them), Cycles' and wgpu-native's from their checkouts. Returns the packages that
+    ship a DLL with no licence text to copy (the packaging stops on them)."""
+    shutil.copy2(REPO / "LICENSE.txt", target / "LICENSE.txt")
+    shutil.copy2(LAYER / "LICENSE", target / "LICENSE-layer.txt")
+    if natron_root is None or msys2_lock is None:
+        return []
+    folder = target / "Resources" / "licenses"
+    msys2 = natron_root / "msys64"
+    licences, without = library_licences(msys2, msys2_lock)
+    for short, texts in licences.items():
+        for text in texts:
+            parts = text.relative_to(msys2 / "mingw64" / "share" / "licenses").parts if text.is_relative_to(
+                msys2 / "mingw64" / "share" / "licenses") else (short, text.name)
+            destination = folder.joinpath(*parts)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(text, destination)
+    lines = ["The libraries this build carries from MSYS2 (Resources/layer/MSYS2-PACKAGES.lock), each with its licence",
+             "and home page as MSYS2 lists them. Their licence texts are in the folders beside this file; MSYS2 ships",
+             "no text for the ones marked (no text): their licence is the one named, its text at the home page.", ""]
+    for name, version in locked_packages(msys2_lock):
+        desc = package_desc(msys2, name, version)
+        mark = "  (no text)" if name in without else ""
+        lines.append(f"{name} {version}: {desc.get('LICENSE', '?')} {desc.get('URL', '')}{mark}".rstrip())
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "PACKAGES.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    for checkout, names in (("cycles", ("LICENSE", "NOTICE", "LICENSE.md", "COPYING")),
+                            ("wgpu", ("LICENSE", "LICENSE.APACHE", "LICENSE.MIT", "LICENSE-APACHE", "LICENSE-MIT"))):
+        for name in names:
+            source = natron_root / checkout / name
+            if source.is_file():
+                (folder / checkout).mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, folder / checkout / name)
+    return without
+
+
 def lay_out(release: Path, target: Path, version: str, tag: str, source_build: bool = False,
-            msys2_lock: Path | None = None) -> None:
+            msys2_lock: Path | None = None, natron_root: Path | None = None,
+            strict_licences: bool = False) -> None:
     if target.exists():
         raise SystemExit(f"{target} exists already: remove it or choose another --out.")
     if (release / "Plugins" / "PyPlugs" / "layer").exists():
@@ -139,6 +243,14 @@ def lay_out(release: Path, target: Path, version: str, tag: str, source_build: b
     dirty = bool(git("status", "--porcelain", "--", "layer", "FORK.md", *(("Engine", "Gui") if source_build else ())))
     if msys2_lock is not None:
         shutil.copy2(msys2_lock, resources / "MSYS2-PACKAGES.lock")
+    without = copy_licences(target, natron_root if source_build else None, msys2_lock if source_build else None)
+    if without:
+        listed = ", ".join(name[len(PREFIX):] for name in without)
+        if strict_licences:
+            raise SystemExit(f"MSYS2 ships no licence text for these packages, which put DLLs in the build: {listed}. "
+                             "Add their texts to Resources/licenses before handing the build on.")
+        print(f"Note: MSYS2 ships no licence text for {len(without)} packages with DLLs in the build ({listed}); "
+              "Resources/licenses/PACKAGES.txt names their licences and home pages.")
     (resources / "BUILD.toml").write_text(
         "# What this build is (layer/tools/package_build.py).\n"
         f'version = "{version}"\n'
@@ -154,7 +266,8 @@ def lay_out(release: Path, target: Path, version: str, tag: str, source_build: b
         + ":\nNiik-l's Natron 2.6 source at " + tag + " (https://github.com/Niik-l/Natron, GPL-2.0-or-later) with this\n"
         "fork's core patches (layer/patches/, also carried as commits) and its layer (layer/, GPL-3.0-or-later, see\n"
         "LICENSE here), built with Niik-l's own scripts (tools/win-build) against the MSYS2 packages listed in\n"
-        "MSYS2-PACKAGES.lock here (sources in MSYS2's repositories) and the plug-ins at the refs of\n"
+        "MSYS2-PACKAGES.lock here (the GPL and LGPL ones' sources kept by the collective beside its build folder,\n"
+        "natron-build/sources, made by layer/tools/msys2_snapshot.py --sources) and the plug-ins at the refs of\n"
         "tools/win-build/config.sh. Whoever hands this build on must make that source available with it, as the\n"
         "GPL asks.\n"
     )
@@ -190,6 +303,10 @@ def main() -> int:
     origin.add_argument("--release", help="Niik-l's portable release folder (holding bin/)")
     origin.add_argument("--source-build", help="a source build's install folder (App/, Renderer/: win-build's 06)")
     parser.add_argument("--msys2-lock", help="the MSYS2 package list the source build was made with")
+    parser.add_argument("--natron-root", help="the source build's NATRON_ROOT (msys64/, cycles/, wgpu/: their "
+                        "licence texts go in the build); default: the folder holding --msys2-lock")
+    parser.add_argument("--strict-licences", action="store_true",
+                        help="stop when a library with a DLL in the build has no licence text to copy")
     parser.add_argument("--tag", required=True, help="its release tag, natron-2.6-YYYY.MM.DD")
     parser.add_argument("--number", type=int, default=1, help="the layer's build number on that release (sng<n>)")
     parser.add_argument("--out", default=str(LAYER / "dist"), help="where the build goes (default: layer/dist)")
@@ -200,8 +317,10 @@ def main() -> int:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     folder = out / f"Natron-{file_safe(version)}"
-    lay_out(release, folder, version, args.tag, source_build=bool(args.source_build),
-            msys2_lock=Path(args.msys2_lock) if args.msys2_lock else None)
+    lock = Path(args.msys2_lock) if args.msys2_lock else None
+    natron_root = Path(args.natron_root) if args.natron_root else (lock.parent if lock is not None else None)
+    lay_out(release, folder, version, args.tag, source_build=bool(args.source_build), msys2_lock=lock,
+            natron_root=natron_root, strict_licences=args.strict_licences)
     print(f"Laid out: {folder}")
     if not args.no_archive:
         zipped = out / f"Natron-{file_safe(version)}-win64.zip"
